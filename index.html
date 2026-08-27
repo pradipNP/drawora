@@ -55,12 +55,20 @@
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5 19 12.2l-6.4 1.6L9.8 20.5 5 4.5Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>
                     <span class="visually-hidden">Select</span>
                   </button>
+                  <button type="button" class="ribbon-btn" id="select-all-btn" data-action="select-all" title="Select all (Ctrl+A)" aria-keyshortcuts="Control+A" disabled>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="4.5" width="15" height="15" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M8 12h8M12 8v8" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+                    <span class="visually-hidden">Select all</span>
+                  </button>
                 </div>
                 <span class="ribbon-group-label">Tools</span>
               </div>
 
               <div class="ribbon-group">
                 <div class="ribbon-group-tools">
+                  <button type="button" class="ribbon-btn" id="cut-btn" data-action="cut" title="Cut (Ctrl+X)" aria-keyshortcuts="Control+X" disabled>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="7.2" cy="17.2" r="2.3" fill="none" stroke="currentColor" stroke-width="1.75"/><circle cx="16.8" cy="17.2" r="2.3" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="m9 15.4 6.8-10M15 15.4 8.2 5.4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+                    <span class="visually-hidden">Cut</span>
+                  </button>
                   <button type="button" class="ribbon-btn" id="copy-btn" data-action="copy" title="Copy (Ctrl+C)" aria-keyshortcuts="Control+C" disabled>
                     <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="8" width="10" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M8.5 16H6.5A1.5 1.5 0 0 1 5 14.5v-10A1.5 1.5 0 0 1 6.5 3h8A1.5 1.5 0 0 1 16 4.5V8" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>
                     <span class="visually-hidden">Copy</span>
@@ -133,6 +141,46 @@
                   </button>
                 </div>
                 <span class="ribbon-group-label">Notes</span>
+              </div>
+
+              <div class="ribbon-group">
+                <div class="ribbon-group-tools">
+                  <button type="button" class="ribbon-btn" id="group-btn" data-action="group" title="Group (Ctrl+G)" aria-keyshortcuts="Control+G" disabled>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="6" width="8.5" height="8.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.75"/><rect x="11" y="9.5" width="8.5" height="8.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>
+                    <span class="visually-hidden">Group</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" id="ungroup-btn" data-action="ungroup" title="Ungroup (Ctrl+Shift+G)" aria-keyshortcuts="Control+Shift+G" disabled>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.75"/><rect x="12.5" y="11" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M11 9.5 13.5 12" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+                    <span class="visually-hidden">Ungroup</span>
+                  </button>
+                  <div class="align-grid" role="group" aria-label="Align objects">
+                    <button type="button" class="ribbon-btn" data-action="align" data-edge="left" title="Align left" disabled>
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4v16M9 8h10v3H9Zm0 5h7v3H9Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>
+                      <span class="visually-hidden">Align left</span>
+                    </button>
+                    <button type="button" class="ribbon-btn" data-action="align" data-edge="center" title="Align center" disabled>
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v16M7 8h10v3H7Zm2 5h6v3H9Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>
+                      <span class="visually-hidden">Align center</span>
+                    </button>
+                    <button type="button" class="ribbon-btn" data-action="align" data-edge="right" title="Align right" disabled>
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 4v16M5 8h10v3H5Zm3 5h7v3H8Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>
+                      <span class="visually-hidden">Align right</span>
+                    </button>
+                    <button type="button" class="ribbon-btn" data-action="align" data-edge="top" title="Align top" disabled>
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M8 9v10h3V9Zm5 0v7h3V9Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>
+                      <span class="visually-hidden">Align top</span>
+                    </button>
+                    <button type="button" class="ribbon-btn" data-action="align" data-edge="middle" title="Align middle" disabled>
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16M8 6v12h3V6Zm5 3v6h3V9Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>
+                      <span class="visually-hidden">Align middle</span>
+                    </button>
+                    <button type="button" class="ribbon-btn" data-action="align" data-edge="bottom" title="Align bottom" disabled>
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16M8 5v10h3V5Zm5 3v7h3V8Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>
+                      <span class="visually-hidden">Align bottom</span>
+                    </button>
+                  </div>
+                </div>
+                <span class="ribbon-group-label">Arrange</span>
               </div>
 
               <div class="ribbon-group format-actions" role="group" aria-label="Text formatting">
@@ -389,11 +437,16 @@
                 <span><kbd>N</kbd> Sticky note</span>
                 <span><kbd>Ctrl</kbd>+<kbd>Z</kbd> Undo</span>
                 <span><kbd>Ctrl</kbd>+<kbd>Y</kbd> Redo</span>
+                <span><kbd>Ctrl</kbd>+<kbd>A</kbd> Select all</span>
+                <span><kbd>Ctrl</kbd>+<kbd>X</kbd> Cut</span>
                 <span><kbd>Ctrl</kbd>+<kbd>C</kbd> Copy</span>
                 <span><kbd>Ctrl</kbd>+<kbd>V</kbd> Paste</span>
                 <span><kbd>Ctrl</kbd>+<kbd>D</kbd> Duplicate</span>
+                <span><kbd>Ctrl</kbd>+<kbd>G</kbd> Group</span>
+                <span><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>G</kbd> Ungroup</span>
                 <span><kbd>Del</kbd> Delete</span>
                 <span><kbd>Esc</kbd> Deselect</span>
+                <span>Drag empty canvas to select several objects</span>
               </div>
             </div>
           </div>

@@ -82,6 +82,10 @@
   const copyBtn = document.getElementById("copy-btn");
   const pasteBtn = document.getElementById("paste-btn");
   const duplicateBtn = document.getElementById("duplicate-btn");
+  const cutBtn = document.getElementById("cut-btn");
+  const selectAllBtn = document.getElementById("select-all-btn");
+  const groupBtn = document.getElementById("group-btn");
+  const ungroupBtn = document.getElementById("ungroup-btn");
   const editor = document.getElementById("text-editor");
   const fontSizeSelect = document.getElementById("font-size");
 
@@ -101,6 +105,10 @@
     !copyBtn ||
     !pasteBtn ||
     !duplicateBtn ||
+    !cutBtn ||
+    !selectAllBtn ||
+    !groupBtn ||
+    !ungroupBtn ||
     !ribbonTabs ||
     !editor ||
     !fontSizeSelect
@@ -773,6 +781,49 @@
     ].map((point) => localToWorld(point, center, rotation));
   }
 
+  function objectWorldBounds(object) {
+    const corners = worldCorners(object);
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const corner of corners) {
+      minX = Math.min(minX, corner.x);
+      minY = Math.min(minY, corner.y);
+      maxX = Math.max(maxX, corner.x);
+      maxY = Math.max(maxY, corner.y);
+    }
+    return {
+      x: minX,
+      y: minY,
+      width: Math.max(maxX - minX, 0),
+      height: Math.max(maxY - minY, 0),
+    };
+  }
+
+  function boundsIntersect(a, b) {
+    return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+  }
+
+  function unionBounds(list) {
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const bounds of list) {
+      minX = Math.min(minX, bounds.x);
+      minY = Math.min(minY, bounds.y);
+      maxX = Math.max(maxX, bounds.x + bounds.width);
+      maxY = Math.max(maxY, bounds.y + bounds.height);
+    }
+    return {
+      x: minX,
+      y: minY,
+      width: Math.max(maxX - minX, 0),
+      height: Math.max(maxY - minY, 0),
+    };
+  }
+
   function drawGroupSelection(objects) {
     let minX = Infinity;
     let minY = Infinity;
@@ -829,7 +880,26 @@
       drawShape(state.preview);
     }
 
+    if (state.active && state.active.kind === "marquee") {
+      drawMarquee(normalizedBounds(state.active.start, state.active.point));
+    }
+
     drawSelectionOverlay();
+  }
+
+  function drawMarquee(bounds) {
+    if (bounds.width < 1 && bounds.height < 1) {
+      return;
+    }
+
+    ctx.save();
+    ctx.fillStyle = "rgb(15 118 110 / 0.08)";
+    ctx.strokeStyle = SELECT_COLOR;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 3]);
+    ctx.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
+    ctx.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+    ctx.restore();
   }
 
   function resizeCanvas() {
@@ -1053,12 +1123,24 @@
   }
 
   function syncEditUI() {
+    const selectableCount = state.objects.filter(isSelectable).length;
+    const hasSelection = state.selectedIds.length > 0;
+    const units = selectionUnits();
+    const info = selectionGroupInfo();
+
     undoBtn.disabled = state.past.length === 0;
     redoBtn.disabled = state.future.length === 0;
-    deleteBtn.disabled = state.selectedIds.length === 0;
-    copyBtn.disabled = state.selectedIds.length === 0;
-    duplicateBtn.disabled = state.selectedIds.length === 0;
+    deleteBtn.disabled = !hasSelection;
+    copyBtn.disabled = !hasSelection;
+    cutBtn.disabled = !hasSelection;
+    duplicateBtn.disabled = !hasSelection;
     pasteBtn.disabled = state.clipboard.length === 0;
+    selectAllBtn.disabled = selectableCount === 0;
+    groupBtn.disabled = !info.canGroup;
+    ungroupBtn.disabled = !info.canUngroup;
+    for (const button of toolbar.querySelectorAll('[data-action="align"]')) {
+      button.disabled = units.length < 2;
+    }
   }
 
   function setSelection(ids) {
@@ -1125,13 +1207,92 @@
     }
   }
 
-  function cloneObject(object, offset) {
-    const copy = cloneData(object);
-    copy.id = createId();
-    if (offset) {
-      translateObject(copy, offset, offset);
+  function remapClones(objects, offset) {
+    const groupMap = new Map();
+    return objects.map((object) => {
+      const copy = cloneData(object);
+      copy.id = createId();
+      if (copy.groupId) {
+        if (!groupMap.has(copy.groupId)) {
+          groupMap.set(copy.groupId, createId());
+        }
+        copy.groupId = groupMap.get(copy.groupId);
+      }
+      if (offset) {
+        translateObject(copy, offset, offset);
+      }
+      return copy;
+    });
+  }
+
+  function expandGroupIds(ids) {
+    const selected = new Set(ids);
+    const groupIds = new Set();
+    for (const id of ids) {
+      const object = findObject(id);
+      if (object && object.groupId) {
+        groupIds.add(object.groupId);
+      }
     }
-    return copy;
+    if (groupIds.size === 0) {
+      return [...selected];
+    }
+    for (const object of state.objects) {
+      if (object.groupId && groupIds.has(object.groupId)) {
+        selected.add(object.id);
+      }
+    }
+    return state.objects.filter((object) => selected.has(object.id)).map((object) => object.id);
+  }
+
+  function selectionUnits() {
+    const units = [];
+    const seenGroups = new Set();
+    for (const object of selectedObjects()) {
+      if (object.groupId) {
+        if (seenGroups.has(object.groupId)) {
+          continue;
+        }
+        seenGroups.add(object.groupId);
+        units.push(state.objects.filter((item) => item.groupId === object.groupId));
+      } else {
+        units.push([object]);
+      }
+    }
+    return units;
+  }
+
+  function selectionGroupInfo() {
+    const selected = selectedObjects();
+    const grouped = selected.filter((object) => object.groupId);
+    if (selected.length < 2) {
+      return { canGroup: false, canUngroup: grouped.length > 0 };
+    }
+
+    const firstGroup = selected[0].groupId;
+    const allSameGroup = Boolean(firstGroup) && selected.every((object) => object.groupId === firstGroup);
+    const complete =
+      allSameGroup &&
+      state.objects.filter((object) => object.groupId === firstGroup).length === selected.length;
+    return {
+      canGroup: !complete,
+      canUngroup: grouped.length > 0,
+    };
+  }
+
+  function pruneOrphanGroups() {
+    const counts = new Map();
+    for (const object of state.objects) {
+      if (!object.groupId) {
+        continue;
+      }
+      counts.set(object.groupId, (counts.get(object.groupId) || 0) + 1);
+    }
+    for (const object of state.objects) {
+      if (object.groupId && counts.get(object.groupId) < 2) {
+        delete object.groupId;
+      }
+    }
   }
 
   function deleteSelected() {
@@ -1142,6 +1303,7 @@
     captureBefore();
     const ids = new Set(state.selectedIds);
     state.objects = state.objects.filter((object) => !ids.has(object.id));
+    pruneOrphanGroups();
     setSelection([]);
     commitIfChanged();
     redraw();
@@ -1153,7 +1315,7 @@
     }
 
     captureBefore();
-    const copies = selectedObjects().map((object) => cloneObject(object, DUPLICATE_OFFSET));
+    const copies = remapClones(selectedObjects(), DUPLICATE_OFFSET);
     for (const copy of copies) {
       state.objects.push(copy);
     }
@@ -1178,16 +1340,106 @@
     }
 
     captureBefore();
-    const copies = state.clipboard.map((object) => {
-      const copy = cloneData(object);
-      copy.id = createId();
-      translateObject(copy, DUPLICATE_OFFSET, DUPLICATE_OFFSET);
-      return copy;
-    });
+    const copies = remapClones(state.clipboard, DUPLICATE_OFFSET);
     for (const copy of copies) {
       state.objects.push(copy);
     }
     setSelection(copies.map((copy) => copy.id));
+    commitIfChanged();
+    redraw();
+  }
+
+  function cutSelected() {
+    if (state.selectedIds.length === 0 || state.active) {
+      return;
+    }
+
+    copySelected();
+    deleteSelected();
+  }
+
+  function selectAll() {
+    if (state.active) {
+      return;
+    }
+
+    const ids = state.objects.filter(isSelectable).map((object) => object.id);
+    if (ids.length === 0) {
+      return;
+    }
+
+    if (state.tool !== "select") {
+      setTool("select");
+    }
+    setSelection(ids);
+    redraw();
+  }
+
+  function groupSelected() {
+    if (state.active || !selectionGroupInfo().canGroup) {
+      return;
+    }
+
+    captureBefore();
+    const groupId = createId();
+    for (const object of selectedObjects()) {
+      object.groupId = groupId;
+    }
+    setSelection(expandGroupIds(state.selectedIds));
+    commitIfChanged();
+    redraw();
+  }
+
+  function ungroupSelected() {
+    if (state.active || !selectionGroupInfo().canUngroup) {
+      return;
+    }
+
+    captureBefore();
+    for (const object of selectedObjects()) {
+      if (object.groupId) {
+        delete object.groupId;
+      }
+    }
+    commitIfChanged();
+    redraw();
+  }
+
+  function alignSelected(edge) {
+    const units = selectionUnits();
+    if (state.active || units.length < 2) {
+      return;
+    }
+
+    const unitBoxes = units.map((members) =>
+      unionBounds(members.map((object) => objectWorldBounds(object)))
+    );
+    const frame = unionBounds(unitBoxes);
+
+    captureBefore();
+    units.forEach((members, index) => {
+      const box = unitBoxes[index];
+      let dx = 0;
+      let dy = 0;
+      if (edge === "left") {
+        dx = frame.x - box.x;
+      } else if (edge === "center") {
+        dx = frame.x + frame.width / 2 - (box.x + box.width / 2);
+      } else if (edge === "right") {
+        dx = frame.x + frame.width - (box.x + box.width);
+      } else if (edge === "top") {
+        dy = frame.y - box.y;
+      } else if (edge === "middle") {
+        dy = frame.y + frame.height / 2 - (box.y + box.height / 2);
+      } else if (edge === "bottom") {
+        dy = frame.y + frame.height - (box.y + box.height);
+      }
+      if (dx || dy) {
+        for (const object of members) {
+          translateObject(object, dx, dy);
+        }
+      }
+    });
     commitIfChanged();
     redraw();
   }
@@ -1746,18 +1998,20 @@
 
     const object = hitObject(point);
     if (object) {
+      const groupIds = expandGroupIds([object.id]);
       if (event.shiftKey) {
-        if (state.selectedIds.includes(object.id)) {
-          setSelection(state.selectedIds.filter((id) => id !== object.id));
+        const allSelected = groupIds.every((id) => state.selectedIds.includes(id));
+        if (allSelected) {
+          setSelection(state.selectedIds.filter((id) => !groupIds.includes(id)));
         } else {
-          setSelection([...state.selectedIds, object.id]);
+          setSelection([...new Set([...state.selectedIds, ...groupIds])]);
         }
         redraw();
         return;
       }
 
       if (!state.selectedIds.includes(object.id)) {
-        setSelection([object.id]);
+        setSelection(groupIds);
       }
 
       captureBefore();
@@ -1768,8 +2022,17 @@
 
     if (!event.shiftKey) {
       clearSelection();
-      redraw();
     }
+
+    state.active = {
+      kind: "marquee",
+      pointerId: event.pointerId,
+      start: point,
+      point,
+      shift: event.shiftKey,
+    };
+    canvas.style.cursor = "crosshair";
+    redraw();
   }
 
   function flushPoints() {
@@ -1920,7 +2183,62 @@
       return;
     }
 
+    if (state.active.kind === "marquee") {
+      finishMarquee(pointerId);
+      return;
+    }
+
     endStroke(pointerId);
+  }
+
+  function queueMarquee(point) {
+    if (!state.active || state.active.kind !== "marquee") {
+      return;
+    }
+
+    state.active.point = point;
+    if (!state.raf) {
+      state.raf = requestAnimationFrame(flushMarquee);
+    }
+  }
+
+  function flushMarquee() {
+    state.raf = 0;
+    if (!state.active || state.active.kind !== "marquee") {
+      return;
+    }
+    redraw();
+  }
+
+  function finishMarquee(pointerId) {
+    if (!state.active || state.active.kind !== "marquee" || state.active.pointerId !== pointerId) {
+      return;
+    }
+
+    if (state.raf) {
+      cancelAnimationFrame(state.raf);
+      state.raf = 0;
+    }
+
+    const bounds = normalizedBounds(state.active.start, state.active.point);
+    const additive = state.active.shift;
+    state.active = null;
+    releasePointer(pointerId);
+
+    if (bounds.width >= 4 || bounds.height >= 4) {
+      const hits = state.objects
+        .filter((object) => isSelectable(object) && boundsIntersect(objectWorldBounds(object), bounds))
+        .map((object) => object.id);
+      const ids = expandGroupIds(hits);
+      if (additive) {
+        setSelection([...new Set([...state.selectedIds, ...ids])]);
+      } else {
+        setSelection(ids);
+      }
+    }
+
+    canvas.style.cursor = "";
+    redraw();
   }
 
   function startStroke(pointerId, point) {
@@ -2143,6 +2461,11 @@
       return;
     }
 
+    if (state.active.kind === "marquee") {
+      queueMarquee(point);
+      return;
+    }
+
     const coalesced =
       typeof event.getCoalescedEvents === "function"
         ? event.getCoalescedEvents()
@@ -2238,6 +2561,16 @@
         pasteClipboard();
       } else if (action === "duplicate") {
         duplicateSelected();
+      } else if (action === "cut") {
+        cutSelected();
+      } else if (action === "select-all") {
+        selectAll();
+      } else if (action === "group") {
+        groupSelected();
+      } else if (action === "ungroup") {
+        ungroupSelected();
+      } else if (action === "align") {
+        alignSelected(actionButton.dataset.edge);
       }
       return;
     }
@@ -2344,6 +2677,18 @@
       return;
     }
 
+    if (ctrl && event.key.toLowerCase() === "a") {
+      event.preventDefault();
+      selectAll();
+      return;
+    }
+
+    if (ctrl && event.key.toLowerCase() === "x") {
+      event.preventDefault();
+      cutSelected();
+      return;
+    }
+
     if (ctrl && event.key.toLowerCase() === "c") {
       event.preventDefault();
       copySelected();
@@ -2359,6 +2704,16 @@
     if (ctrl && event.key.toLowerCase() === "d") {
       event.preventDefault();
       duplicateSelected();
+      return;
+    }
+
+    if (ctrl && event.key.toLowerCase() === "g") {
+      event.preventDefault();
+      if (event.shiftKey) {
+        ungroupSelected();
+      } else {
+        groupSelected();
+      }
       return;
     }
 

@@ -164,6 +164,23 @@ button {
   gap: 2px;
 }
 
+.align-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 22px);
+  gap: 1px;
+  margin-left: 4px;
+}
+
+.align-grid .ribbon-btn {
+  width: 22px;
+  height: 22px;
+}
+
+.align-grid .ribbon-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
 .ribbon-group-label {
   font-size: 0.65rem;
   letter-spacing: 0.02em;

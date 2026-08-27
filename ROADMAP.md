@@ -12,7 +12,7 @@ Statuses:
 | ⚪ | PLANNED |
 | 🔴 | BLOCKED |
 
-**Current:** Stages 1–6 complete. Stage 7 is next.
+**Current:** Stages 1–7 complete. Stage 8 is next.
 
 ---
 
@@ -193,11 +193,11 @@ Do not rebuild unless fixing an actual defect.
 
 ### Stage 7 — Advanced selection + clipboard
 
-**Status:** 🔵 NEXT
+**Status:** ✅ COMPLETED
 
-Multi-select, Shift-click, drag selection rectangle, select all, copy, paste, cut, duplicate, group, ungroup, delete, alignment where practical.
+Marquee drag-select, Shift-click / Shift-marquee, select all, cut, copy, paste, duplicate, delete, group, ungroup, and object alignment (left / center / right / top / middle / bottom).
 
-Shortcuts: `Ctrl+A`, `Ctrl+C`, `Ctrl+V`, `Ctrl+X`, `Ctrl+D`.
+Shortcuts: `Ctrl+A`, `Ctrl+C`, `Ctrl+V`, `Ctrl+X`, `Ctrl+D`, `Ctrl+G`, `Ctrl+Shift+G`.
 
 Do not implement layers yet.
 
@@ -205,7 +205,7 @@ Do not implement layers yet.
 
 ### Stage 8 — Zoom, pan, and infinite canvas
 
-**Status:** ⚪ PLANNED
+**Status:** 🔵 NEXT
 
 Zoom in/out, zoom percentage, fit canvas, fit selection, wheel zoom (Ctrl+wheel where appropriate), pan, Space+drag, middle-mouse pan, zoom around cursor.
 
