@@ -41,7 +41,7 @@
             type="button"
             class="tool-btn"
             data-tool="select"
-            aria-pressed="true"
+            aria-pressed="false"
             aria-keyshortcuts="V"
             title="Select (V)"
           >
@@ -61,7 +61,7 @@
             type="button"
             class="tool-btn"
             data-tool="pen"
-            aria-pressed="false"
+            aria-pressed="true"
             aria-keyshortcuts="P"
             title="Pen (P)"
           >
@@ -109,6 +109,91 @@
             </svg>
             <span class="visually-hidden">Eraser</span>
           </button>
+
+          <hr class="toolbar-rule" />
+
+          <div class="swatches" role="group" aria-label="Color">
+            <button
+              type="button"
+              class="swatch"
+              data-color="#1c1917"
+              style="background-color: #1c1917"
+              aria-label="Black"
+              aria-pressed="true"
+              title="Black"
+            ></button>
+            <button
+              type="button"
+              class="swatch"
+              data-color="#dc2626"
+              style="background-color: #dc2626"
+              aria-label="Red"
+              aria-pressed="false"
+              title="Red"
+            ></button>
+            <button
+              type="button"
+              class="swatch"
+              data-color="#2563eb"
+              style="background-color: #2563eb"
+              aria-label="Blue"
+              aria-pressed="false"
+              title="Blue"
+            ></button>
+            <button
+              type="button"
+              class="swatch"
+              data-color="#16a34a"
+              style="background-color: #16a34a"
+              aria-label="Green"
+              aria-pressed="false"
+              title="Green"
+            ></button>
+            <button
+              type="button"
+              class="swatch"
+              data-color="#ca8a04"
+              style="background-color: #ca8a04"
+              aria-label="Yellow"
+              aria-pressed="false"
+              title="Yellow"
+            ></button>
+            <button
+              type="button"
+              class="swatch"
+              data-color="#7c3aed"
+              style="background-color: #7c3aed"
+              aria-label="Purple"
+              aria-pressed="false"
+              title="Purple"
+            ></button>
+            <label class="swatch swatch-custom" title="Custom color">
+              <span class="visually-hidden">Custom color</span>
+              <input
+                id="custom-color"
+                type="color"
+                value="#1c1917"
+                aria-label="Custom color"
+              />
+            </label>
+          </div>
+
+          <hr class="toolbar-rule" />
+
+          <div class="size-control">
+            <label class="visually-hidden" for="stroke-size">Stroke size</label>
+            <output id="size-value" for="stroke-size">4px</output>
+            <input
+              id="stroke-size"
+              type="range"
+              min="0"
+              max="4"
+              step="1"
+              value="1"
+              title="Stroke size"
+              aria-valuetext="4 pixels"
+            />
+          </div>
         </aside>
 
         <main class="canvas-wrap">

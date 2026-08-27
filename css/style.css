@@ -23,6 +23,7 @@ html,
 body {
   height: 100%;
   margin: 0;
+  overflow: hidden;
 }
 
 body {
@@ -125,9 +126,89 @@ button {
   color: var(--accent);
 }
 
-.tool-btn:focus-visible {
+.tool-btn:focus-visible,
+.swatch:focus-visible,
+.size-control input:focus-visible,
+.swatch-custom:focus-within {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+.toolbar-rule {
+  align-self: stretch;
+  height: 1px;
+  margin: 6px 4px;
+  border: 0;
+  background: var(--line);
+}
+
+.swatches {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 6px;
+  padding: 4px 2px;
+}
+
+.swatch {
+  width: 18px;
+  height: 18px;
+  justify-self: center;
+  border-radius: 50%;
+  border: 1px solid rgb(28 25 23 / 0.16);
+  cursor: pointer;
+}
+
+.swatch[aria-pressed="true"],
+.swatch-custom.is-selected {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.swatch-custom {
+  position: relative;
+  overflow: hidden;
+  background: conic-gradient(
+    from 90deg,
+    #ef4444,
+    #eab308,
+    #22c55e,
+    #3b82f6,
+    #a855f7,
+    #ef4444
+  );
+}
+
+.swatch-custom input[type="color"] {
+  position: absolute;
+  inset: -50%;
+  width: 200%;
+  height: 200%;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.size-control {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0 6px;
+}
+
+.size-control output {
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-muted);
+  line-height: 1;
+}
+
+.size-control input[type="range"] {
+  width: 40px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--accent);
 }
 
 .canvas-wrap {
@@ -135,6 +216,8 @@ button {
   height: 100%;
   overflow: hidden;
   background: var(--paper);
+  touch-action: none;
+  user-select: none;
 }
 
 #board {
@@ -176,6 +259,11 @@ button {
   .tool-btn {
     width: 44px;
     height: 44px;
+  }
+
+  .swatch {
+    width: 22px;
+    height: 22px;
   }
 }
 

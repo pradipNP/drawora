@@ -14,4 +14,4 @@ Open `index.html` in a modern browser.
 | Pen    | `P`      |
 | Eraser | `E`      |
 
-Drawing is not implemented yet. The current release is the application shell: toolbar, canvas workspace, and tool selection.
+Choose a color and stroke size from the toolbar, then draw on the canvas. The eraser removes ink under the pointer.
