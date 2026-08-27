@@ -45,6 +45,9 @@
   const MAX_INDENT = 6;
   const LIST_GUTTER = 22;
   const MIN_TEXT_WIDTH = 80;
+  const MIN_IMAGE = 16;
+  const MAX_IMAGE_PIXELS = 16_000_000;
+  const IMAGE_TYPES = /^image\/(png|jpe?g|gif|webp|bmp|svg\+xml)$/i;
   const MIN_ZOOM = 0.1;
   const MAX_ZOOM = 8;
   const ZOOM_STEP = 1.2;
@@ -120,6 +123,7 @@
     pageDragId: null,
     pageDragMoved: false,
     pageThumbKey: "",
+    cropping: false,
   };
 
   const RIBBON_TABS = ["home", "draw", "insert", "view", "page", "export", "help"];
@@ -165,6 +169,19 @@
   const lineSpacingInput = document.getElementById("line-spacing");
   const gridSizeInput = document.getElementById("grid-size");
   const pageMarginInput = document.getElementById("page-margin");
+  const imageFileInput = document.getElementById("image-file");
+  const imageCropBtn = document.getElementById("image-crop-btn");
+  const imageFlipHBtn = document.getElementById("image-flip-h-btn");
+  const imageFlipVBtn = document.getElementById("image-flip-v-btn");
+  const imageShadowBtn = document.getElementById("image-shadow-btn");
+  const imageGrayBtn = document.getElementById("image-gray-btn");
+  const imageOpacityInput = document.getElementById("image-opacity");
+  const imageRadiusInput = document.getElementById("image-radius");
+  const imageBrightnessInput = document.getElementById("image-brightness");
+  const imageContrastInput = document.getElementById("image-contrast");
+  const imageSaturationInput = document.getElementById("image-saturation");
+  const imageBlurInput = document.getElementById("image-blur");
+  const canvasWrap = document.querySelector(".canvas-wrap");
 
   if (
     !canvas ||
@@ -207,7 +224,20 @@
     !lineColorInput ||
     !lineSpacingInput ||
     !gridSizeInput ||
-    !pageMarginInput
+    !pageMarginInput ||
+    !imageFileInput ||
+    !imageCropBtn ||
+    !imageFlipHBtn ||
+    !imageFlipVBtn ||
+    !imageShadowBtn ||
+    !imageGrayBtn ||
+    !imageOpacityInput ||
+    !imageRadiusInput ||
+    !imageBrightnessInput ||
+    !imageContrastInput ||
+    !imageSaturationInput ||
+    !imageBlurInput ||
+    !canvasWrap
   ) {
     console.error("Drawora: missing canvas or toolbar controls.");
     return;
@@ -218,6 +248,9 @@
     console.error("Drawora: 2D canvas is not available.");
     return;
   }
+
+  const imageAssets = new Map();
+  let nextImageAssetId = 1;
 
   function isTypingTarget(element) {
     if (!element || !(element instanceof HTMLElement)) {
@@ -244,8 +277,218 @@
     return object && (object.type === "text" || object.type === "sticky");
   }
 
+  function isImage(object) {
+    return object && object.type === "image";
+  }
+
+  function selectedImage() {
+    const selected = selectedObjects();
+    return selected.length === 1 && isImage(selected[0]) ? selected[0] : null;
+  }
+
   function isSelectable(object) {
     return !(object.type === "stroke" && object.tool === "eraser");
+  }
+
+  function assetSize(source) {
+    return {
+      width: source.naturalWidth || source.width || 1,
+      height: source.naturalHeight || source.height || 1,
+    };
+  }
+
+  function getImageAsset(imageId) {
+    return imageAssets.get(imageId) || null;
+  }
+
+  function imageSourceRect(object, asset) {
+    const size = assetSize(asset.source);
+    const crop = object.crop;
+    if (!crop) {
+      return { sx: 0, sy: 0, sw: size.width, sh: size.height };
+    }
+    const sx = Math.min(size.width - 1, Math.max(0, crop.sx));
+    const sy = Math.min(size.height - 1, Math.max(0, crop.sy));
+    return {
+      sx,
+      sy,
+      sw: Math.min(size.width - sx, Math.max(1, crop.sw)),
+      sh: Math.min(size.height - sy, Math.max(1, crop.sh)),
+    };
+  }
+
+  function imageFilter(object) {
+    const parts = [];
+    const brightness = (object.brightness || 0) / 100;
+    const contrast = (object.contrast || 0) / 100;
+    const saturation = (object.saturation || 0) / 100;
+    if (brightness) {
+      parts.push(`brightness(${1 + brightness})`);
+    }
+    if (contrast) {
+      parts.push(`contrast(${1 + contrast})`);
+    }
+    if (saturation) {
+      parts.push(`saturate(${Math.max(0, 1 + saturation)})`);
+    }
+    if (object.grayscale) {
+      parts.push("grayscale(1)");
+    }
+    if (object.blur) {
+      parts.push(`blur(${object.blur}px)`);
+    }
+    return parts.join(" ");
+  }
+
+  async function decodeImageBlob(blob) {
+    if (typeof createImageBitmap === "function") {
+      try {
+        let bitmap = await createImageBitmap(blob);
+        const pixels = bitmap.width * bitmap.height;
+        if (pixels > MAX_IMAGE_PIXELS) {
+          const scale = Math.sqrt(MAX_IMAGE_PIXELS / pixels);
+          const resized = await createImageBitmap(bitmap, {
+            resizeWidth: Math.max(1, Math.round(bitmap.width * scale)),
+            resizeHeight: Math.max(1, Math.round(bitmap.height * scale)),
+          });
+          bitmap.close();
+          bitmap = resized;
+        }
+        return bitmap;
+      } catch (error) {
+        console.error("Drawora: image bitmap decode failed.", error);
+      }
+    }
+
+    const url = URL.createObjectURL(blob);
+    const image = new Image();
+    image.decoding = "async";
+    await new Promise((resolve, reject) => {
+      image.onload = resolve;
+      image.onerror = reject;
+      image.src = url;
+    });
+    return image;
+  }
+
+  async function storeImageBlob(blob) {
+    const source = await decodeImageBlob(blob);
+    const size = assetSize(source);
+    const id = `img${nextImageAssetId}`;
+    nextImageAssetId += 1;
+    imageAssets.set(id, { source, width: size.width, height: size.height });
+    return id;
+  }
+
+  function fitImageBox(naturalWidth, naturalHeight, at) {
+    const page = currentPage();
+    const maxW = page ? page.width * 0.62 : 480;
+    const maxH = page ? page.height * 0.62 : 480;
+    const scale = Math.min(maxW / Math.max(naturalWidth, 1), maxH / Math.max(naturalHeight, 1), 1);
+    const width = Math.max(MIN_IMAGE, naturalWidth * scale);
+    const height = Math.max(MIN_IMAGE, naturalHeight * scale);
+    const center = at || screenToWorld(viewportCenter());
+    return {
+      x: center.x - width / 2,
+      y: center.y - height / 2,
+      width,
+      height,
+    };
+  }
+
+  function makeImageObject(imageId, box) {
+    const asset = getImageAsset(imageId);
+    const size = asset ? { width: asset.width, height: asset.height } : { width: box.width, height: box.height };
+    return {
+      id: createId(),
+      type: "image",
+      imageId,
+      x: box.x,
+      y: box.y,
+      width: box.width,
+      height: box.height,
+      rotation: 0,
+      crop: { sx: 0, sy: 0, sw: size.width, sh: size.height },
+      flipX: false,
+      flipY: false,
+      opacity: 1,
+      radius: 0,
+      shadow: false,
+      grayscale: false,
+      brightness: 0,
+      contrast: 0,
+      saturation: 0,
+      blur: 0,
+      stroke: state.stroke,
+      size: 0,
+    };
+  }
+
+  async function insertImageFromBlob(blob, at) {
+    if (!blob || (blob.type && !IMAGE_TYPES.test(blob.type) && !isImageFile(blob))) {
+      return null;
+    }
+
+    finishOpenWork();
+    try {
+      const imageId = await storeImageBlob(blob);
+      const asset = getImageAsset(imageId);
+      const box = fitImageBox(asset.width, asset.height, at);
+      captureBefore();
+      const object = makeImageObject(imageId, box);
+      state.objects.push(object);
+      setTool("select");
+      setSelection([object.id]);
+      commitIfChanged();
+      redraw();
+      return object;
+    } catch (error) {
+      console.error("Drawora: could not insert image.", error);
+      return null;
+    }
+  }
+
+  function isImageFile(file) {
+    if (!file) {
+      return false;
+    }
+    if (file.type && IMAGE_TYPES.test(file.type)) {
+      return true;
+    }
+    return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(file.name || "");
+  }
+
+  function blobFromFile(file) {
+    return isImageFile(file) ? file : null;
+  }
+
+  function filesFromDataTransfer(data) {
+    if (!data) {
+      return [];
+    }
+    return [...(data.files || [])].filter(isImageFile);
+  }
+
+  function clipboardImageBlob(event) {
+    const items = event.clipboardData && event.clipboardData.items;
+    if (!items) {
+      return null;
+    }
+    for (const item of items) {
+      if (item.type && IMAGE_TYPES.test(item.type)) {
+        return item.getAsFile();
+      }
+    }
+    const files = event.clipboardData && event.clipboardData.files;
+    if (files) {
+      for (const file of files) {
+        const blob = blobFromFile(file);
+        if (blob) {
+          return blob;
+        }
+      }
+    }
+    return null;
   }
 
   function normalizeHex(color) {
@@ -690,6 +933,12 @@
       rotate: { x: center.x, y: frame.y - viewLen(ROTATE_OFFSET) },
     };
     if (object && isTextLike(object)) {
+      handles.e = { x: frame.x + frame.width, y: center.y };
+      handles.w = { x: frame.x, y: center.y };
+    }
+    if (object && isImage(object) && state.cropping) {
+      handles.n = { x: center.x, y: frame.y };
+      handles.s = { x: center.x, y: frame.y + frame.height };
       handles.e = { x: frame.x + frame.width, y: center.y };
       handles.w = { x: frame.x, y: center.y };
     }
@@ -1161,6 +1410,114 @@
     }
   }
 
+  function drawPicture(object) {
+    const asset = getImageAsset(object.imageId);
+    if (!asset) {
+      ctx.save();
+      ctx.fillStyle = "rgb(28 25 23 / 0.08)";
+      ctx.fillRect(object.x, object.y, object.width, object.height);
+      ctx.restore();
+      return;
+    }
+
+    const source = imageSourceRect(object, asset);
+    const filter = imageFilter(object);
+    const radius = Math.max(0, object.radius || 0);
+    const opacity = Math.min(1, Math.max(0, object.opacity == null ? 1 : object.opacity));
+    const cropping = state.cropping && state.selectedIds.length === 1 && state.selectedIds[0] === object.id;
+    const scaleX = object.width / source.sw;
+    const scaleY = object.height / source.sh;
+    const full = {
+      x: object.x - source.sx * scaleX,
+      y: object.y - source.sy * scaleY,
+      width: asset.width * scaleX,
+      height: asset.height * scaleY,
+    };
+
+    ctx.save();
+    ctx.globalCompositeOperation = "source-over";
+    ctx.globalAlpha = opacity;
+
+    if (cropping) {
+      ctx.save();
+      ctx.globalAlpha = opacity * 0.35;
+      if (filter) {
+        ctx.filter = filter;
+      }
+      ctx.drawImage(asset.source, 0, 0, asset.width, asset.height, full.x, full.y, full.width, full.height);
+      ctx.restore();
+    }
+
+    if (object.shadow) {
+      ctx.save();
+      ctx.shadowColor = "rgb(28 25 23 / 0.35)";
+      ctx.shadowBlur = 18;
+      ctx.shadowOffsetY = 10;
+      ctx.fillStyle = "rgb(28 25 23 / 0.2)";
+      if (radius > 0) {
+        pathRoundRect(object.x, object.y, object.width, object.height, radius);
+      } else {
+        ctx.beginPath();
+        ctx.rect(object.x, object.y, object.width, object.height);
+      }
+      ctx.fill();
+      ctx.restore();
+    }
+    if (filter) {
+      ctx.filter = filter;
+    }
+
+    ctx.beginPath();
+    if (radius > 0) {
+      pathRoundRect(object.x, object.y, object.width, object.height, radius);
+    } else {
+      ctx.rect(object.x, object.y, object.width, object.height);
+    }
+    ctx.clip();
+
+    const cx = object.x + object.width / 2;
+    const cy = object.y + object.height / 2;
+    ctx.translate(cx, cy);
+    ctx.scale(object.flipX ? -1 : 1, object.flipY ? -1 : 1);
+    ctx.translate(-cx, -cy);
+    ctx.drawImage(
+      asset.source,
+      source.sx,
+      source.sy,
+      source.sw,
+      source.sh,
+      object.x,
+      object.y,
+      object.width,
+      object.height
+    );
+    ctx.restore();
+
+    if (object.size > 0) {
+      ctx.save();
+      ctx.globalCompositeOperation = "source-over";
+      ctx.strokeStyle = object.stroke || "#1c1917";
+      ctx.lineWidth = object.size;
+      if (radius > 0) {
+        pathRoundRect(object.x, object.y, object.width, object.height, radius);
+      } else {
+        ctx.beginPath();
+        ctx.rect(object.x, object.y, object.width, object.height);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    if (cropping) {
+      ctx.save();
+      ctx.strokeStyle = SELECT_COLOR;
+      ctx.lineWidth = viewLen(1);
+      ctx.setLineDash([viewLen(4), viewLen(3)]);
+      ctx.strokeRect(full.x, full.y, full.width, full.height);
+      ctx.restore();
+    }
+  }
+
   function drawObjectUnrotated(object) {
     if (object.type === "stroke") {
       drawStroke(object);
@@ -1174,6 +1531,11 @@
 
     if (object.type === "text") {
       drawTextBox(object);
+      return;
+    }
+
+    if (object.type === "image") {
+      drawPicture(object);
       return;
     }
 
@@ -1235,12 +1597,14 @@
     ctx.strokeRect(frame.x, frame.y, frame.width, frame.height);
     ctx.setLineDash([]);
 
-    ctx.beginPath();
-    ctx.moveTo(handles.rotate.x, frame.y);
-    ctx.lineTo(handles.rotate.x, handles.rotate.y);
-    ctx.stroke();
+    if (!(isImage(object) && state.cropping)) {
+      ctx.beginPath();
+      ctx.moveTo(handles.rotate.x, frame.y);
+      ctx.lineTo(handles.rotate.x, handles.rotate.y);
+      ctx.stroke();
+      drawHandleCircle(handles.rotate.x, handles.rotate.y);
+    }
 
-    drawHandleCircle(handles.rotate.x, handles.rotate.y);
     drawHandleBox(handles.nw.x, handles.nw.y);
     drawHandleBox(handles.ne.x, handles.ne.y);
     drawHandleBox(handles.sw.x, handles.sw.y);
@@ -1248,6 +1612,10 @@
     if (handles.e) {
       drawHandleBox(handles.e.x, handles.e.y);
       drawHandleBox(handles.w.x, handles.w.y);
+    }
+    if (handles.n) {
+      drawHandleBox(handles.n.x, handles.n.y);
+      drawHandleBox(handles.s.x, handles.s.y);
     }
     ctx.restore();
   }
@@ -1668,12 +2036,15 @@
     const center = getCenterFromBounds(bounds);
     const local = worldToLocal(point, center, object.rotation || 0);
     const handles = handlePositions(frame, center, object);
-    const order = isTextLike(object)
-      ? ["rotate", "nw", "ne", "sw", "se", "e", "w"]
-      : ["rotate", "nw", "ne", "sw", "se"];
+    const order =
+      isImage(object) && state.cropping
+        ? ["nw", "ne", "sw", "se", "n", "s", "e", "w"]
+        : isTextLike(object)
+          ? ["rotate", "nw", "ne", "sw", "se", "e", "w"]
+          : ["rotate", "nw", "ne", "sw", "se"];
 
     for (const name of order) {
-      if (distance(local, handles[name]) <= viewLen(HANDLE_HIT)) {
+      if (handles[name] && distance(local, handles[name]) <= viewLen(HANDLE_HIT)) {
         return name;
       }
     }
@@ -1730,6 +2101,7 @@
     redraw();
     syncEditUI();
     syncPageUI();
+    syncImageUI();
   }
 
   function captureBefore() {
@@ -2266,8 +2638,12 @@
 
   function setSelection(ids) {
     state.selectedIds = ids;
+    if (state.cropping && !selectedImage()) {
+      state.cropping = false;
+    }
     syncEditUI();
     syncFormatFromSelection();
+    syncImageUI();
   }
 
   function clearSelection() {
@@ -2470,6 +2846,87 @@
     redraw();
   }
 
+  async function pasteAction() {
+    if (state.active) {
+      return;
+    }
+    if (navigator.clipboard && navigator.clipboard.read) {
+      try {
+        const items = await navigator.clipboard.read();
+        for (const item of items) {
+          const type = item.types.find((name) => IMAGE_TYPES.test(name));
+          if (type) {
+            const blob = await item.getType(type);
+            await insertImageFromBlob(blob);
+            return;
+          }
+        }
+      } catch (error) {
+        // Permission denied or empty clipboard — fall through to object paste.
+      }
+    }
+    pasteClipboard();
+  }
+
+  function onPaste(event) {
+    if (isTypingTarget(event.target) || state.editingId) {
+      return;
+    }
+    const blob = clipboardImageBlob(event);
+    if (blob) {
+      event.preventDefault();
+      insertImageFromBlob(blob);
+      return;
+    }
+    if (state.clipboard.length) {
+      event.preventDefault();
+      pasteClipboard();
+    }
+  }
+
+  function setDropTarget(on) {
+    canvasWrap.classList.toggle("is-drop-target", on);
+  }
+
+  function onWindowDragOver(event) {
+    const types = (event.dataTransfer && event.dataTransfer.types) || [];
+    if ([...types].includes("Files")) {
+      event.preventDefault();
+    }
+  }
+
+  function onCanvasDragOver(event) {
+    const types = (event.dataTransfer && event.dataTransfer.types) || [];
+    if (![...types].includes("Files")) {
+      return;
+    }
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+    setDropTarget(true);
+  }
+
+  function onDrop(event) {
+    const files = filesFromDataTransfer(event.dataTransfer);
+    setDropTarget(false);
+    if (!files.length || isTypingTarget(event.target)) {
+      if (files.length) {
+        event.preventDefault();
+      }
+      return;
+    }
+    event.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const inside =
+      event.clientX >= rect.left &&
+      event.clientX <= rect.right &&
+      event.clientY >= rect.top &&
+      event.clientY <= rect.bottom;
+    const at = inside
+      ? screenToWorld({ x: event.clientX - rect.left, y: event.clientY - rect.top })
+      : undefined;
+    insertImageFromBlob(files[0], at);
+  }
+
   function cutSelected() {
     if (state.selectedIds.length === 0 || state.active) {
       return;
@@ -2565,7 +3022,7 @@
     redraw();
   }
 
-  function applyStyleToSelected() {
+  function applyStyleToSelected(fromSize) {
     for (const object of selectedObjects()) {
       if (object.type === "stroke") {
         if (object.tool === "eraser") {
@@ -2595,6 +3052,14 @@
           object.fill = state.fill || object.fill || STICKY_FILL;
         }
         reflowTextHeight(object);
+        continue;
+      }
+
+      if (isImage(object)) {
+        object.stroke = state.stroke;
+        if (fromSize) {
+          object.size = state.size;
+        }
         continue;
       }
 
@@ -2685,6 +3150,29 @@
       }
     }
 
+    if (isImage(object) && !drag.shift && drag.handle.length === 2) {
+      const aspect = startBounds.width / Math.max(startBounds.height, 1);
+      const nextW = right - left;
+      const nextH = bottom - top;
+      if (Math.abs(nextW / Math.max(nextH, 1) - aspect) > 0.001) {
+        if (Math.abs(nextW - startBounds.width) >= Math.abs(nextH - startBounds.height)) {
+          const height = nextW / aspect;
+          if (drag.handle.includes("n")) {
+            top = bottom - height;
+          } else {
+            bottom = top + height;
+          }
+        } else {
+          const width = nextH * aspect;
+          if (drag.handle.includes("w")) {
+            left = right - width;
+          } else {
+            right = left + width;
+          }
+        }
+      }
+    }
+
     const nextBounds = {
       x: left,
       y: top,
@@ -2704,6 +3192,98 @@
     translateObject(object, worldBefore.x - worldAfter.x, worldBefore.y - worldAfter.y);
   }
 
+  function applyCrop(point) {
+    const drag = state.active;
+    const object = drag.targets[0];
+    const start = drag.startObjects[0];
+    const asset = getImageAsset(start.imageId);
+    if (!isImage(object) || !asset) {
+      return;
+    }
+
+    replaceObjectFromClone(object, start);
+    const crop = imageSourceRect(start, asset);
+    const scaleX = start.width / crop.sw;
+    const scaleY = start.height / crop.sh;
+    const local = worldToLocal(point, drag.center, drag.rotation);
+    let left = start.x;
+    let top = start.y;
+    let right = start.x + start.width;
+    let bottom = start.y + start.height;
+
+    if (drag.handle.includes("w")) {
+      left = local.x;
+    }
+    if (drag.handle.includes("e")) {
+      right = local.x;
+    }
+    if (drag.handle.includes("n")) {
+      top = local.y;
+    }
+    if (drag.handle.includes("s")) {
+      bottom = local.y;
+    }
+
+    if (right - left < MIN_IMAGE) {
+      if (drag.handle.includes("w")) {
+        left = right - MIN_IMAGE;
+      } else {
+        right = left + MIN_IMAGE;
+      }
+    }
+    if (bottom - top < MIN_IMAGE) {
+      if (drag.handle.includes("n")) {
+        top = bottom - MIN_IMAGE;
+      } else {
+        bottom = top + MIN_IMAGE;
+      }
+    }
+
+    const visualLeft = (left - start.x) / scaleX;
+    const visualRight = (right - start.x) / scaleX;
+    const visualTop = (top - start.y) / scaleY;
+    const visualBottom = (bottom - start.y) / scaleY;
+    let srcLeft = start.flipX ? crop.sx + crop.sw - visualRight : crop.sx + visualLeft;
+    let srcRight = start.flipX ? crop.sx + crop.sw - visualLeft : crop.sx + visualRight;
+    let srcTop = start.flipY ? crop.sy + crop.sh - visualBottom : crop.sy + visualTop;
+    let srcBottom = start.flipY ? crop.sy + crop.sh - visualTop : crop.sy + visualBottom;
+
+    srcLeft = Math.min(asset.width - 1, Math.max(0, srcLeft));
+    srcTop = Math.min(asset.height - 1, Math.max(0, srcTop));
+    srcRight = Math.min(asset.width, Math.max(srcLeft + 1, srcRight));
+    srcBottom = Math.min(asset.height, Math.max(srcTop + 1, srcBottom));
+
+    object.crop = {
+      sx: srcLeft,
+      sy: srcTop,
+      sw: srcRight - srcLeft,
+      sh: srcBottom - srcTop,
+    };
+    object.width = object.crop.sw * scaleX;
+    object.height = object.crop.sh * scaleY;
+    object.x = start.flipX
+      ? start.x + (crop.sx + crop.sw - srcRight) * scaleX
+      : start.x + (srcLeft - crop.sx) * scaleX;
+    object.y = start.flipY
+      ? start.y + (crop.sy + crop.sh - srcBottom) * scaleY
+      : start.y + (srcTop - crop.sy) * scaleY;
+
+    const fixedLocal = {
+      x: drag.handle.includes("w") ? start.x + start.width : start.x,
+      y: drag.handle.includes("n") ? start.y + start.height : start.y,
+    };
+    const worldBefore = localToWorld(fixedLocal, drag.center, drag.rotation);
+    const worldAfter = localToWorld(
+      {
+        x: drag.handle.includes("w") ? object.x + object.width : object.x,
+        y: drag.handle.includes("n") ? object.y + object.height : object.y,
+      },
+      getCenter(object),
+      object.rotation || 0
+    );
+    translateObject(object, worldBefore.x - worldAfter.x, worldBefore.y - worldAfter.y);
+  }
+
   function applyTransform(point) {
     if (!state.active || state.active.kind !== "transform") {
       return;
@@ -2716,6 +3296,11 @@
 
     if (state.active.mode === "rotate") {
       applyRotate(point);
+      return;
+    }
+
+    if (state.active.mode === "crop") {
+      applyCrop(point);
       return;
     }
 
@@ -2732,12 +3317,15 @@
     redraw();
   }
 
-  function queueSelectDrag(point) {
+  function queueSelectDrag(point, shift) {
     if (!state.active || state.active.kind !== "transform") {
       return;
     }
 
     state.active.point = point;
+    if (shift != null) {
+      state.active.shift = shift;
+    }
     if (!state.raf) {
       state.raf = requestAnimationFrame(flushSelectDrag);
     }
@@ -2894,6 +3482,104 @@
     }
 
     syncFormatUI();
+  }
+
+  function clampNumber(value, min, max, fallback) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) {
+      return fallback;
+    }
+    return Math.min(max, Math.max(min, number));
+  }
+
+  function syncImageUI() {
+    const image = selectedImage();
+    const enabled = Boolean(image);
+    imageCropBtn.disabled = !enabled;
+    imageFlipHBtn.disabled = !enabled;
+    imageFlipVBtn.disabled = !enabled;
+    imageShadowBtn.disabled = !enabled;
+    imageGrayBtn.disabled = !enabled;
+    imageOpacityInput.disabled = !enabled;
+    imageRadiusInput.disabled = !enabled;
+    imageBrightnessInput.disabled = !enabled;
+    imageContrastInput.disabled = !enabled;
+    imageSaturationInput.disabled = !enabled;
+    imageBlurInput.disabled = !enabled;
+    imageCropBtn.setAttribute("aria-pressed", String(Boolean(enabled && state.cropping)));
+    imageShadowBtn.setAttribute("aria-pressed", String(Boolean(image && image.shadow)));
+    imageGrayBtn.setAttribute("aria-pressed", String(Boolean(image && image.grayscale)));
+    if (!image) {
+      return;
+    }
+    if (document.activeElement !== imageOpacityInput) {
+      imageOpacityInput.value = String(Math.round((image.opacity == null ? 1 : image.opacity) * 100));
+    }
+    if (document.activeElement !== imageRadiusInput) {
+      imageRadiusInput.value = String(image.radius || 0);
+    }
+    if (document.activeElement !== imageBrightnessInput) {
+      imageBrightnessInput.value = String(image.brightness || 0);
+    }
+    if (document.activeElement !== imageContrastInput) {
+      imageContrastInput.value = String(image.contrast || 0);
+    }
+    if (document.activeElement !== imageSaturationInput) {
+      imageSaturationInput.value = String(image.saturation || 0);
+    }
+    if (document.activeElement !== imageBlurInput) {
+      imageBlurInput.value = String(image.blur || 0);
+    }
+  }
+
+  function applyImageFields(commit) {
+    const image = selectedImage();
+    if (!image) {
+      return;
+    }
+    if (!state.historyBefore) {
+      captureBefore();
+    }
+    image.opacity = clampNumber(imageOpacityInput.value, 0, 100, 100) / 100;
+    image.radius = clampNumber(imageRadiusInput.value, 0, 240, 0);
+    image.brightness = clampNumber(imageBrightnessInput.value, -100, 100, 0);
+    image.contrast = clampNumber(imageContrastInput.value, -100, 100, 0);
+    image.saturation = clampNumber(imageSaturationInput.value, -100, 100, 0);
+    image.blur = clampNumber(imageBlurInput.value, 0, 40, 0);
+    redraw();
+    if (commit) {
+      commitIfChanged();
+    }
+  }
+
+  function toggleImageCrop() {
+    const image = selectedImage();
+    if (!image) {
+      return;
+    }
+    state.cropping = !state.cropping;
+    if (state.cropping && state.tool !== "select") {
+      setTool("select");
+    }
+    syncImageUI();
+    redraw();
+  }
+
+  function toggleImageFlag(name) {
+    const image = selectedImage();
+    if (!image) {
+      return;
+    }
+    captureBefore();
+    image[name] = !image[name];
+    commitIfChanged();
+    syncImageUI();
+    redraw();
+  }
+
+  function openImagePicker() {
+    imageFileInput.value = "";
+    imageFileInput.click();
   }
 
   function styleEditor(object) {
@@ -3190,6 +3876,9 @@
     if (handle === "e" || handle === "w") {
       return "ew-resize";
     }
+    if (handle === "n" || handle === "s") {
+      return "ns-resize";
+    }
     if (handle === "nw" || handle === "se") {
       return "nwse-resize";
     }
@@ -3222,9 +3911,10 @@
     const handle = hitHandle(point);
     if (handle) {
       captureBefore();
-      const mode = handle === "rotate" ? "rotate" : "resize";
+      const mode = handle === "rotate" ? "rotate" : state.cropping && isImage(findObject(state.selectedIds[0])) ? "crop" : "resize";
       canvas.style.cursor = handle === "rotate" ? "grabbing" : cursorForHandle(handle);
       startTransform(mode, handle, point, event.pointerId);
+      state.active.shift = event.shiftKey;
       return;
     }
 
@@ -3556,6 +4246,10 @@
       finishEditing();
     }
 
+    if (tool !== "select") {
+      state.cropping = false;
+    }
+
     state.tool = tool;
     canvas.dataset.cursor = tool;
     canvas.style.cursor = "";
@@ -3568,6 +4262,7 @@
     for (const button of toolbar.querySelectorAll("[data-tool]")) {
       button.setAttribute("aria-pressed", String(button.dataset.tool === tool));
     }
+    syncImageUI();
   }
 
   function syncColorUI() {
@@ -3642,7 +4337,7 @@
     sizeInput.setAttribute("aria-valuetext", `${state.size} pixels`);
 
     if (state.selectedIds.length > 0 && !state.active) {
-      applyStyleToSelected();
+      applyStyleToSelected(true);
       redraw();
       if (commit) {
         commitIfChanged();
@@ -3737,7 +4432,7 @@
     }
 
     if (state.active.kind === "transform") {
-      queueSelectDrag(point);
+      queueSelectDrag(point, event.shiftKey);
       return;
     }
 
@@ -4110,7 +4805,7 @@
       if (action === "copy") {
         copySelected();
       } else if (action === "paste") {
-        pasteClipboard();
+        pasteAction();
       } else if (action === "duplicate") {
         duplicateSelected();
       } else if (action === "cut") {
@@ -4139,6 +4834,18 @@
         duplicatePage();
       } else if (action === "page-delete") {
         deletePage();
+      } else if (action === "image-insert") {
+        openImagePicker();
+      } else if (action === "image-crop") {
+        toggleImageCrop();
+      } else if (action === "image-flip-h") {
+        toggleImageFlag("flipX");
+      } else if (action === "image-flip-v") {
+        toggleImageFlag("flipY");
+      } else if (action === "image-shadow") {
+        toggleImageFlag("shadow");
+      } else if (action === "image-grayscale") {
+        toggleImageFlag("grayscale");
       }
       return;
     }
@@ -4252,6 +4959,12 @@
         closeRibbonMenus();
         return;
       }
+      if (state.cropping) {
+        state.cropping = false;
+        syncImageUI();
+        redraw();
+        return;
+      }
       cancelActive();
       return;
     }
@@ -4308,12 +5021,6 @@
     if (ctrl && event.key.toLowerCase() === "c") {
       event.preventDefault();
       copySelected();
-      return;
-    }
-
-    if (ctrl && event.key.toLowerCase() === "v") {
-      event.preventDefault();
-      pasteClipboard();
       return;
     }
 
@@ -4521,6 +5228,40 @@
   });
   document.addEventListener("keydown", onKeyDown);
   document.addEventListener("keyup", onKeyUp);
+  document.addEventListener("paste", onPaste);
+  document.addEventListener("dragover", onWindowDragOver);
+  document.addEventListener("drop", onDrop);
+  canvasWrap.addEventListener("dragenter", onCanvasDragOver);
+  canvasWrap.addEventListener("dragover", onCanvasDragOver);
+  canvasWrap.addEventListener("dragleave", (event) => {
+    if (!canvasWrap.contains(event.relatedTarget)) {
+      setDropTarget(false);
+    }
+  });
+  imageFileInput.addEventListener("change", () => {
+    const file = imageFileInput.files && imageFileInput.files[0];
+    imageFileInput.value = "";
+    if (file) {
+      insertImageFromBlob(file);
+    }
+  });
+  const imageFieldInputs = [
+    imageOpacityInput,
+    imageRadiusInput,
+    imageBrightnessInput,
+    imageContrastInput,
+    imageSaturationInput,
+    imageBlurInput,
+  ];
+  for (const input of imageFieldInputs) {
+    input.addEventListener("pointerdown", () => {
+      if (selectedImage() && !state.historyBefore) {
+        captureBefore();
+      }
+    });
+    input.addEventListener("input", () => applyImageFields(false));
+    input.addEventListener("change", () => applyImageFields(true));
+  }
 
   canvas.addEventListener("pointerdown", onPointerDown, { passive: false });
   canvas.addEventListener("pointermove", onPointerMove, { passive: false });
@@ -4666,4 +5407,5 @@
   syncFormatUI();
   syncViewUI();
   syncPageUI();
+  syncImageUI();
 })();

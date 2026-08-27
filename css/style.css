@@ -198,7 +198,8 @@ button {
 .page-size-tools,
 .page-template-tools,
 .page-look-tools,
-.format-tools {
+.format-tools,
+.image-tools {
   flex-wrap: nowrap;
   max-width: none;
 }
@@ -629,6 +630,15 @@ kbd {
   background: var(--workspace);
   touch-action: none;
   user-select: none;
+}
+
+.canvas-wrap.is-drop-target::after {
+  content: "";
+  position: absolute;
+  inset: 10px;
+  border: 2px dashed var(--accent);
+  border-radius: 12px;
+  pointer-events: none;
 }
 
 .statusbar {

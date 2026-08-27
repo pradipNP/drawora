@@ -12,7 +12,7 @@ Statuses:
 | ⚪ | PLANNED |
 | 🔴 | BLOCKED |
 
-**Current:** Stages 1–11 complete. Stage 12 is next.
+**Current:** Stages 1–12 complete. Stage 13 is next.
 
 ---
 
@@ -252,19 +252,19 @@ Formatting is per text object (or sticky note), not per character.
 
 ### Stage 12 — Image system
 
-**Status:** 🔵 NEXT
+**Status:** ✅ COMPLETED
 
-Upload, drag and drop, paste; resize, move, rotate, crop, flip, opacity, border, rounded corners, shadow.
+Upload (Insert → Image), drag and drop, and paste. Images move, resize (hold Shift to ignore aspect), and rotate with the existing handles.
 
-Basic edits where practical: brightness, contrast, saturation, grayscale, blur.
+Picture tools: crop, flip horizontal/vertical, opacity, border (stroke color + size), rounded corners, shadow, brightness, contrast, saturation, grayscale, and blur. Edits are properties on the object; the original pixels stay shared across duplicate, copy, and undo.
 
-Maintain quality. Do not unnecessarily duplicate image data.
+Do not rebuild unless fixing an actual defect.
 
 ---
 
 ### Stage 13 — Insert system
 
-**Status:** ⚪ PLANNED
+**Status:** 🔵 NEXT
 
 Professional Insert tab. Objects: image, text, shape, line, arrow, table, sticky note, file, link, page, diagram (audio later if justified).
 
