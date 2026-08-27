@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Drawora is a free, open-source whiteboard for drawing and notes in the browser."
+    />
+    <title>Drawora</title>
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230f766e'/%3E%3Cpath d='M7 21c4-10 14-12 18-8' fill='none' stroke='%23fff' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32" width="28" height="28">
+              <rect width="32" height="32" rx="8" fill="currentColor" />
+              <path
+                d="M7 21c4-10 14-12 18-8"
+                fill="none"
+                stroke="#fff"
+                stroke-width="2.5"
+                stroke-linecap="round"
+              />
+            </svg>
+          </span>
+          <h1>Drawora</h1>
+        </div>
+      </header>
+
+      <div class="workspace">
+        <aside class="toolbar" role="toolbar" aria-label="Tools">
+          <button
+            type="button"
+            class="tool-btn"
+            data-tool="select"
+            aria-pressed="true"
+            aria-keyshortcuts="V"
+            title="Select (V)"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M5 4.5 19 12.2l-6.4 1.6L9.8 20.5 5 4.5Z"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.75"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <span class="visually-hidden">Select</span>
+          </button>
+
+          <button
+            type="button"
+            class="tool-btn"
+            data-tool="pen"
+            aria-pressed="false"
+            aria-keyshortcuts="P"
+            title="Pen (P)"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M15.2 5.2 18.8 8.8 8.5 19.1 4.5 19.5l.4-4Z"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.75"
+                stroke-linejoin="round"
+              />
+              <path
+                d="M13.4 7l3.6 3.6"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.75"
+              />
+            </svg>
+            <span class="visually-hidden">Pen</span>
+          </button>
+
+          <button
+            type="button"
+            class="tool-btn"
+            data-tool="eraser"
+            aria-pressed="false"
+            aria-keyshortcuts="E"
+            title="Eraser (E)"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M15.8 5.4 20 9.6c.8.8.8 2 0 2.8l-7.2 7.2H8.4L4 15.2c-.8-.8-.8-2 0-2.8l8.96-8.96c.8-.8 2.1-.8 2.84-.04Z"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.75"
+                stroke-linejoin="round"
+              />
+              <path
+                d="M8.5 19.6h11"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.75"
+                stroke-linecap="round"
+              />
+            </svg>
+            <span class="visually-hidden">Eraser</span>
+          </button>
+        </aside>
+
+        <main class="canvas-wrap">
+          <canvas id="board" aria-label="Whiteboard canvas"></canvas>
+        </main>
+      </div>
+    </div>
+
+    <script src="js/app.js"></script>
+  </body>
+</html>
