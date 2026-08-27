@@ -2,9 +2,10 @@
   const DRAW_TOOLS = ["pen", "eraser"];
   const SHAPE_TOOLS = ["line", "rect", "roundrect", "ellipse", "triangle", "arrow"];
   const TEXT_TOOLS = ["text", "sticky"];
-  const TOOLS = ["select", ...DRAW_TOOLS, ...SHAPE_TOOLS, ...TEXT_TOOLS];
+  const TOOLS = ["select", "pan", ...DRAW_TOOLS, ...SHAPE_TOOLS, ...TEXT_TOOLS];
   const SHORTCUTS = {
     v: "select",
+    h: "pan",
     p: "pen",
     e: "eraser",
     t: "text",
@@ -35,6 +36,9 @@
   const TEXT_DEFAULT = { width: 240, height: 64 };
   const STICKY_DEFAULT = { width: 176, height: 176 };
   const STICKY_FILL = "#fde68a";
+  const MIN_ZOOM = 0.1;
+  const MAX_ZOOM = 8;
+  const ZOOM_STEP = 1.2;
 
   const state = {
     tool: "pen",
@@ -60,6 +64,10 @@
     editingIsNew: false,
     skipCanvasClick: false,
     ribbonTab: "home",
+    zoom: 1,
+    panX: 0,
+    panY: 0,
+    spacePan: false,
     queuedPoints: [],
     raf: 0,
   };
@@ -88,6 +96,8 @@
   const ungroupBtn = document.getElementById("ungroup-btn");
   const editor = document.getElementById("text-editor");
   const fontSizeSelect = document.getElementById("font-size");
+  const zoomLabel = document.getElementById("zoom-label");
+  const zoomValue = document.getElementById("zoom-value");
 
   if (
     !canvas ||
@@ -111,7 +121,9 @@
     !ungroupBtn ||
     !ribbonTabs ||
     !editor ||
-    !fontSizeSelect
+    !fontSizeSelect ||
+    !zoomLabel ||
+    !zoomValue
   ) {
     console.error("Drawora: missing canvas or toolbar controls.");
     return;
@@ -166,12 +178,111 @@
     return structuredClone(value);
   }
 
-  function getPoint(event) {
+  function getScreenPoint(event) {
     const rect = canvas.getBoundingClientRect();
     return {
       x: event.clientX - rect.left,
       y: event.clientY - rect.top,
     };
+  }
+
+  function screenToWorld(screen) {
+    return {
+      x: (screen.x - state.panX) / state.zoom,
+      y: (screen.y - state.panY) / state.zoom,
+    };
+  }
+
+  function getPoint(event) {
+    return screenToWorld(getScreenPoint(event));
+  }
+
+  function viewLen(pixels) {
+    return pixels / state.zoom;
+  }
+
+  function viewportCenter() {
+    return { x: canvas.clientWidth / 2, y: canvas.clientHeight / 2 };
+  }
+
+  function formatZoom() {
+    const percent = state.zoom * 100;
+    const rounded = percent >= 20 ? Math.round(percent) : Math.round(percent * 10) / 10;
+    return `${rounded}%`;
+  }
+
+  function syncViewUI() {
+    const label = formatZoom();
+    zoomLabel.textContent = label;
+    zoomValue.textContent = label;
+  }
+
+  function refreshCameraOverlays() {
+    if (state.editingId) {
+      const object = findObject(state.editingId);
+      if (isTextLike(object)) {
+        positionEditor(object);
+      }
+    }
+    syncViewUI();
+  }
+
+  function setZoomAt(nextZoom, screenPoint) {
+    const screen = screenPoint || viewportCenter();
+    const world = screenToWorld(screen);
+    state.zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, nextZoom));
+    state.panX = screen.x - world.x * state.zoom;
+    state.panY = screen.y - world.y * state.zoom;
+    refreshCameraOverlays();
+    redraw();
+  }
+
+  function zoomBy(factor, screenPoint) {
+    setZoomAt(state.zoom * factor, screenPoint);
+  }
+
+  function resetView() {
+    state.zoom = 1;
+    state.panX = 0;
+    state.panY = 0;
+    refreshCameraOverlays();
+    redraw();
+  }
+
+  function fitToBounds(bounds) {
+    const pad = 56;
+    const vw = canvas.clientWidth;
+    const vh = canvas.clientHeight;
+    if (!bounds || (bounds.width < 1 && bounds.height < 1)) {
+      resetView();
+      return;
+    }
+
+    const width = Math.max(bounds.width, 1);
+    const height = Math.max(bounds.height, 1);
+    state.zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.min((vw - pad * 2) / width, (vh - pad * 2) / height)));
+    state.panX = (vw - width * state.zoom) / 2 - bounds.x * state.zoom;
+    state.panY = (vh - height * state.zoom) / 2 - bounds.y * state.zoom;
+    refreshCameraOverlays();
+    redraw();
+  }
+
+  function fitCanvas() {
+    const objects = state.objects.filter(isSelectable);
+    if (objects.length === 0) {
+      resetView();
+      return;
+    }
+    fitToBounds(unionBounds(objects.map((object) => objectWorldBounds(object))));
+  }
+
+  function fitSelection() {
+    const selected = selectedObjects();
+    if (selected.length === 0) {
+      fitCanvas();
+      return;
+    }
+    fitToBounds(unionBounds(selected.map((object) => objectWorldBounds(object))));
   }
 
   function distance(a, b) {
@@ -331,7 +442,7 @@
       ne: { x: frame.x + frame.width, y: frame.y },
       sw: { x: frame.x, y: frame.y + frame.height },
       se: { x: frame.x + frame.width, y: frame.y + frame.height },
-      rotate: { x: center.x, y: frame.y - ROTATE_OFFSET },
+      rotate: { x: center.x, y: frame.y - viewLen(ROTATE_OFFSET) },
     };
   }
 
@@ -718,22 +829,22 @@
   }
 
   function drawHandleBox(x, y) {
-    const half = HANDLE_SIZE / 2;
+    const half = viewLen(HANDLE_SIZE) / 2;
     ctx.beginPath();
-    ctx.rect(x - half, y - half, HANDLE_SIZE, HANDLE_SIZE);
+    ctx.rect(x - half, y - half, half * 2, half * 2);
     ctx.fillStyle = "#ffffff";
     ctx.strokeStyle = SELECT_COLOR;
-    ctx.lineWidth = 1.25;
+    ctx.lineWidth = viewLen(1.25);
     ctx.fill();
     ctx.stroke();
   }
 
   function drawHandleCircle(x, y) {
     ctx.beginPath();
-    ctx.arc(x, y, HANDLE_SIZE / 2 + 1, 0, Math.PI * 2);
+    ctx.arc(x, y, viewLen(HANDLE_SIZE) / 2 + viewLen(1), 0, Math.PI * 2);
     ctx.fillStyle = "#ffffff";
     ctx.strokeStyle = SELECT_COLOR;
-    ctx.lineWidth = 1.25;
+    ctx.lineWidth = viewLen(1.25);
     ctx.fill();
     ctx.stroke();
   }
@@ -751,8 +862,8 @@
     ctx.translate(-center.x, -center.y);
 
     ctx.strokeStyle = SELECT_COLOR;
-    ctx.lineWidth = 1;
-    ctx.setLineDash([5, 4]);
+    ctx.lineWidth = viewLen(1);
+    ctx.setLineDash([viewLen(5), viewLen(4)]);
     ctx.strokeRect(frame.x, frame.y, frame.width, frame.height);
     ctx.setLineDash([]);
 
@@ -845,8 +956,8 @@
 
     ctx.save();
     ctx.strokeStyle = SELECT_COLOR;
-    ctx.lineWidth = 1;
-    ctx.setLineDash([5, 4]);
+    ctx.lineWidth = viewLen(1);
+    ctx.setLineDash([viewLen(5), viewLen(4)]);
     ctx.strokeRect(minX, minY, maxX - minX, maxY - minY);
     ctx.restore();
   }
@@ -871,6 +982,14 @@
     ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
     ctx.globalCompositeOperation = "source-over";
     ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+    ctx.setTransform(
+      state.dpr * state.zoom,
+      0,
+      0,
+      state.dpr * state.zoom,
+      state.panX * state.dpr,
+      state.panY * state.dpr
+    );
 
     for (const object of state.objects) {
       drawObject(object);
@@ -895,8 +1014,8 @@
     ctx.save();
     ctx.fillStyle = "rgb(15 118 110 / 0.08)";
     ctx.strokeStyle = SELECT_COLOR;
-    ctx.lineWidth = 1;
-    ctx.setLineDash([4, 3]);
+    ctx.lineWidth = viewLen(1);
+    ctx.setLineDash([viewLen(4), viewLen(3)]);
     ctx.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
     ctx.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
     ctx.restore();
@@ -954,7 +1073,7 @@
   }
 
   function hitObjectAtLocal(object, point) {
-    const tolerance = Math.max(HIT_PADDING, (object.size || 4) / 2 + 3);
+    const tolerance = Math.max(viewLen(HIT_PADDING), (object.size || 4) / 2 + viewLen(3));
 
     if (object.type === "stroke") {
       const points = object.points;
@@ -1037,7 +1156,7 @@
     const order = ["rotate", "nw", "ne", "sw", "se"];
 
     for (const name of order) {
-      if (distance(local, handles[name]) <= HANDLE_HIT) {
+      if (distance(local, handles[name]) <= viewLen(HANDLE_HIT)) {
         return name;
       }
     }
@@ -1672,6 +1791,7 @@
     state.preview = null;
     state.queuedPoints = [];
     state.active = null;
+    canvas.classList.remove("is-panning");
     if (pointerId != null) {
       releasePointer(pointerId);
     }
@@ -1716,17 +1836,20 @@
   }
 
   function styleEditor(object) {
-    editor.style.font = objectFont(object);
+    const italic = object.italic ? "italic " : "";
+    const weight = object.bold ? "700 " : "400 ";
+    editor.style.font = `${italic}${weight}${object.fontSize * state.zoom}px ${FONT_FAMILY}`;
     editor.style.color = object.color || "#1c1917";
     editor.style.textAlign = object.align || "left";
+    editor.style.padding = `${10 * state.zoom}px ${TEXT_PAD * state.zoom}px`;
     editor.classList.toggle("is-sticky", object.type === "sticky");
   }
 
   function positionEditor(object) {
-    editor.style.left = `${object.x}px`;
-    editor.style.top = `${object.y}px`;
-    editor.style.width = `${object.width}px`;
-    editor.style.height = `${object.height}px`;
+    editor.style.left = `${object.x * state.zoom + state.panX}px`;
+    editor.style.top = `${object.y * state.zoom + state.panY}px`;
+    editor.style.width = `${object.width * state.zoom}px`;
+    editor.style.height = `${object.height * state.zoom}px`;
     editor.style.transform = object.rotation
       ? `rotate(${object.rotation}rad)`
       : "none";
@@ -1973,6 +2096,11 @@
   }
 
   function updateSelectCursor(point) {
+    if (state.spacePan || state.tool === "pan") {
+      canvas.style.cursor = state.active && state.active.kind === "pan" ? "grabbing" : "grab";
+      return;
+    }
+
     if (state.tool !== "select" || state.active) {
       return;
     }
@@ -2188,7 +2316,46 @@
       return;
     }
 
+    if (state.active.kind === "pan") {
+      finishPan(pointerId);
+      return;
+    }
+
     endStroke(pointerId);
+  }
+
+  function startPan(pointerId, screen) {
+    canvas.classList.add("is-panning");
+    state.active = {
+      kind: "pan",
+      pointerId,
+      startScreen: screen,
+      startPanX: state.panX,
+      startPanY: state.panY,
+    };
+  }
+
+  function movePan(screen) {
+    if (!state.active || state.active.kind !== "pan") {
+      return;
+    }
+
+    state.panX = state.active.startPanX + (screen.x - state.active.startScreen.x);
+    state.panY = state.active.startPanY + (screen.y - state.active.startScreen.y);
+    refreshCameraOverlays();
+    redraw();
+  }
+
+  function finishPan(pointerId) {
+    if (!state.active || state.active.kind !== "pan" || state.active.pointerId !== pointerId) {
+      return;
+    }
+
+    state.active = null;
+    canvas.classList.remove("is-panning");
+    releasePointer(pointerId);
+    canvas.style.cursor = state.spacePan || state.tool === "pan" ? "grab" : "";
+    redraw();
   }
 
   function queueMarquee(point) {
@@ -2225,7 +2392,7 @@
     state.active = null;
     releasePointer(pointerId);
 
-    if (bounds.width >= 4 || bounds.height >= 4) {
+    if (bounds.width >= viewLen(4) || bounds.height >= viewLen(4)) {
       const hits = state.objects
         .filter((object) => isSelectable(object) && boundsIntersect(objectWorldBounds(object), bounds))
         .map((object) => object.id);
@@ -2289,7 +2456,7 @@
     canvas.dataset.cursor = tool;
     canvas.style.cursor = "";
 
-    if (tool !== "select") {
+    if (tool !== "select" && tool !== "pan") {
       clearSelection();
       redraw();
     }
@@ -2388,6 +2555,20 @@
   }
 
   function onPointerDown(event) {
+    const wantsPan =
+      event.button === 1 || (event.button === 0 && (state.spacePan || state.tool === "pan"));
+
+    if (wantsPan && event.button !== 2) {
+      if (state.active) {
+        return;
+      }
+
+      event.preventDefault();
+      startPan(event.pointerId, getScreenPoint(event));
+      capturePointer(event.pointerId);
+      return;
+    }
+
     if (event.button !== 0) {
       return;
     }
@@ -2445,6 +2626,11 @@
     }
 
     event.preventDefault();
+
+    if (state.active.kind === "pan") {
+      movePan(getScreenPoint(event));
+      return;
+    }
 
     if (state.active.kind === "transform") {
       queueSelectDrag(point);
@@ -2571,6 +2757,16 @@
         ungroupSelected();
       } else if (action === "align") {
         alignSelected(actionButton.dataset.edge);
+      } else if (action === "zoom-in") {
+        zoomBy(ZOOM_STEP);
+      } else if (action === "zoom-out") {
+        zoomBy(1 / ZOOM_STEP);
+      } else if (action === "zoom-reset") {
+        resetView();
+      } else if (action === "zoom-fit") {
+        fitCanvas();
+      } else if (action === "zoom-selection") {
+        fitSelection();
       }
       return;
     }
@@ -2723,6 +2919,37 @@
       return;
     }
 
+    if (event.key === " " || event.code === "Space") {
+      if (
+        event.target instanceof HTMLElement &&
+        event.target.closest("button, a, [role='tab']")
+      ) {
+        return;
+      }
+      event.preventDefault();
+      state.spacePan = true;
+      canvas.style.cursor = "grab";
+      return;
+    }
+
+    if (ctrl && (event.key === "=" || event.key === "+" || event.code === "NumpadAdd")) {
+      event.preventDefault();
+      zoomBy(ZOOM_STEP);
+      return;
+    }
+
+    if (ctrl && (event.key === "-" || event.code === "NumpadSubtract")) {
+      event.preventDefault();
+      zoomBy(1 / ZOOM_STEP);
+      return;
+    }
+
+    if (ctrl && (event.key === "0" || event.code === "Numpad0")) {
+      event.preventDefault();
+      resetView();
+      return;
+    }
+
     if (ctrl || event.altKey) {
       return;
     }
@@ -2739,6 +2966,13 @@
   function onKeyUp(event) {
     if (event.key === "Shift") {
       refreshShapeShift(false);
+    }
+
+    if (event.key === " " || event.code === "Space") {
+      state.spacePan = false;
+      if (!state.active || state.active.kind !== "pan") {
+        canvas.style.cursor = "";
+      }
     }
   }
 
@@ -2787,7 +3021,7 @@
 
     object.text = editor.value;
     const minHeight = object.type === "sticky" ? STICKY_DEFAULT.height : TEXT_DEFAULT.height;
-    const nextHeight = Math.max(minHeight, editor.scrollHeight);
+    const nextHeight = Math.max(minHeight, editor.scrollHeight / state.zoom);
     if (nextHeight > object.height + 1) {
       object.height = nextHeight;
       positionEditor(object);
@@ -2859,6 +3093,24 @@
   canvas.addEventListener("contextmenu", (event) => {
     event.preventDefault();
   });
+  canvas.addEventListener("auxclick", (event) => {
+    if (event.button === 1) {
+      event.preventDefault();
+    }
+  });
+  canvas.addEventListener(
+    "wheel",
+    (event) => {
+      event.preventDefault();
+      if (state.active && state.active.kind !== "pan") {
+        return;
+      }
+      const factor = event.deltaY > 0 ? 1 / 1.08 : 1.08;
+      zoomBy(factor, getScreenPoint(event));
+    },
+    { passive: false }
+  );
+  zoomLabel.addEventListener("click", () => resetView());
 
   const observer = new ResizeObserver(resizeCanvas);
   observer.observe(canvas.parentElement);
@@ -2868,4 +3120,5 @@
   syncColorUI();
   syncEditUI();
   syncFormatUI();
+  syncViewUI();
 })();

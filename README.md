@@ -2,7 +2,7 @@
 
 A free, open-source, browser-based collaborative whiteboard.
 
-Development plan: see [ROADMAP.md](ROADMAP.md).
+License: [MIT](LICENSE). Development plan: see [ROADMAP.md](ROADMAP.md).
 
 ## Usage
 
@@ -10,11 +10,14 @@ Open `index.html` in a modern browser.
 
 The top bar is a ribbon. **Home** has the everyday tools. **Draw**, **Insert**, **View**, **Page**, **Export**, and **Help** group related actions. Color, size, undo, redo, and delete stay on the right of every tab. Items marked coming soon are visible for later stages and do not do anything yet.
 
+Scroll the canvas to zoom around the cursor. Hold **Space** or use the **Pan** tool (`H`) to move the view. Middle-mouse drag also pans. `Ctrl`+`+` / `Ctrl`+`-` zoom; `Ctrl`+`0` resets to 100%. **View** has fit-all and fit-selection.
+
 ### Tools
 
 | Tool   | Shortcut |
 | ------ | -------- |
 | Select | `V`      |
+| Pan    | `H` (or hold Space) |
 | Pen    | `P`      |
 | Eraser | `E`      |
 

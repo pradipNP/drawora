@@ -12,7 +12,7 @@ Statuses:
 | ⚪ | PLANNED |
 | 🔴 | BLOCKED |
 
-**Current:** Stages 1–7 complete. Stage 8 is next.
+**Current:** Stages 1–8 complete. Stage 9 is next.
 
 ---
 
@@ -205,17 +205,17 @@ Do not implement layers yet.
 
 ### Stage 8 — Zoom, pan, and infinite canvas
 
-**Status:** 🔵 NEXT
+**Status:** ✅ COMPLETED
 
-Zoom in/out, zoom percentage, fit canvas, fit selection, wheel zoom (Ctrl+wheel where appropriate), pan, Space+drag, middle-mouse pan, zoom around cursor.
+Zoom in/out, live zoom percentage, reset to 100%, fit all objects, fit selection, wheel zoom around the cursor, pan tool, Space+drag, and middle-mouse pan.
 
-Canvas coordinates must stay correct while zoomed. Existing drawing, selection, text, and shapes must keep working.
+Canvas drawing, selection, text, and shapes use world coordinates so they stay correct while zoomed.
 
 ---
 
 ### Stage 9 — Page system
 
-**Status:** ⚪ PLANNED
+**Status:** 🔵 NEXT
 
 Add, delete, duplicate, rename, reorder, switch pages; page thumbnails.
 

@@ -322,30 +322,31 @@
             <div class="ribbon-panel" role="tabpanel" id="panel-view" data-ribbon="view" aria-labelledby="tab-view" hidden>
               <div class="ribbon-group">
                 <div class="ribbon-group-tools">
-                  <button type="button" class="ribbon-btn" disabled title="Zoom in (coming soon)">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="5.5" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="m14.5 14.5 5 5M10.5 8v5M8 10.5h5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
-                    <span class="visually-hidden">Zoom in (coming soon)</span>
-                  </button>
-                  <button type="button" class="ribbon-btn" disabled title="Zoom out (coming soon)">
+                  <button type="button" class="ribbon-btn" data-action="zoom-out" title="Zoom out (Ctrl+-)">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="5.5" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="m14.5 14.5 5 5M8 10.5h5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
-                    <span class="visually-hidden">Zoom out (coming soon)</span>
+                    <span class="visually-hidden">Zoom out</span>
                   </button>
-                  <button type="button" class="ribbon-btn" disabled title="Fit canvas (coming soon)">
+                  <button type="button" class="ribbon-btn ribbon-btn-wide" id="zoom-value" data-action="zoom-reset" title="Reset zoom (Ctrl+0)">100%</button>
+                  <button type="button" class="ribbon-btn" data-action="zoom-in" title="Zoom in (Ctrl++)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="5.5" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="m14.5 14.5 5 5M10.5 8v5M8 10.5h5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+                    <span class="visually-hidden">Zoom in</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-action="zoom-fit" title="Fit all objects">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9V5h4M19 9V5h-4M5 15v4h4M19 15v4h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    <span class="visually-hidden">Fit canvas (coming soon)</span>
+                    <span class="visually-hidden">Fit canvas</span>
                   </button>
-                  <button type="button" class="ribbon-btn" disabled title="Fit selection (coming soon)">
+                  <button type="button" class="ribbon-btn" data-action="zoom-selection" title="Fit selection">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    <span class="visually-hidden">Fit selection (coming soon)</span>
+                    <span class="visually-hidden">Fit selection</span>
                   </button>
                 </div>
                 <span class="ribbon-group-label">Zoom</span>
               </div>
               <div class="ribbon-group">
                 <div class="ribbon-group-tools">
-                  <button type="button" class="ribbon-btn" disabled title="Pan (coming soon)">
+                  <button type="button" class="ribbon-btn" data-tool="pan" aria-pressed="false" aria-keyshortcuts="H" title="Pan (H, or hold Space)">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 11.5V8.2a1.2 1.2 0 0 1 2.4 0V11M10.4 10.8V7.4a1.2 1.2 0 1 1 2.4 0v4M12.8 10.2V8.2a1.2 1.2 0 1 1 2.4 0V14c0 3-1.4 5.5-4.2 5.5S7 17.2 7 14v-3.8A1.2 1.2 0 0 1 9.4 10" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    <span class="visually-hidden">Pan (coming soon)</span>
+                    <span class="visually-hidden">Pan</span>
                   </button>
                 </div>
                 <span class="ribbon-group-label">Navigate</span>
@@ -446,7 +447,13 @@
                 <span><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>G</kbd> Ungroup</span>
                 <span><kbd>Del</kbd> Delete</span>
                 <span><kbd>Esc</kbd> Deselect</span>
-                <span>Drag empty canvas to select several objects</span>
+                <span><kbd>H</kbd> Pan</span>
+                <span><kbd>Space</kbd> Hold to pan</span>
+                <span><kbd>Ctrl</kbd>+<kbd>+</kbd> Zoom in</span>
+                <span><kbd>Ctrl</kbd>+<kbd>-</kbd> Zoom out</span>
+                <span><kbd>Ctrl</kbd>+<kbd>0</kbd> Reset zoom</span>
+                <span>Scroll to zoom around the cursor</span>
+                <span>Middle-mouse drag to pan</span>
               </div>
             </div>
           </div>
@@ -529,7 +536,7 @@
 
       <footer class="statusbar">
         <span class="status-item" title="Pages will arrive in a later stage">Page 1</span>
-        <span class="status-item" title="Zoom will arrive in a later stage">100%</span>
+        <button type="button" class="status-item status-zoom" id="zoom-label" data-action="zoom-reset" title="Reset zoom (Ctrl+0)">100%</button>
       </footer>
     </div>
 

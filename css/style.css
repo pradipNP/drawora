@@ -442,6 +442,17 @@ kbd {
   cursor: default;
 }
 
+.status-zoom {
+  padding: 0 4px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.status-zoom:hover {
+  color: var(--ink);
+  background: var(--paper);
+}
+
 .text-editor {
   position: absolute;
   z-index: 1;
@@ -486,8 +497,13 @@ kbd {
   cursor: default;
 }
 
-#board[data-cursor="eraser"] {
-  cursor: cell;
+#board[data-cursor="pan"] {
+  cursor: grab;
+}
+
+#board.is-panning,
+#board[data-cursor="pan"].is-panning {
+  cursor: grabbing;
 }
 
 .visually-hidden {
