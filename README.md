@@ -2,6 +2,8 @@
 
 A free, open-source, browser-based collaborative whiteboard.
 
+Development plan: see [ROADMAP.md](ROADMAP.md).
+
 ## Usage
 
 Open `index.html` in a modern browser.
