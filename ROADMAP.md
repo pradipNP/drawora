@@ -12,7 +12,7 @@ Statuses:
 | ⚪ | PLANNED |
 | 🔴 | BLOCKED |
 
-**Current:** Stages 1–8 complete. Stage 9 is next.
+**Current:** Stages 1–9 complete. Stage 10 is next.
 
 ---
 
@@ -185,7 +185,7 @@ Application chrome is a compact ribbon: Home, Draw, Insert, View, Page, Export, 
 - **Insert / View / Page / Export** — Grouped controls; later-stage actions are visible but disabled
 - **Help** — Existing keyboard shortcuts
 - Stroke color, fill, size, undo, redo, and delete stay available on every tab
-- Status bar shows placeholder Page 1 / 100% (not functional yet)
+- Status bar shows page thumbnails and live zoom
 
 Do not rebuild unless fixing an actual defect.
 
@@ -215,19 +215,19 @@ Canvas drawing, selection, text, and shapes use world coordinates so they stay c
 
 ### Stage 9 — Page system
 
-**Status:** 🔵 NEXT
+**Status:** ✅ COMPLETED
 
-Add, delete, duplicate, rename, reorder, switch pages; page thumbnails.
+Add, delete, duplicate, rename, reorder, and switch pages. Status-bar thumbnails. Sizes A4 / A3 / A5 / A2 / Letter / Legal / custom, with portrait and landscape.
 
-Sizes: A4, A3, A5, A2, Letter, Legal, custom. Portrait / landscape.
+Each page keeps its own objects and camera. The visible sheet is a white page on the workspace; drawings are not clipped. **View → Fit** fits the page. Insert → Page adds a page.
 
-Do not make pages depend on cloud storage.
+Do not make pages depend on cloud storage. Backgrounds and templates stay for Stage 10.
 
 ---
 
 ### Stage 10 — Teacher / student page modes
 
-**Status:** ⚪ PLANNED
+**Status:** 🔵 NEXT
 
 Page templates behind user content. Changing background must not erase drawings.
 

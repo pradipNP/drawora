@@ -39,6 +39,16 @@
   const MIN_ZOOM = 0.1;
   const MAX_ZOOM = 8;
   const ZOOM_STEP = 1.2;
+  const MIN_PAGE_SIZE = 100;
+  const MAX_PAGE_SIZE = 8000;
+  const PAGE_PRESETS = {
+    a4: { width: 794, height: 1123, label: "A4" },
+    a3: { width: 1123, height: 1587, label: "A3" },
+    a5: { width: 559, height: 794, label: "A5" },
+    a2: { width: 1587, height: 2245, label: "A2" },
+    letter: { width: 816, height: 1056, label: "Letter" },
+    legal: { width: 816, height: 1344, label: "Legal" },
+  };
 
   const state = {
     tool: "pen",
@@ -52,6 +62,9 @@
     align: "left",
     dpr: 1,
     nextId: 1,
+    nextPageId: 1,
+    pages: [],
+    currentPageId: null,
     objects: [],
     selectedIds: [],
     clipboard: [],
@@ -70,6 +83,9 @@
     spacePan: false,
     queuedPoints: [],
     raf: 0,
+    pageDragId: null,
+    pageDragMoved: false,
+    pageThumbKey: "",
   };
 
   const RIBBON_TABS = ["home", "draw", "insert", "view", "page", "export", "help"];
@@ -98,6 +114,13 @@
   const fontSizeSelect = document.getElementById("font-size");
   const zoomLabel = document.getElementById("zoom-label");
   const zoomValue = document.getElementById("zoom-value");
+  const pageNameInput = document.getElementById("page-name");
+  const pageWidthInput = document.getElementById("page-width");
+  const pageHeightInput = document.getElementById("page-height");
+  const pageThumbs = document.getElementById("page-thumbs");
+  const pageStatus = document.getElementById("page-status");
+  const pageDeleteBtn = document.getElementById("page-delete-btn");
+  const statusbar = document.querySelector(".statusbar");
 
   if (
     !canvas ||
@@ -123,7 +146,14 @@
     !editor ||
     !fontSizeSelect ||
     !zoomLabel ||
-    !zoomValue
+    !zoomValue ||
+    !pageNameInput ||
+    !pageWidthInput ||
+    !pageHeightInput ||
+    !pageThumbs ||
+    !pageStatus ||
+    !pageDeleteBtn ||
+    !statusbar
   ) {
     console.error("Drawora: missing canvas or toolbar controls.");
     return;
@@ -172,6 +202,135 @@
     const id = `o${state.nextId}`;
     state.nextId += 1;
     return id;
+  }
+
+  function createPageId() {
+    const id = `p${state.nextPageId}`;
+    state.nextPageId += 1;
+    return id;
+  }
+
+  function clampPageSize(value, fallback) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) {
+      return fallback;
+    }
+    return Math.min(MAX_PAGE_SIZE, Math.max(MIN_PAGE_SIZE, Math.round(number)));
+  }
+
+  function pageDimensions(preset, orientation, customWidth, customHeight) {
+    if (preset === "custom") {
+      return {
+        width: clampPageSize(customWidth, 794),
+        height: clampPageSize(customHeight, 1123),
+      };
+    }
+
+    const base = PAGE_PRESETS[preset] || PAGE_PRESETS.a4;
+    if (orientation === "landscape") {
+      return { width: base.height, height: base.width };
+    }
+    return { width: base.width, height: base.height };
+  }
+
+  function nextPageName() {
+    let max = 0;
+    for (const page of state.pages) {
+      const match = /^Page (\d+)$/.exec(page.name);
+      if (match) {
+        max = Math.max(max, Number(match[1]));
+      }
+    }
+    return `Page ${max + 1}`;
+  }
+
+  function uniqueCopyName(name) {
+    const base = `${name} copy`;
+    const names = new Set(state.pages.map((page) => page.name));
+    if (!names.has(base)) {
+      return base;
+    }
+    let index = 2;
+    while (names.has(`${base} ${index}`)) {
+      index += 1;
+    }
+    return `${base} ${index}`;
+  }
+
+  function makePage(options = {}) {
+    const source = options.source || currentPage();
+    const preset = options.preset || (source && source.preset) || "a4";
+    const orientation = options.orientation || (source && source.orientation) || "portrait";
+    const size = pageDimensions(
+      preset,
+      orientation,
+      options.width || (source && source.width) || 794,
+      options.height || (source && source.height) || 1123
+    );
+    return {
+      id: options.id || createPageId(),
+      name: options.name || nextPageName(),
+      preset,
+      orientation:
+        preset === "custom"
+          ? size.width >= size.height
+            ? "landscape"
+            : "portrait"
+          : orientation,
+      width: size.width,
+      height: size.height,
+      objects: options.objects || [],
+      zoom: options.zoom ?? 1,
+      panX: options.panX ?? 0,
+      panY: options.panY ?? 0,
+    };
+  }
+
+  function currentPage() {
+    return state.pages.find((page) => page.id === state.currentPageId) || state.pages[0] || null;
+  }
+
+  function currentPageIndex() {
+    return state.pages.findIndex((page) => page.id === state.currentPageId);
+  }
+
+  function pageBounds() {
+    const page = currentPage();
+    if (!page) {
+      return { x: 0, y: 0, width: 794, height: 1123 };
+    }
+    return { x: 0, y: 0, width: page.width, height: page.height };
+  }
+
+  function rememberCamera() {
+    const page = currentPage();
+    if (!page) {
+      return;
+    }
+    page.zoom = state.zoom;
+    page.panX = state.panX;
+    page.panY = state.panY;
+  }
+
+  function applyPageCamera(page) {
+    state.zoom = page.zoom;
+    state.panX = page.panX;
+    state.panY = page.panY;
+  }
+
+  function attachPage(page) {
+    state.currentPageId = page.id;
+    state.objects = page.objects;
+    applyPageCamera(page);
+  }
+
+  function finishOpenWork() {
+    if (state.editingId) {
+      finishEditing();
+    }
+    if (state.active) {
+      cancelActive();
+    }
   }
 
   function cloneData(value) {
@@ -268,12 +427,7 @@
   }
 
   function fitCanvas() {
-    const objects = state.objects.filter(isSelectable);
-    if (objects.length === 0) {
-      resetView();
-      return;
-    }
-    fitToBounds(unionBounds(objects.map((object) => objectWorldBounds(object))));
+    fitToBounds(pageBounds());
   }
 
   function fitSelection() {
@@ -978,10 +1132,30 @@
     }
   }
 
+  function drawPageSheet() {
+    const page = currentPage();
+    if (!page) {
+      return;
+    }
+
+    ctx.save();
+    ctx.shadowColor = "rgb(28 25 23 / 0.16)";
+    ctx.shadowBlur = viewLen(18);
+    ctx.shadowOffsetY = viewLen(4);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, page.width, page.height);
+    ctx.shadowColor = "transparent";
+    ctx.strokeStyle = "rgb(28 25 23 / 0.1)";
+    ctx.lineWidth = viewLen(1);
+    ctx.strokeRect(0, 0, page.width, page.height);
+    ctx.restore();
+  }
+
   function redraw() {
     ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
     ctx.globalCompositeOperation = "source-over";
-    ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+    ctx.fillStyle = "#e4dfd6";
+    ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
     ctx.setTransform(
       state.dpr * state.zoom,
       0,
@@ -990,6 +1164,8 @@
       state.panX * state.dpr,
       state.panY * state.dpr
     );
+
+    drawPageSheet();
 
     for (const object of state.objects) {
       drawObject(object);
@@ -1004,6 +1180,7 @@
     }
 
     drawSelectionOverlay();
+    paintCurrentPageThumb();
   }
 
   function drawMarquee(bounds) {
@@ -1164,22 +1341,54 @@
     return null;
   }
 
+  function snapshotPages() {
+    return state.pages.map((page) => ({
+      id: page.id,
+      name: page.name,
+      preset: page.preset,
+      orientation: page.orientation,
+      width: page.width,
+      height: page.height,
+      objects: cloneData(page.id === state.currentPageId ? state.objects : page.objects),
+    }));
+  }
+
   function cloneBoard() {
     return {
-      objects: cloneData(state.objects),
+      pages: snapshotPages(),
+      currentPageId: state.currentPageId,
       nextId: state.nextId,
+      nextPageId: state.nextPageId,
       selectedIds: [...state.selectedIds],
     };
   }
 
   function restoreBoard(snapshot) {
-    state.objects = cloneData(snapshot.objects);
+    rememberCamera();
+    const cameras = new Map(
+      state.pages.map((page) => [page.id, { zoom: page.zoom, panX: page.panX, panY: page.panY }])
+    );
+    cameras.set(state.currentPageId, { zoom: state.zoom, panX: state.panX, panY: state.panY });
+
+    state.pages = snapshot.pages.map((page) => {
+      const camera = cameras.get(page.id) || { zoom: 1, panX: 0, panY: 0 };
+      return {
+        ...cloneData(page),
+        zoom: camera.zoom,
+        panX: camera.panX,
+        panY: camera.panY,
+      };
+    });
     state.nextId = snapshot.nextId;
+    state.nextPageId = snapshot.nextPageId;
+    const page = state.pages.find((item) => item.id === snapshot.currentPageId) || state.pages[0];
+    attachPage(page);
     state.selectedIds = snapshot.selectedIds.filter((id) =>
       state.objects.some((object) => object.id === id)
     );
     redraw();
     syncEditUI();
+    syncPageUI();
   }
 
   function captureBefore() {
@@ -1187,7 +1396,7 @@
   }
 
   function boardsEqual(a, b) {
-    return JSON.stringify(a.objects) === JSON.stringify(b.objects);
+    return a.currentPageId === b.currentPageId && JSON.stringify(a.pages) === JSON.stringify(b.pages);
   }
 
   function commitIfChanged() {
@@ -1212,6 +1421,346 @@
 
   function discardHistoryCapture() {
     state.historyBefore = null;
+  }
+
+  function paintThumb(canvasEl, page) {
+    if (!canvasEl || !page) {
+      return;
+    }
+
+    const cssW = 32;
+    const cssH = 40;
+    const ratio = 2;
+    if (canvasEl.width !== cssW * ratio || canvasEl.height !== cssH * ratio) {
+      canvasEl.width = cssW * ratio;
+      canvasEl.height = cssH * ratio;
+    }
+
+    const thumb = canvasEl.getContext("2d");
+    if (!thumb) {
+      return;
+    }
+
+    thumb.setTransform(ratio, 0, 0, ratio, 0, 0);
+    thumb.clearRect(0, 0, cssW, cssH);
+    thumb.fillStyle = "#ddd8cf";
+    thumb.fillRect(0, 0, cssW, cssH);
+
+    const pad = 3;
+    const scale = Math.min((cssW - pad * 2) / page.width, (cssH - pad * 2) / page.height);
+    const pw = page.width * scale;
+    const ph = page.height * scale;
+    const ox = (cssW - pw) / 2;
+    const oy = (cssH - ph) / 2;
+    thumb.fillStyle = "#ffffff";
+    thumb.strokeStyle = "rgb(28 25 23 / 0.12)";
+    thumb.lineWidth = 1;
+    thumb.fillRect(ox, oy, pw, ph);
+    thumb.strokeRect(ox, oy, pw, ph);
+
+    const objects = page.id === state.currentPageId ? state.objects : page.objects;
+    thumb.save();
+    thumb.beginPath();
+    thumb.rect(ox, oy, pw, ph);
+    thumb.clip();
+    thumb.translate(ox, oy);
+    thumb.scale(scale, scale);
+    for (const object of objects) {
+      if (!isSelectable(object)) {
+        continue;
+      }
+      const bounds = objectWorldBounds(object);
+      thumb.fillStyle = "rgb(28 25 23 / 0.22)";
+      thumb.fillRect(bounds.x, bounds.y, Math.max(bounds.width, 6), Math.max(bounds.height, 6));
+    }
+    thumb.restore();
+  }
+
+  function paintCurrentPageThumb() {
+    if (!pageThumbs) {
+      return;
+    }
+    const button = pageThumbs.querySelector(`[data-page-id="${state.currentPageId}"]`);
+    const page = currentPage();
+    if (!button || !page) {
+      return;
+    }
+    paintThumb(button.querySelector("canvas"), page);
+  }
+
+  function renderPageThumbs() {
+    const key = state.pages.map((page) => page.id).join(",");
+    if (key !== state.pageThumbKey) {
+      state.pageThumbKey = key;
+      pageThumbs.replaceChildren();
+      for (const page of state.pages) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "page-thumb";
+        button.dataset.pageId = page.id;
+        button.draggable = true;
+        button.setAttribute("role", "tab");
+        const canvasEl = document.createElement("canvas");
+        canvasEl.setAttribute("aria-hidden", "true");
+        button.appendChild(canvasEl);
+        pageThumbs.appendChild(button);
+      }
+    }
+
+    for (const button of pageThumbs.querySelectorAll(".page-thumb")) {
+      const page = state.pages.find((item) => item.id === button.dataset.pageId);
+      if (!page) {
+        continue;
+      }
+      button.title = page.name;
+      button.setAttribute("aria-label", page.name);
+      button.setAttribute("aria-current", page.id === state.currentPageId ? "true" : "false");
+      paintThumb(button.querySelector("canvas"), page);
+    }
+  }
+
+  function syncPageUI() {
+    const page = currentPage();
+    if (!page) {
+      return;
+    }
+
+    const index = currentPageIndex();
+    pageStatus.textContent = `${page.name} (${index + 1} of ${state.pages.length})`;
+    pageDeleteBtn.disabled = state.pages.length <= 1;
+
+    if (document.activeElement !== pageNameInput) {
+      pageNameInput.value = page.name;
+    }
+    if (document.activeElement !== pageWidthInput) {
+      pageWidthInput.value = String(page.width);
+    }
+    if (document.activeElement !== pageHeightInput) {
+      pageHeightInput.value = String(page.height);
+    }
+
+    for (const button of toolbar.querySelectorAll("[data-page-preset]")) {
+      button.setAttribute("aria-pressed", String(button.dataset.pagePreset === page.preset));
+    }
+    for (const button of toolbar.querySelectorAll("[data-page-orientation]")) {
+      button.setAttribute("aria-pressed", String(button.dataset.pageOrientation === page.orientation));
+    }
+
+    renderPageThumbs();
+  }
+
+  function switchPage(id) {
+    if (!id || id === state.currentPageId) {
+      return;
+    }
+
+    const page = state.pages.find((item) => item.id === id);
+    if (!page) {
+      return;
+    }
+
+    finishOpenWork();
+    rememberCamera();
+    clearSelection();
+    attachPage(page);
+    redraw();
+    syncEditUI();
+    syncPageUI();
+    syncViewUI();
+  }
+
+  function addPage() {
+    finishOpenWork();
+    captureBefore();
+    rememberCamera();
+    const page = makePage();
+    const index = Math.max(currentPageIndex(), 0);
+    state.pages.splice(index + 1, 0, page);
+    clearSelection();
+    attachPage(page);
+    commitIfChanged();
+    fitCanvas();
+    syncPageUI();
+    syncViewUI();
+  }
+
+  function duplicatePage() {
+    const source = currentPage();
+    if (!source) {
+      return;
+    }
+
+    finishOpenWork();
+    captureBefore();
+    rememberCamera();
+    const page = makePage({
+      name: uniqueCopyName(source.name),
+      preset: source.preset,
+      orientation: source.orientation,
+      width: source.width,
+      height: source.height,
+      objects: remapClones(source.objects, 0),
+      zoom: source.zoom,
+      panX: source.panX,
+      panY: source.panY,
+    });
+    const index = currentPageIndex();
+    state.pages.splice(index + 1, 0, page);
+    clearSelection();
+    attachPage(page);
+    commitIfChanged();
+    redraw();
+    syncPageUI();
+    syncViewUI();
+  }
+
+  function deletePage() {
+    if (state.pages.length <= 1) {
+      return;
+    }
+
+    if (!window.confirm("Delete this page? Drawings on it will be removed.")) {
+      return;
+    }
+
+    finishOpenWork();
+    captureBefore();
+    const index = currentPageIndex();
+    state.pages.splice(index, 1);
+    const next = state.pages[Math.min(index, state.pages.length - 1)];
+    clearSelection();
+    attachPage(next);
+    commitIfChanged();
+    redraw();
+    syncPageUI();
+    syncViewUI();
+  }
+
+  function renamePage(nextName) {
+    const page = currentPage();
+    if (!page) {
+      return;
+    }
+
+    const name = nextName.trim() || page.name;
+    if (name === page.name) {
+      pageNameInput.value = page.name;
+      return;
+    }
+
+    captureBefore();
+    page.name = name.slice(0, 80);
+    commitIfChanged();
+    syncPageUI();
+  }
+
+  function reorderPage(fromId, toId) {
+    if (!fromId || !toId || fromId === toId) {
+      return;
+    }
+
+    const fromIndex = state.pages.findIndex((page) => page.id === fromId);
+    const toIndex = state.pages.findIndex((page) => page.id === toId);
+    if (fromIndex < 0 || toIndex < 0) {
+      return;
+    }
+
+    captureBefore();
+    const [page] = state.pages.splice(fromIndex, 1);
+    state.pages.splice(toIndex, 0, page);
+    commitIfChanged();
+    syncPageUI();
+  }
+
+  function setPagePreset(preset) {
+    const page = currentPage();
+    if (!page || !preset) {
+      return;
+    }
+
+    captureBefore();
+    if (preset === "custom") {
+      page.preset = "custom";
+    } else {
+      page.preset = preset;
+      const size = pageDimensions(preset, page.orientation);
+      page.width = size.width;
+      page.height = size.height;
+    }
+    commitIfChanged();
+    redraw();
+    syncPageUI();
+  }
+
+  function setPageOrientation(orientation) {
+    const page = currentPage();
+    if (!page || (orientation !== "portrait" && orientation !== "landscape")) {
+      return;
+    }
+
+    captureBefore();
+    if (page.preset === "custom") {
+      if (orientation !== page.orientation) {
+        const width = page.width;
+        page.width = page.height;
+        page.height = width;
+      }
+      page.orientation = orientation;
+    } else {
+      page.orientation = orientation;
+      const size = pageDimensions(page.preset, orientation);
+      page.width = size.width;
+      page.height = size.height;
+    }
+    commitIfChanged();
+    redraw();
+    syncPageUI();
+  }
+
+  function applyCustomPageSize(commit) {
+    const page = currentPage();
+    if (!page) {
+      return;
+    }
+
+    const width = clampPageSize(pageWidthInput.value, page.width);
+    const height = clampPageSize(pageHeightInput.value, page.height);
+    const sameSize = width === page.width && height === page.height;
+    if (sameSize && !state.historyBefore) {
+      if (commit) {
+        syncPageUI();
+      }
+      return;
+    }
+
+    if (!state.historyBefore) {
+      captureBefore();
+    }
+
+    page.preset = "custom";
+    page.width = width;
+    page.height = height;
+    page.orientation = page.width >= page.height ? "landscape" : "portrait";
+    redraw();
+    if (commit) {
+      commitIfChanged();
+      syncPageUI();
+    } else {
+      for (const button of toolbar.querySelectorAll("[data-page-preset]")) {
+        button.setAttribute("aria-pressed", String(button.dataset.pagePreset === "custom"));
+      }
+      for (const button of toolbar.querySelectorAll("[data-page-orientation]")) {
+        button.setAttribute("aria-pressed", String(button.dataset.pageOrientation === page.orientation));
+      }
+    }
+  }
+
+  function stepPage(delta) {
+    const index = currentPageIndex();
+    const next = state.pages[index + delta];
+    if (next) {
+      switchPage(next.id);
+    }
   }
 
   function undo() {
@@ -2767,7 +3316,25 @@
         fitCanvas();
       } else if (action === "zoom-selection") {
         fitSelection();
+      } else if (action === "page-add") {
+        addPage();
+      } else if (action === "page-duplicate") {
+        duplicatePage();
+      } else if (action === "page-delete") {
+        deletePage();
       }
+      return;
+    }
+
+    const presetButton = event.target.closest("[data-page-preset]");
+    if (presetButton && toolbar.contains(presetButton) && !presetButton.disabled) {
+      setPagePreset(presetButton.dataset.pagePreset);
+      return;
+    }
+
+    const orientationButton = event.target.closest("[data-page-orientation]");
+    if (orientationButton && toolbar.contains(orientationButton) && !orientationButton.disabled) {
+      setPageOrientation(orientationButton.dataset.pageOrientation);
       return;
     }
 
@@ -2950,6 +3517,18 @@
       return;
     }
 
+    if (ctrl && event.key === "PageDown") {
+      event.preventDefault();
+      stepPage(1);
+      return;
+    }
+
+    if (ctrl && event.key === "PageUp") {
+      event.preventDefault();
+      stepPage(-1);
+      return;
+    }
+
     if (ctrl || event.altKey) {
       return;
     }
@@ -3112,13 +3691,88 @@
   );
   zoomLabel.addEventListener("click", () => resetView());
 
+  pageNameInput.addEventListener("change", () => {
+    renamePage(pageNameInput.value);
+  });
+  pageNameInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      pageNameInput.blur();
+    }
+  });
+  pageWidthInput.addEventListener("input", () => applyCustomPageSize(false));
+  pageHeightInput.addEventListener("input", () => applyCustomPageSize(false));
+  pageWidthInput.addEventListener("change", () => applyCustomPageSize(true));
+  pageHeightInput.addEventListener("change", () => applyCustomPageSize(true));
+  pageWidthInput.addEventListener("blur", () => applyCustomPageSize(true));
+  pageHeightInput.addEventListener("blur", () => applyCustomPageSize(true));
+
+  statusbar.addEventListener("click", (event) => {
+    if (event.target.closest('[data-action="page-add"]')) {
+      addPage();
+    }
+  });
+  pageThumbs.addEventListener("click", (event) => {
+    if (state.pageDragMoved) {
+      state.pageDragMoved = false;
+      return;
+    }
+    const thumb = event.target.closest("[data-page-id]");
+    if (thumb) {
+      switchPage(thumb.dataset.pageId);
+    }
+  });
+  pageThumbs.addEventListener("dblclick", (event) => {
+    const thumb = event.target.closest("[data-page-id]");
+    if (!thumb) {
+      return;
+    }
+    switchPage(thumb.dataset.pageId);
+    setRibbonTab("page");
+    pageNameInput.focus();
+    pageNameInput.select();
+  });
+  pageThumbs.addEventListener("dragstart", (event) => {
+    const thumb = event.target.closest("[data-page-id]");
+    if (!thumb) {
+      return;
+    }
+    state.pageDragId = thumb.dataset.pageId;
+    state.pageDragMoved = false;
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", thumb.dataset.pageId);
+  });
+  pageThumbs.addEventListener("dragover", (event) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+  });
+  pageThumbs.addEventListener("drop", (event) => {
+    event.preventDefault();
+    const thumb = event.target.closest("[data-page-id]");
+    const fromId = state.pageDragId || event.dataTransfer.getData("text/plain");
+    if (thumb && fromId && fromId !== thumb.dataset.pageId) {
+      state.pageDragMoved = true;
+      reorderPage(fromId, thumb.dataset.pageId);
+    }
+    state.pageDragId = null;
+  });
+  pageThumbs.addEventListener("dragend", () => {
+    state.pageDragId = null;
+  });
+
+  const firstPage = makePage({ name: "Page 1", preset: "a4", orientation: "portrait" });
+  state.pages = [firstPage];
+  attachPage(firstPage);
+
   const observer = new ResizeObserver(resizeCanvas);
   observer.observe(canvas.parentElement);
   resizeCanvas();
+  fitCanvas();
   canvas.dataset.cursor = state.tool;
   setRibbonTab("home");
   syncColorUI();
   syncEditUI();
   syncFormatUI();
   syncViewUI();
+  syncPageUI();
 })();

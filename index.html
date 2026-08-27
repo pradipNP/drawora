@@ -306,9 +306,9 @@
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5h7.2L19 9.3V19a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 6 19V6A1.5 1.5 0 0 1 7 4.5Z" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M14 4.5V9h4.8" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>
                     <span class="visually-hidden">File (coming soon)</span>
                   </button>
-                  <button type="button" class="ribbon-btn" disabled title="Page (coming soon)">
+                  <button type="button" class="ribbon-btn" data-action="page-add" title="Add page">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3.5" width="12" height="17" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M9 8h6M9 12h6M9 16h4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
-                    <span class="visually-hidden">Page (coming soon)</span>
+                    <span class="visually-hidden">Add page</span>
                   </button>
                   <button type="button" class="ribbon-btn" disabled title="Link (coming soon)">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.8 14.2 8.2 15.8a3.2 3.2 0 0 1-4.5-4.5l1.8-1.8M14.2 9.8 15.8 8.2a3.2 3.2 0 0 1 4.5 4.5l-1.8 1.8M9.2 14.8l5.6-5.6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
@@ -331,9 +331,9 @@
                     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="5.5" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="m14.5 14.5 5 5M10.5 8v5M8 10.5h5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
                     <span class="visually-hidden">Zoom in</span>
                   </button>
-                  <button type="button" class="ribbon-btn" data-action="zoom-fit" title="Fit all objects">
+                  <button type="button" class="ribbon-btn" data-action="zoom-fit" title="Fit page">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9V5h4M19 9V5h-4M5 15v4h4M19 15v4h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    <span class="visually-hidden">Fit canvas</span>
+                    <span class="visually-hidden">Fit page</span>
                   </button>
                   <button type="button" class="ribbon-btn" data-action="zoom-selection" title="Fit selection">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -377,21 +377,53 @@
             <div class="ribbon-panel" role="tabpanel" id="panel-page" data-ribbon="page" aria-labelledby="tab-page" hidden>
               <div class="ribbon-group">
                 <div class="ribbon-group-tools">
-                  <button type="button" class="ribbon-btn ribbon-btn-wide" disabled title="A4 (coming soon)">A4</button>
-                  <button type="button" class="ribbon-btn ribbon-btn-wide" disabled title="Letter (coming soon)">Letter</button>
-                  <button type="button" class="ribbon-btn ribbon-btn-wide" disabled title="Custom size (coming soon)">Custom</button>
+                  <button type="button" class="ribbon-btn" data-action="page-add" title="Add page">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+                    <span class="visually-hidden">Add page</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-action="page-duplicate" title="Duplicate page">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="7" width="11" height="13" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M6 16.5V5.5A1.5 1.5 0 0 1 7.5 4H16" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>
+                    <span class="visually-hidden">Duplicate page</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" id="page-delete-btn" data-action="page-delete" title="Delete page">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 7h13M10 7V5.5A1.5 1.5 0 0 1 11.5 4h1A1.5 1.5 0 0 1 14 5.5V7M8 7l.7 12.2A1.5 1.5 0 0 0 10.2 20.5h3.6a1.5 1.5 0 0 0 1.5-1.3L16 7" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span class="visually-hidden">Delete page</span>
+                  </button>
+                </div>
+                <span class="ribbon-group-label">Pages</span>
+              </div>
+              <div class="ribbon-group">
+                <div class="ribbon-group-tools">
+                  <label class="page-name-field">
+                    <span class="visually-hidden">Page name</span>
+                    <input id="page-name" type="text" maxlength="80" value="Page 1" aria-label="Page name" />
+                  </label>
+                </div>
+                <span class="ribbon-group-label">Name</span>
+              </div>
+              <div class="ribbon-group">
+                <div class="ribbon-group-tools page-size-tools">
+                  <button type="button" class="ribbon-btn ribbon-btn-wide" data-page-preset="a4" aria-pressed="true" title="A4">A4</button>
+                  <button type="button" class="ribbon-btn ribbon-btn-wide" data-page-preset="a3" aria-pressed="false" title="A3">A3</button>
+                  <button type="button" class="ribbon-btn ribbon-btn-wide" data-page-preset="a5" aria-pressed="false" title="A5">A5</button>
+                  <button type="button" class="ribbon-btn ribbon-btn-wide" data-page-preset="a2" aria-pressed="false" title="A2">A2</button>
+                  <button type="button" class="ribbon-btn ribbon-btn-wide" data-page-preset="letter" aria-pressed="false" title="Letter">Letter</button>
+                  <button type="button" class="ribbon-btn ribbon-btn-wide" data-page-preset="legal" aria-pressed="false" title="Legal">Legal</button>
+                  <button type="button" class="ribbon-btn ribbon-btn-wide" data-page-preset="custom" aria-pressed="false" title="Custom size">Custom</button>
+                  <label class="page-dim-field">W <input id="page-width" type="number" min="100" max="8000" step="1" value="794" aria-label="Page width" /></label>
+                  <label class="page-dim-field">H <input id="page-height" type="number" min="100" max="8000" step="1" value="1123" aria-label="Page height" /></label>
                 </div>
                 <span class="ribbon-group-label">Size</span>
               </div>
               <div class="ribbon-group">
                 <div class="ribbon-group-tools">
-                  <button type="button" class="ribbon-btn" disabled title="Portrait (coming soon)">
+                  <button type="button" class="ribbon-btn" data-page-orientation="portrait" aria-pressed="true" title="Portrait">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="3.5" width="10" height="17" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>
-                    <span class="visually-hidden">Portrait (coming soon)</span>
+                    <span class="visually-hidden">Portrait</span>
                   </button>
-                  <button type="button" class="ribbon-btn" disabled title="Landscape (coming soon)">
+                  <button type="button" class="ribbon-btn" data-page-orientation="landscape" aria-pressed="false" title="Landscape">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="7" width="17" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>
-                    <span class="visually-hidden">Landscape (coming soon)</span>
+                    <span class="visually-hidden">Landscape</span>
                   </button>
                 </div>
                 <span class="ribbon-group-label">Orientation</span>
@@ -452,6 +484,8 @@
                 <span><kbd>Ctrl</kbd>+<kbd>+</kbd> Zoom in</span>
                 <span><kbd>Ctrl</kbd>+<kbd>-</kbd> Zoom out</span>
                 <span><kbd>Ctrl</kbd>+<kbd>0</kbd> Reset zoom</span>
+                <span><kbd>Ctrl</kbd>+<kbd>PageDown</kbd> Next page</span>
+                <span><kbd>Ctrl</kbd>+<kbd>PageUp</kbd> Previous page</span>
                 <span>Scroll to zoom around the cursor</span>
                 <span>Middle-mouse drag to pan</span>
               </div>
@@ -535,7 +569,11 @@
       </div>
 
       <footer class="statusbar">
-        <span class="status-item" title="Pages will arrive in a later stage">Page 1</span>
+        <div class="page-strip">
+          <div id="page-thumbs" class="page-thumbs" role="tablist" aria-label="Pages"></div>
+          <button type="button" class="page-add-btn" data-action="page-add" title="Add page">+</button>
+          <span id="page-status" class="status-item">Page 1 of 1</span>
+        </div>
         <button type="button" class="status-item status-zoom" id="zoom-label" data-action="zoom-reset" title="Reset zoom (Ctrl+0)">100%</button>
       </footer>
     </div>
