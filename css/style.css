@@ -92,7 +92,9 @@ button {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  max-height: calc(100% - 24px);
   padding: 6px;
+  overflow: auto;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
@@ -128,10 +130,53 @@ button {
 
 .tool-btn:focus-visible,
 .swatch:focus-visible,
+.color-target:focus-visible,
 .size-control input:focus-visible,
 .swatch-custom:focus-within {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+.shape-tools,
+.color-targets {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+.color-targets {
+  padding: 2px 0 4px;
+}
+
+.color-target {
+  display: grid;
+  place-items: center;
+  height: 32px;
+  border-radius: var(--radius-sm);
+}
+
+.color-target[aria-pressed="true"] {
+  background: var(--accent-soft);
+}
+
+.color-target-chip {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1.5px solid rgb(28 25 23 / 0.28);
+  background: #fff;
+}
+
+.color-target.is-none .color-target-chip {
+  background:
+    linear-gradient(
+      to bottom right,
+      transparent 46%,
+      #b91c1c 46%,
+      #b91c1c 54%,
+      transparent 54%
+    ),
+    #fff;
 }
 
 .toolbar-rule {
@@ -189,6 +234,18 @@ button {
   cursor: pointer;
 }
 
+.swatch-none {
+  background:
+    linear-gradient(
+      to bottom right,
+      transparent 46%,
+      #b91c1c 46%,
+      #b91c1c 54%,
+      transparent 54%
+    ),
+    #fff;
+}
+
 .size-control {
   display: flex;
   flex-direction: column;
@@ -225,14 +282,11 @@ button {
   width: 100%;
   height: 100%;
   touch-action: none;
+  cursor: crosshair;
 }
 
 #board[data-cursor="select"] {
   cursor: default;
-}
-
-#board[data-cursor="pen"] {
-  cursor: crosshair;
 }
 
 #board[data-cursor="eraser"] {

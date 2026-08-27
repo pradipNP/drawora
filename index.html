@@ -112,6 +112,162 @@
 
           <hr class="toolbar-rule" />
 
+          <div class="shape-tools" role="group" aria-label="Shapes">
+            <button
+              type="button"
+              class="tool-btn"
+              data-tool="line"
+              aria-pressed="false"
+              title="Line"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M5 19 19 5"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.75"
+                  stroke-linecap="round"
+                />
+              </svg>
+              <span class="visually-hidden">Line</span>
+            </button>
+
+            <button
+              type="button"
+              class="tool-btn"
+              data-tool="rect"
+              aria-pressed="false"
+              title="Rectangle"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <rect
+                  x="5"
+                  y="6"
+                  width="14"
+                  height="12"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.75"
+                />
+              </svg>
+              <span class="visually-hidden">Rectangle</span>
+            </button>
+
+            <button
+              type="button"
+              class="tool-btn"
+              data-tool="roundrect"
+              aria-pressed="false"
+              title="Rounded rectangle"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <rect
+                  x="5"
+                  y="6"
+                  width="14"
+                  height="12"
+                  rx="3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.75"
+                />
+              </svg>
+              <span class="visually-hidden">Rounded rectangle</span>
+            </button>
+
+            <button
+              type="button"
+              class="tool-btn"
+              data-tool="ellipse"
+              aria-pressed="false"
+              title="Ellipse"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <ellipse
+                  cx="12"
+                  cy="12"
+                  rx="8"
+                  ry="6"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.75"
+                />
+              </svg>
+              <span class="visually-hidden">Ellipse</span>
+            </button>
+
+            <button
+              type="button"
+              class="tool-btn"
+              data-tool="triangle"
+              aria-pressed="false"
+              title="Triangle"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M12 5.5 19.5 18.5h-15Z"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.75"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              <span class="visually-hidden">Triangle</span>
+            </button>
+
+            <button
+              type="button"
+              class="tool-btn"
+              data-tool="arrow"
+              aria-pressed="false"
+              title="Arrow"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M5 19 16.5 7.5"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.75"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M10.5 7.5h6v6"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.75"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              <span class="visually-hidden">Arrow</span>
+            </button>
+          </div>
+
+          <hr class="toolbar-rule" />
+
+          <div class="color-targets" role="group" aria-label="Color target">
+            <button
+              type="button"
+              class="color-target"
+              data-color-target="stroke"
+              aria-pressed="true"
+              title="Stroke color"
+            >
+              <span class="color-target-chip" id="stroke-preview"></span>
+              <span class="visually-hidden">Stroke</span>
+            </button>
+            <button
+              type="button"
+              class="color-target"
+              data-color-target="fill"
+              aria-pressed="false"
+              title="Fill color"
+            >
+              <span class="color-target-chip" id="fill-preview"></span>
+              <span class="visually-hidden">Fill</span>
+            </button>
+          </div>
+
           <div class="swatches" role="group" aria-label="Color">
             <button
               type="button"
@@ -176,6 +332,14 @@
                 aria-label="Custom color"
               />
             </label>
+            <button
+              type="button"
+              class="swatch swatch-none"
+              data-color="none"
+              aria-label="No fill"
+              aria-pressed="false"
+              title="No fill"
+            ></button>
           </div>
 
           <hr class="toolbar-rule" />

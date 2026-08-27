@@ -14,4 +14,6 @@ Open `index.html` in a modern browser.
 | Pen    | `P`      |
 | Eraser | `E`      |
 
-Choose a color and stroke size from the toolbar, then draw on the canvas. The eraser removes ink under the pointer.
+Shape tools: line, rectangle, rounded rectangle, ellipse, triangle, and arrow.
+
+Use **Stroke** and **Fill** to set outline and fill colors. Fill can also be none. Hold **Shift** while drawing an ellipse to constrain it to a circle.

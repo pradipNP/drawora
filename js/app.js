@@ -1,5 +1,7 @@
 (() => {
-  const TOOLS = ["select", "pen", "eraser"];
+  const DRAW_TOOLS = ["pen", "eraser"];
+  const SHAPE_TOOLS = ["line", "rect", "roundrect", "ellipse", "triangle", "arrow"];
+  const TOOLS = ["select", ...DRAW_TOOLS, ...SHAPE_TOOLS];
   const SHORTCUTS = {
     v: "select",
     p: "pen",
@@ -14,14 +16,19 @@
     "#ca8a04",
     "#7c3aed",
   ];
+  const ROUND_RECT_RADIUS = 12;
+  const MIN_SHAPE_SIZE = 2;
 
   const state = {
     tool: "pen",
-    color: PRESET_COLORS[0],
+    stroke: PRESET_COLORS[0],
+    fill: null,
+    colorTarget: "stroke",
     size: 4,
     dpr: 1,
-    // Freehand marks only. Later object types can sit beside these.
-    strokes: [],
+    nextId: 1,
+    objects: [],
+    preview: null,
     active: null,
     queuedPoints: [],
     raf: 0,
@@ -31,10 +38,23 @@
   const toolbar = document.querySelector(".toolbar");
   const colorInput = document.getElementById("custom-color");
   const customSwatch = toolbar && toolbar.querySelector(".swatch-custom");
+  const strokePreview = document.getElementById("stroke-preview");
+  const fillPreview = document.getElementById("fill-preview");
+  const fillTargetButton = toolbar && toolbar.querySelector('[data-color-target="fill"]');
   const sizeInput = document.getElementById("stroke-size");
   const sizeValue = document.getElementById("size-value");
 
-  if (!canvas || !toolbar || !colorInput || !customSwatch || !sizeInput || !sizeValue) {
+  if (
+    !canvas ||
+    !toolbar ||
+    !colorInput ||
+    !customSwatch ||
+    !strokePreview ||
+    !fillPreview ||
+    !fillTargetButton ||
+    !sizeInput ||
+    !sizeValue
+  ) {
     console.error("Drawora: missing canvas or toolbar controls.");
     return;
   }
@@ -58,8 +78,18 @@
     );
   }
 
+  function isShapeTool(tool) {
+    return SHAPE_TOOLS.includes(tool);
+  }
+
   function normalizeHex(color) {
     return color.trim().toLowerCase();
+  }
+
+  function createId() {
+    const id = `o${state.nextId}`;
+    state.nextId += 1;
+    return id;
   }
 
   function getPoint(event) {
@@ -68,6 +98,68 @@
       x: event.clientX - rect.left,
       y: event.clientY - rect.top,
     };
+  }
+
+  function distance(a, b) {
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    return Math.hypot(dx, dy);
+  }
+
+  function normalizedBounds(start, end, square) {
+    let x2 = end.x;
+    let y2 = end.y;
+
+    if (square) {
+      const dx = end.x - start.x;
+      const dy = end.y - start.y;
+      const side = Math.max(Math.abs(dx), Math.abs(dy));
+      x2 = start.x + Math.sign(dx || 1) * side;
+      y2 = start.y + Math.sign(dy || 1) * side;
+    }
+
+    return {
+      x: Math.min(start.x, x2),
+      y: Math.min(start.y, y2),
+      width: Math.abs(x2 - start.x),
+      height: Math.abs(y2 - start.y),
+    };
+  }
+
+  function makeShape(type, start, end, shift) {
+    if (type === "line" || type === "arrow") {
+      return {
+        type,
+        x1: start.x,
+        y1: start.y,
+        x2: end.x,
+        y2: end.y,
+        stroke: state.stroke,
+        size: state.size,
+      };
+    }
+
+    const shape = {
+      type,
+      ...normalizedBounds(start, end, shift && type === "ellipse"),
+      stroke: state.stroke,
+      fill: state.fill,
+      size: state.size,
+    };
+
+    if (type === "roundrect") {
+      shape.radius = ROUND_RECT_RADIUS;
+    }
+
+    return shape;
+  }
+
+  function isShapeMeaningful(shape) {
+    if (shape.type === "line" || shape.type === "arrow") {
+      return distance({ x: shape.x1, y: shape.y1 }, { x: shape.x2, y: shape.y2 }) >= MIN_SHAPE_SIZE;
+    }
+
+    return shape.width >= MIN_SHAPE_SIZE || shape.height >= MIN_SHAPE_SIZE;
   }
 
   function configureStroke(stroke) {
@@ -84,6 +176,22 @@
     ctx.lineWidth = stroke.size;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
+  }
+
+  function configureShape(shape) {
+    ctx.globalCompositeOperation = "source-over";
+    ctx.strokeStyle = shape.stroke;
+    ctx.fillStyle = shape.fill || "transparent";
+    ctx.lineWidth = shape.size;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+  }
+
+  function paintClosedPath(shape) {
+    if (shape.fill) {
+      ctx.fill();
+    }
+    ctx.stroke();
   }
 
   function drawDot(stroke, point) {
@@ -117,13 +225,164 @@
     ctx.restore();
   }
 
+  function pathRoundRect(x, y, width, height, radius) {
+    const r = Math.min(radius, width / 2, height / 2);
+    ctx.beginPath();
+    if (typeof ctx.roundRect === "function") {
+      ctx.roundRect(x, y, width, height, r);
+      return;
+    }
+
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + width, y, x + width, y + height, r);
+    ctx.arcTo(x + width, y + height, x, y + height, r);
+    ctx.arcTo(x, y + height, x, y, r);
+    ctx.arcTo(x, y, x + width, y, r);
+    ctx.closePath();
+  }
+
+  function drawLine(shape) {
+    ctx.save();
+    configureShape(shape);
+    ctx.beginPath();
+    ctx.moveTo(shape.x1, shape.y1);
+    ctx.lineTo(shape.x2, shape.y2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawRect(shape) {
+    ctx.save();
+    configureShape(shape);
+    ctx.beginPath();
+    ctx.rect(shape.x, shape.y, shape.width, shape.height);
+    paintClosedPath(shape);
+    ctx.restore();
+  }
+
+  function drawRoundRect(shape) {
+    ctx.save();
+    configureShape(shape);
+    pathRoundRect(shape.x, shape.y, shape.width, shape.height, shape.radius);
+    paintClosedPath(shape);
+    ctx.restore();
+  }
+
+  function drawEllipse(shape) {
+    if (shape.width < 0.5 || shape.height < 0.5) {
+      return;
+    }
+
+    ctx.save();
+    configureShape(shape);
+    ctx.beginPath();
+    ctx.ellipse(
+      shape.x + shape.width / 2,
+      shape.y + shape.height / 2,
+      shape.width / 2,
+      shape.height / 2,
+      0,
+      0,
+      Math.PI * 2
+    );
+    paintClosedPath(shape);
+    ctx.restore();
+  }
+
+  function drawTriangle(shape) {
+    ctx.save();
+    configureShape(shape);
+    ctx.beginPath();
+    ctx.moveTo(shape.x + shape.width / 2, shape.y);
+    ctx.lineTo(shape.x, shape.y + shape.height);
+    ctx.lineTo(shape.x + shape.width, shape.y + shape.height);
+    ctx.closePath();
+    paintClosedPath(shape);
+    ctx.restore();
+  }
+
+  function drawArrow(shape) {
+    const dx = shape.x2 - shape.x1;
+    const dy = shape.y2 - shape.y1;
+    const length = Math.hypot(dx, dy);
+    if (length === 0) {
+      return;
+    }
+
+    const angle = Math.atan2(dy, dx);
+    const headLength = Math.min(Math.max(12, shape.size * 4), length * 0.45);
+    const headWidth = headLength * 0.55;
+    const shaftX = shape.x2 - Math.cos(angle) * headLength;
+    const shaftY = shape.y2 - Math.sin(angle) * headLength;
+
+    ctx.save();
+    configureShape(shape);
+    ctx.beginPath();
+    ctx.moveTo(shape.x1, shape.y1);
+    ctx.lineTo(shaftX, shaftY);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(shape.x2, shape.y2);
+    ctx.lineTo(
+      shape.x2 - Math.cos(angle) * headLength + Math.sin(angle) * headWidth,
+      shape.y2 - Math.sin(angle) * headLength - Math.cos(angle) * headWidth
+    );
+    ctx.lineTo(
+      shape.x2 - Math.cos(angle) * headLength - Math.sin(angle) * headWidth,
+      shape.y2 - Math.sin(angle) * headLength + Math.cos(angle) * headWidth
+    );
+    ctx.closePath();
+    ctx.fillStyle = shape.stroke;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawShape(shape) {
+    switch (shape.type) {
+      case "line":
+        drawLine(shape);
+        break;
+      case "rect":
+        drawRect(shape);
+        break;
+      case "roundrect":
+        drawRoundRect(shape);
+        break;
+      case "ellipse":
+        drawEllipse(shape);
+        break;
+      case "triangle":
+        drawTriangle(shape);
+        break;
+      case "arrow":
+        drawArrow(shape);
+        break;
+      default:
+        break;
+    }
+  }
+
+  function drawObject(object) {
+    if (object.type === "stroke") {
+      drawStroke(object);
+      return;
+    }
+
+    drawShape(object);
+  }
+
   function redraw() {
     ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
     ctx.globalCompositeOperation = "source-over";
     ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
 
-    for (const stroke of state.strokes) {
-      drawStroke(stroke);
+    for (const object of state.objects) {
+      drawObject(object);
+    }
+
+    if (state.preview) {
+      drawShape(state.preview);
     }
   }
 
@@ -154,7 +413,7 @@
 
   function flushPoints() {
     state.raf = 0;
-    const stroke = state.active && state.active.stroke;
+    const stroke = state.active && state.active.kind === "stroke" && state.active.stroke;
     const points = state.queuedPoints;
     state.queuedPoints = [];
 
@@ -193,8 +452,23 @@
     ctx.restore();
   }
 
+  function flushShapePreview() {
+    state.raf = 0;
+    if (!state.active || state.active.kind !== "shape" || !state.active.point) {
+      return;
+    }
+
+    state.preview = makeShape(
+      state.active.shapeType,
+      state.active.start,
+      state.active.point,
+      state.active.shift
+    );
+    redraw();
+  }
+
   function queuePoint(point) {
-    if (!state.active) {
+    if (!state.active || state.active.kind !== "stroke") {
       return;
     }
 
@@ -204,18 +478,19 @@
     }
   }
 
-  function endStroke(pointerId) {
-    if (!state.active || state.active.pointerId !== pointerId) {
+  function queueShapePreview(point, shift) {
+    if (!state.active || state.active.kind !== "shape") {
       return;
     }
 
-    if (state.raf) {
-      cancelAnimationFrame(state.raf);
-      flushPoints();
+    state.active.point = point;
+    state.active.shift = shift;
+    if (!state.raf) {
+      state.raf = requestAnimationFrame(flushShapePreview);
     }
+  }
 
-    state.active = null;
-
+  function releasePointer(pointerId) {
     try {
       if (canvas.hasPointerCapture(pointerId)) {
         canvas.releasePointerCapture(pointerId);
@@ -225,17 +500,80 @@
     }
   }
 
+  function endStroke(pointerId) {
+    if (!state.active || state.active.kind !== "stroke" || state.active.pointerId !== pointerId) {
+      return;
+    }
+
+    if (state.raf) {
+      cancelAnimationFrame(state.raf);
+      flushPoints();
+    }
+
+    state.active = null;
+    releasePointer(pointerId);
+  }
+
+  function finishShape(pointerId) {
+    if (!state.active || state.active.kind !== "shape" || state.active.pointerId !== pointerId) {
+      return;
+    }
+
+    if (state.raf) {
+      cancelAnimationFrame(state.raf);
+      flushShapePreview();
+    }
+
+    const shape = state.preview;
+    state.preview = null;
+    state.active = null;
+    releasePointer(pointerId);
+
+    if (shape && isShapeMeaningful(shape)) {
+      state.objects.push({ id: createId(), ...shape });
+    }
+
+    redraw();
+  }
+
+  function endActive(pointerId) {
+    if (!state.active || state.active.pointerId !== pointerId) {
+      return;
+    }
+
+    if (state.active.kind === "shape") {
+      finishShape(pointerId);
+      return;
+    }
+
+    endStroke(pointerId);
+  }
+
   function startStroke(pointerId, point) {
     const stroke = {
+      id: createId(),
+      type: "stroke",
       tool: state.tool,
-      color: state.color,
+      color: state.stroke,
       size: state.size,
       points: [point],
     };
 
-    state.strokes.push(stroke);
-    state.active = { pointerId, stroke };
+    state.objects.push(stroke);
+    state.active = { kind: "stroke", pointerId, stroke };
     drawDot(stroke, point);
+  }
+
+  function startShape(pointerId, point, shift) {
+    state.active = {
+      kind: "shape",
+      pointerId,
+      shapeType: state.tool,
+      start: point,
+      point,
+      shift,
+    };
+    queueShapePreview(point, shift);
   }
 
   function setTool(tool) {
@@ -244,7 +582,7 @@
     }
 
     if (state.active) {
-      endStroke(state.active.pointerId);
+      endActive(state.active.pointerId);
     }
 
     state.tool = tool;
@@ -255,23 +593,69 @@
     }
   }
 
-  function setColor(color) {
-    const hex = normalizeHex(color);
-    state.color = hex;
+  function syncColorUI() {
+    const activeColor = state.colorTarget === "fill" ? state.fill : state.stroke;
+
+    for (const button of toolbar.querySelectorAll("[data-color-target]")) {
+      button.setAttribute(
+        "aria-pressed",
+        String(button.dataset.colorTarget === state.colorTarget)
+      );
+    }
+
+    fillTargetButton.classList.toggle("is-none", !state.fill);
+    strokePreview.style.background = "#fff";
+    strokePreview.style.borderColor = state.stroke;
+    fillPreview.style.background = state.fill || "#fff";
+    fillPreview.style.borderColor = state.fill || "rgb(28 25 23 / 0.28)";
 
     let matchedPreset = false;
     for (const swatch of toolbar.querySelectorAll(".swatch[data-color]")) {
-      const selected = normalizeHex(swatch.dataset.color) === hex;
+      const value = swatch.dataset.color;
+      const selected =
+        value === "none"
+          ? state.colorTarget === "fill" && state.fill === null
+          : Boolean(activeColor) && normalizeHex(value) === normalizeHex(activeColor);
       swatch.setAttribute("aria-pressed", String(selected));
-      if (selected) {
+      if (selected && value !== "none") {
         matchedPreset = true;
       }
     }
 
-    customSwatch.classList.toggle("is-selected", !matchedPreset);
-    if (colorInput.value.toLowerCase() !== hex) {
-      colorInput.value = hex;
+    customSwatch.classList.toggle(
+      "is-selected",
+      Boolean(activeColor) && !matchedPreset
+    );
+    if (activeColor && colorInput.value.toLowerCase() !== normalizeHex(activeColor)) {
+      colorInput.value = activeColor;
     }
+  }
+
+  function setColorTarget(target) {
+    if (target !== "stroke" && target !== "fill") {
+      return;
+    }
+
+    state.colorTarget = target;
+    syncColorUI();
+  }
+
+  function setColor(color) {
+    if (color === "none") {
+      state.fill = null;
+      state.colorTarget = "fill";
+      syncColorUI();
+      return;
+    }
+
+    const hex = normalizeHex(color);
+    if (state.colorTarget === "fill") {
+      state.fill = hex;
+    } else {
+      state.stroke = hex;
+    }
+
+    syncColorUI();
   }
 
   function setSizeByIndex(index) {
@@ -282,12 +666,20 @@
     sizeInput.setAttribute("aria-valuetext", `${state.size} pixels`);
   }
 
+  function capturePointer(pointerId) {
+    try {
+      canvas.setPointerCapture(pointerId);
+    } catch (error) {
+      console.error("Drawora: pointer capture failed.", error);
+    }
+  }
+
   function onPointerDown(event) {
     if (event.button !== 0) {
       return;
     }
 
-    if (state.tool !== "pen" && state.tool !== "eraser") {
+    if (state.tool === "select") {
       return;
     }
 
@@ -296,12 +688,17 @@
     }
 
     event.preventDefault();
-    try {
-      canvas.setPointerCapture(event.pointerId);
-    } catch (error) {
-      console.error("Drawora: pointer capture failed.", error);
+    capturePointer(event.pointerId);
+    const point = getPoint(event);
+
+    if (isShapeTool(state.tool)) {
+      startShape(event.pointerId, point, event.shiftKey);
+      return;
     }
-    startStroke(event.pointerId, getPoint(event));
+
+    if (state.tool === "pen" || state.tool === "eraser") {
+      startStroke(event.pointerId, point);
+    }
   }
 
   function onPointerMove(event) {
@@ -310,6 +707,12 @@
     }
 
     event.preventDefault();
+
+    if (state.active.kind === "shape") {
+      queueShapePreview(getPoint(event), event.shiftKey);
+      return;
+    }
+
     const coalesced =
       typeof event.getCoalescedEvents === "function"
         ? event.getCoalescedEvents()
@@ -330,7 +733,7 @@
       return;
     }
 
-    endStroke(event.pointerId);
+    endActive(event.pointerId);
   }
 
   function onPointerLeave(event) {
@@ -342,7 +745,7 @@
       return;
     }
 
-    endStroke(event.pointerId);
+    endActive(event.pointerId);
   }
 
   function onToolbarClick(event) {
@@ -352,13 +755,31 @@
       return;
     }
 
+    const targetButton = event.target.closest("[data-color-target]");
+    if (targetButton && toolbar.contains(targetButton)) {
+      setColorTarget(targetButton.dataset.colorTarget);
+      return;
+    }
+
     const swatch = event.target.closest(".swatch[data-color]");
     if (swatch && toolbar.contains(swatch)) {
       setColor(swatch.dataset.color);
     }
   }
 
+  function refreshShapeShift(shift) {
+    if (!state.active || state.active.kind !== "shape" || !state.active.point) {
+      return;
+    }
+
+    queueShapePreview(state.active.point, shift);
+  }
+
   function onKeyDown(event) {
+    if (event.key === "Shift") {
+      refreshShapeShift(true);
+    }
+
     if (event.metaKey || event.ctrlKey || event.altKey) {
       return;
     }
@@ -376,6 +797,12 @@
     setTool(tool);
   }
 
+  function onKeyUp(event) {
+    if (event.key === "Shift") {
+      refreshShapeShift(false);
+    }
+  }
+
   toolbar.addEventListener("click", onToolbarClick);
   colorInput.addEventListener("input", () => {
     setColor(colorInput.value);
@@ -384,6 +811,7 @@
     setSizeByIndex(Number(sizeInput.value));
   });
   document.addEventListener("keydown", onKeyDown);
+  document.addEventListener("keyup", onKeyUp);
 
   canvas.addEventListener("pointerdown", onPointerDown, { passive: false });
   canvas.addEventListener("pointermove", onPointerMove, { passive: false });
@@ -399,4 +827,5 @@
   observer.observe(canvas.parentElement);
   resizeCanvas();
   canvas.dataset.cursor = state.tool;
+  syncColorUI();
 })();
