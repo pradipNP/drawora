@@ -17,581 +17,450 @@
   </head>
   <body>
     <div class="app">
-      <header class="topbar">
-        <div class="brand">
-          <span class="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 32 32" width="28" height="28">
-              <rect width="32" height="32" rx="8" fill="currentColor" />
-              <path
-                d="M7 21c4-10 14-12 18-8"
-                fill="none"
-                stroke="#fff"
-                stroke-width="2.5"
-                stroke-linecap="round"
-              />
-            </svg>
-          </span>
-          <h1>Drawora</h1>
+      <header class="chrome">
+        <div class="menubar">
+          <div class="brand">
+            <span class="brand-mark" aria-hidden="true">
+              <svg viewBox="0 0 32 32" width="22" height="22">
+                <rect width="32" height="32" rx="8" fill="currentColor" />
+                <path
+                  d="M7 21c4-10 14-12 18-8"
+                  fill="none"
+                  stroke="#fff"
+                  stroke-width="2.5"
+                  stroke-linecap="round"
+                />
+              </svg>
+            </span>
+            <h1>Drawora</h1>
+          </div>
+
+          <div class="ribbon-tabs" role="tablist" aria-label="Ribbon">
+            <button type="button" class="ribbon-tab" role="tab" id="tab-home" data-ribbon-tab="home" aria-controls="panel-home" aria-selected="true" tabindex="0">Home</button>
+            <button type="button" class="ribbon-tab" role="tab" id="tab-draw" data-ribbon-tab="draw" aria-controls="panel-draw" aria-selected="false" tabindex="-1">Draw</button>
+            <button type="button" class="ribbon-tab" role="tab" id="tab-insert" data-ribbon-tab="insert" aria-controls="panel-insert" aria-selected="false" tabindex="-1">Insert</button>
+            <button type="button" class="ribbon-tab" role="tab" id="tab-view" data-ribbon-tab="view" aria-controls="panel-view" aria-selected="false" tabindex="-1">View</button>
+            <button type="button" class="ribbon-tab" role="tab" id="tab-page" data-ribbon-tab="page" aria-controls="panel-page" aria-selected="false" tabindex="-1">Page</button>
+            <button type="button" class="ribbon-tab" role="tab" id="tab-export" data-ribbon-tab="export" aria-controls="panel-export" aria-selected="false" tabindex="-1">Export</button>
+            <button type="button" class="ribbon-tab" role="tab" id="tab-help" data-ribbon-tab="help" aria-controls="panel-help" aria-selected="false" tabindex="-1">Help</button>
+          </div>
         </div>
 
-        <div class="format-actions" role="group" aria-label="Text formatting">
-          <button
-            type="button"
-            class="icon-btn"
-            data-format="bold"
-            title="Bold (Ctrl+B)"
-            aria-pressed="false"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M7 5h7.2A3.8 3.8 0 0 1 18 8.8 3.3 3.3 0 0 1 15.2 12 3.6 3.6 0 0 1 19 15.6 4 4 0 0 1 14.8 20H7V5Z"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.75"
-                stroke-linejoin="round"
-              />
-              <path d="M7 12h8" fill="none" stroke="currentColor" stroke-width="1.75" />
-            </svg>
-            <span class="visually-hidden">Bold</span>
-          </button>
-          <button
-            type="button"
-            class="icon-btn"
-            data-format="italic"
-            title="Italic (Ctrl+I)"
-            aria-pressed="false"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M10 5h9M5 19h9M14.5 5 9.5 19"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.75"
-                stroke-linecap="round"
-              />
-            </svg>
-            <span class="visually-hidden">Italic</span>
-          </button>
-          <button
-            type="button"
-            class="icon-btn"
-            data-format="align-left"
-            title="Align left"
-            aria-pressed="true"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M5 6h14M5 10h10M5 14h14M5 18h8"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.75"
-                stroke-linecap="round"
-              />
-            </svg>
-            <span class="visually-hidden">Align left</span>
-          </button>
-          <button
-            type="button"
-            class="icon-btn"
-            data-format="align-center"
-            title="Align center"
-            aria-pressed="false"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M5 6h14M7 10h10M5 14h14M8 18h8"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.75"
-                stroke-linecap="round"
-              />
-            </svg>
-            <span class="visually-hidden">Align center</span>
-          </button>
-          <button
-            type="button"
-            class="icon-btn"
-            data-format="align-right"
-            title="Align right"
-            aria-pressed="false"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M5 6h14M9 10h10M5 14h14M11 18h8"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.75"
-                stroke-linecap="round"
-              />
-            </svg>
-            <span class="visually-hidden">Align right</span>
-          </button>
-          <label class="font-size-field" title="Font size">
-            <span class="visually-hidden">Font size</span>
-            <select id="font-size" aria-label="Font size">
-              <option value="16">16</option>
-              <option value="20">20</option>
-              <option value="24" selected>24</option>
-              <option value="32">32</option>
-              <option value="40">40</option>
-            </select>
-          </label>
-        </div>
+        <div class="ribbon" role="toolbar" aria-label="Tools">
+          <div class="ribbon-panels">
+            <div class="ribbon-panel" role="tabpanel" id="panel-home" data-ribbon="home" aria-labelledby="tab-home">
+              <div class="ribbon-group">
+                <div class="ribbon-group-tools">
+                  <button type="button" class="ribbon-btn" data-tool="select" aria-pressed="false" aria-keyshortcuts="V" title="Select (V)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5 19 12.2l-6.4 1.6L9.8 20.5 5 4.5Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>
+                    <span class="visually-hidden">Select</span>
+                  </button>
+                </div>
+                <span class="ribbon-group-label">Tools</span>
+              </div>
 
-        <div class="topbar-actions">
-          <button
-            type="button"
-            id="undo-btn"
-            class="icon-btn"
-            title="Undo (Ctrl+Z)"
-            aria-keyshortcuts="Control+Z"
-            disabled
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M7 8H4l4-4M4 8l4 4"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.75"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-              <path
-                d="M4 8h9.5a6.5 6.5 0 1 1 0 13H8"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.75"
-                stroke-linecap="round"
-              />
-            </svg>
-            <span class="visually-hidden">Undo</span>
-          </button>
-          <button
-            type="button"
-            id="redo-btn"
-            class="icon-btn"
-            title="Redo (Ctrl+Y)"
-            aria-keyshortcuts="Control+Y Control+Shift+Z"
-            disabled
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M17 8h3l-4-4M20 8l-4 4"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.75"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-              <path
-                d="M20 8h-9.5a6.5 6.5 0 1 0 0 13H16"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.75"
-                stroke-linecap="round"
-              />
-            </svg>
-            <span class="visually-hidden">Redo</span>
-          </button>
-          <button
-            type="button"
-            id="delete-btn"
-            class="icon-btn"
-            title="Delete (Del)"
-            aria-keyshortcuts="Delete Backspace"
-            disabled
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M5.5 7h13M10 7V5.5A1.5 1.5 0 0 1 11.5 4h1A1.5 1.5 0 0 1 14 5.5V7M8 7l.7 12.2A1.5 1.5 0 0 0 10.2 20.5h3.6a1.5 1.5 0 0 0 1.5-1.3L16 7"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.75"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
-            <span class="visually-hidden">Delete</span>
-          </button>
+              <div class="ribbon-group">
+                <div class="ribbon-group-tools">
+                  <button type="button" class="ribbon-btn" id="copy-btn" data-action="copy" title="Copy (Ctrl+C)" aria-keyshortcuts="Control+C" disabled>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="8" width="10" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M8.5 16H6.5A1.5 1.5 0 0 1 5 14.5v-10A1.5 1.5 0 0 1 6.5 3h8A1.5 1.5 0 0 1 16 4.5V8" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>
+                    <span class="visually-hidden">Copy</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" id="paste-btn" data-action="paste" title="Paste (Ctrl+V)" aria-keyshortcuts="Control+V" disabled>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5h2.2A1.8 1.8 0 0 1 12 3.7 1.8 1.8 0 0 1 13.8 5.5H16A1.5 1.5 0 0 1 17.5 7v12A1.5 1.5 0 0 1 16 20.5H8A1.5 1.5 0 0 1 6.5 19V7A1.5 1.5 0 0 1 8 5.5Z" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M9.5 9.5h5M9.5 13h5M9.5 16.5h3.5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+                    <span class="visually-hidden">Paste</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" id="duplicate-btn" data-action="duplicate" title="Duplicate (Ctrl+D)" aria-keyshortcuts="Control+D" disabled>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="7" width="10" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M10.5 7V5.5A1.5 1.5 0 0 1 12 4h7.5A1.5 1.5 0 0 1 21 5.5V16a1.5 1.5 0 0 1-1.5 1.5H16" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>
+                    <span class="visually-hidden">Duplicate</span>
+                  </button>
+                </div>
+                <span class="ribbon-group-label">Clipboard</span>
+              </div>
+
+              <div class="ribbon-group">
+                <div class="ribbon-group-tools">
+                  <button type="button" class="ribbon-btn" data-tool="pen" aria-pressed="true" aria-keyshortcuts="P" title="Pen (P)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.2 5.2 18.8 8.8 8.5 19.1 4.5 19.5l.4-4Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/><path d="M13.4 7l3.6 3.6" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>
+                    <span class="visually-hidden">Pen</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-tool="eraser" aria-pressed="false" aria-keyshortcuts="E" title="Eraser (E)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.8 5.4 20 9.6c.8.8.8 2 0 2.8l-7.2 7.2H8.4L4 15.2c-.8-.8-.8-2 0-2.8l8.96-8.96c.8-.8 2.1-.8 2.84-.04Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/><path d="M8.5 19.6h11" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+                    <span class="visually-hidden">Eraser</span>
+                  </button>
+                </div>
+                <span class="ribbon-group-label">Ink</span>
+              </div>
+
+              <div class="ribbon-group">
+                <div class="ribbon-group-tools">
+                  <button type="button" class="ribbon-btn" data-tool="line" aria-pressed="false" title="Line">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19 19 5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+                    <span class="visually-hidden">Line</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-tool="rect" aria-pressed="false" title="Rectangle">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="6" width="14" height="12" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>
+                    <span class="visually-hidden">Rectangle</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-tool="roundrect" aria-pressed="false" title="Rounded rectangle">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="6" width="14" height="12" rx="3.5" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>
+                    <span class="visually-hidden">Rounded rectangle</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-tool="ellipse" aria-pressed="false" title="Ellipse">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="12" rx="8" ry="6" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>
+                    <span class="visually-hidden">Ellipse</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-tool="triangle" aria-pressed="false" title="Triangle">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5.5 19.5 18.5h-15Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>
+                    <span class="visually-hidden">Triangle</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-tool="arrow" aria-pressed="false" title="Arrow">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19 16.5 7.5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/><path d="M10.5 7.5h6v6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span class="visually-hidden">Arrow</span>
+                  </button>
+                </div>
+                <span class="ribbon-group-label">Shapes</span>
+              </div>
+
+              <div class="ribbon-group">
+                <div class="ribbon-group-tools">
+                  <button type="button" class="ribbon-btn" data-tool="text" aria-pressed="false" aria-keyshortcuts="T" title="Text (T)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6.5h14M12 6.5V18.5M8.5 18.5h7" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+                    <span class="visually-hidden">Text</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-tool="sticky" aria-pressed="false" aria-keyshortcuts="N" title="Sticky note (N)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5.5h12v9.2L13.8 19H6V5.5Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/><path d="M18 14.7h-4.2V19" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>
+                    <span class="visually-hidden">Sticky note</span>
+                  </button>
+                </div>
+                <span class="ribbon-group-label">Notes</span>
+              </div>
+
+              <div class="ribbon-group format-actions" role="group" aria-label="Text formatting">
+                <div class="ribbon-group-tools">
+                  <button type="button" class="ribbon-btn" data-format="bold" title="Bold (Ctrl+B)" aria-pressed="false">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h7.2A3.8 3.8 0 0 1 18 8.8 3.3 3.3 0 0 1 15.2 12 3.6 3.6 0 0 1 19 15.6 4 4 0 0 1 14.8 20H7V5Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/><path d="M7 12h8" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>
+                    <span class="visually-hidden">Bold</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-format="italic" title="Italic (Ctrl+I)" aria-pressed="false">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5h9M5 19h9M14.5 5 9.5 19" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+                    <span class="visually-hidden">Italic</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-format="align-left" title="Align left" aria-pressed="true">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14M5 10h10M5 14h14M5 18h8" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+                    <span class="visually-hidden">Align left</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-format="align-center" title="Align center" aria-pressed="false">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14M7 10h10M5 14h14M8 18h8" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+                    <span class="visually-hidden">Align center</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-format="align-right" title="Align right" aria-pressed="false">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14M9 10h10M5 14h14M11 18h8" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+                    <span class="visually-hidden">Align right</span>
+                  </button>
+                  <label class="font-size-field" title="Font size">
+                    <span class="visually-hidden">Font size</span>
+                    <select id="font-size" aria-label="Font size">
+                      <option value="16">16</option>
+                      <option value="20">20</option>
+                      <option value="24" selected>24</option>
+                      <option value="32">32</option>
+                      <option value="40">40</option>
+                    </select>
+                  </label>
+                </div>
+                <span class="ribbon-group-label">Font</span>
+              </div>
+            </div>
+
+            <div class="ribbon-panel" role="tabpanel" id="panel-draw" data-ribbon="draw" aria-labelledby="tab-draw" hidden>
+              <div class="ribbon-group">
+                <div class="ribbon-group-tools">
+                  <button type="button" class="ribbon-btn" data-tool="pen" aria-pressed="true" aria-keyshortcuts="P" title="Pen (P)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.2 5.2 18.8 8.8 8.5 19.1 4.5 19.5l.4-4Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/><path d="M13.4 7l3.6 3.6" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>
+                    <span class="visually-hidden">Pen</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" disabled title="Pencil (coming soon)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.8 5.4 18.6 9.2 8.4 19.4H4.6v-3.8Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/><path d="M13 7.2 16.8 11" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>
+                    <span class="visually-hidden">Pencil (coming soon)</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" disabled title="Marker (coming soon)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 19.5h10M9.2 16.8 15 4.5h2.2L11.4 16.8Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>
+                    <span class="visually-hidden">Marker (coming soon)</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" disabled title="Highlighter (coming soon)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 18h14M8 15.5 12.2 6h3.2L11.2 15.5Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/><path d="M7.5 18v-2.2h6.4V18" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>
+                    <span class="visually-hidden">Highlighter (coming soon)</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-tool="eraser" aria-pressed="false" aria-keyshortcuts="E" title="Eraser (E)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.8 5.4 20 9.6c.8.8.8 2 0 2.8l-7.2 7.2H8.4L4 15.2c-.8-.8-.8-2 0-2.8l8.96-8.96c.8-.8 2.1-.8 2.84-.04Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/><path d="M8.5 19.6h11" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+                    <span class="visually-hidden">Eraser</span>
+                  </button>
+                </div>
+                <span class="ribbon-group-label">Draw</span>
+              </div>
+              <p class="ribbon-hint">Stroke size and colors stay available on the right.</p>
+            </div>
+
+            <div class="ribbon-panel" role="tabpanel" id="panel-insert" data-ribbon="insert" aria-labelledby="tab-insert" hidden>
+              <div class="ribbon-group">
+                <div class="ribbon-group-tools">
+                  <button type="button" class="ribbon-btn" data-tool="text" aria-pressed="false" title="Text (T)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6.5h14M12 6.5V18.5M8.5 18.5h7" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+                    <span class="visually-hidden">Text</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-tool="sticky" aria-pressed="false" title="Sticky note (N)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5.5h12v9.2L13.8 19H6V5.5Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/><path d="M18 14.7h-4.2V19" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>
+                    <span class="visually-hidden">Sticky note</span>
+                  </button>
+                </div>
+                <span class="ribbon-group-label">Notes</span>
+              </div>
+              <div class="ribbon-group">
+                <div class="ribbon-group-tools">
+                  <button type="button" class="ribbon-btn" data-tool="line" aria-pressed="false" title="Line">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19 19 5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+                    <span class="visually-hidden">Line</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-tool="rect" aria-pressed="false" title="Rectangle">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="6" width="14" height="12" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>
+                    <span class="visually-hidden">Rectangle</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-tool="roundrect" aria-pressed="false" title="Rounded rectangle">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="6" width="14" height="12" rx="3.5" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>
+                    <span class="visually-hidden">Rounded rectangle</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-tool="ellipse" aria-pressed="false" title="Ellipse">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="12" rx="8" ry="6" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>
+                    <span class="visually-hidden">Ellipse</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-tool="triangle" aria-pressed="false" title="Triangle">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5.5 19.5 18.5h-15Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>
+                    <span class="visually-hidden">Triangle</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-tool="arrow" aria-pressed="false" title="Arrow">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19 16.5 7.5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/><path d="M10.5 7.5h6v6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span class="visually-hidden">Arrow</span>
+                  </button>
+                </div>
+                <span class="ribbon-group-label">Shapes</span>
+              </div>
+              <div class="ribbon-group">
+                <div class="ribbon-group-tools">
+                  <button type="button" class="ribbon-btn" disabled title="Image (coming soon)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="5.5" width="15" height="13" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="m7 15 3.2-3.4 2.4 2.5 2.2-2.8L17 15" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/><circle cx="9" cy="9.2" r="1.1" fill="currentColor"/></svg>
+                    <span class="visually-hidden">Image (coming soon)</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" disabled title="Table (coming soon)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="5.5" width="15" height="13" rx="1" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M4.5 10h15M4.5 14.5h15M9.5 5.5v13M14.5 5.5v13" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>
+                    <span class="visually-hidden">Table (coming soon)</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" disabled title="File (coming soon)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5h7.2L19 9.3V19a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 6 19V6A1.5 1.5 0 0 1 7 4.5Z" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M14 4.5V9h4.8" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>
+                    <span class="visually-hidden">File (coming soon)</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" disabled title="Page (coming soon)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3.5" width="12" height="17" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M9 8h6M9 12h6M9 16h4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+                    <span class="visually-hidden">Page (coming soon)</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" disabled title="Link (coming soon)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.8 14.2 8.2 15.8a3.2 3.2 0 0 1-4.5-4.5l1.8-1.8M14.2 9.8 15.8 8.2a3.2 3.2 0 0 1 4.5 4.5l-1.8 1.8M9.2 14.8l5.6-5.6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+                    <span class="visually-hidden">Link (coming soon)</span>
+                  </button>
+                </div>
+                <span class="ribbon-group-label">Objects</span>
+              </div>
+            </div>
+
+            <div class="ribbon-panel" role="tabpanel" id="panel-view" data-ribbon="view" aria-labelledby="tab-view" hidden>
+              <div class="ribbon-group">
+                <div class="ribbon-group-tools">
+                  <button type="button" class="ribbon-btn" disabled title="Zoom in (coming soon)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="5.5" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="m14.5 14.5 5 5M10.5 8v5M8 10.5h5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+                    <span class="visually-hidden">Zoom in (coming soon)</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" disabled title="Zoom out (coming soon)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="5.5" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="m14.5 14.5 5 5M8 10.5h5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+                    <span class="visually-hidden">Zoom out (coming soon)</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" disabled title="Fit canvas (coming soon)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9V5h4M19 9V5h-4M5 15v4h4M19 15v4h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span class="visually-hidden">Fit canvas (coming soon)</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" disabled title="Fit selection (coming soon)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span class="visually-hidden">Fit selection (coming soon)</span>
+                  </button>
+                </div>
+                <span class="ribbon-group-label">Zoom</span>
+              </div>
+              <div class="ribbon-group">
+                <div class="ribbon-group-tools">
+                  <button type="button" class="ribbon-btn" disabled title="Pan (coming soon)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 11.5V8.2a1.2 1.2 0 0 1 2.4 0V11M10.4 10.8V7.4a1.2 1.2 0 1 1 2.4 0v4M12.8 10.2V8.2a1.2 1.2 0 1 1 2.4 0V14c0 3-1.4 5.5-4.2 5.5S7 17.2 7 14v-3.8A1.2 1.2 0 0 1 9.4 10" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span class="visually-hidden">Pan (coming soon)</span>
+                  </button>
+                </div>
+                <span class="ribbon-group-label">Navigate</span>
+              </div>
+              <div class="ribbon-group">
+                <div class="ribbon-group-tools">
+                  <button type="button" class="ribbon-btn" disabled title="Grid (coming soon)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v14H5Z" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M5 10h14M5 14h14M10 5v14M14 5v14" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>
+                    <span class="visually-hidden">Grid (coming soon)</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" disabled title="Rulers (coming soon)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 7.5h15v9h-15Z" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M8 7.5v3M11 7.5v2M14 7.5v3M17 7.5v2" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+                    <span class="visually-hidden">Rulers (coming soon)</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" disabled title="Guides (coming soon)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v16M4 12h16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-dasharray="3 3" stroke-linecap="round"/></svg>
+                    <span class="visually-hidden">Guides (coming soon)</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" disabled title="Full screen (coming soon)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9V5h4M19 9V5h-4M5 15v4h4M19 15v4h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span class="visually-hidden">Full screen (coming soon)</span>
+                  </button>
+                </div>
+                <span class="ribbon-group-label">Show</span>
+              </div>
+            </div>
+
+            <div class="ribbon-panel" role="tabpanel" id="panel-page" data-ribbon="page" aria-labelledby="tab-page" hidden>
+              <div class="ribbon-group">
+                <div class="ribbon-group-tools">
+                  <button type="button" class="ribbon-btn ribbon-btn-wide" disabled title="A4 (coming soon)">A4</button>
+                  <button type="button" class="ribbon-btn ribbon-btn-wide" disabled title="Letter (coming soon)">Letter</button>
+                  <button type="button" class="ribbon-btn ribbon-btn-wide" disabled title="Custom size (coming soon)">Custom</button>
+                </div>
+                <span class="ribbon-group-label">Size</span>
+              </div>
+              <div class="ribbon-group">
+                <div class="ribbon-group-tools">
+                  <button type="button" class="ribbon-btn" disabled title="Portrait (coming soon)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="3.5" width="10" height="17" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>
+                    <span class="visually-hidden">Portrait (coming soon)</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" disabled title="Landscape (coming soon)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="7" width="17" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>
+                    <span class="visually-hidden">Landscape (coming soon)</span>
+                  </button>
+                </div>
+                <span class="ribbon-group-label">Orientation</span>
+              </div>
+              <div class="ribbon-group">
+                <div class="ribbon-group-tools">
+                  <button type="button" class="ribbon-btn" disabled title="Background (coming soon)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="5" width="15" height="14" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M4.5 15.5 9 11l3 3 3.2-3.6 4.3 5.1" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>
+                    <span class="visually-hidden">Background (coming soon)</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" disabled title="Template (coming soon)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4.5" width="14" height="15" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M8 9h8M8 12.5h8M8 16h5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+                    <span class="visually-hidden">Template (coming soon)</span>
+                  </button>
+                </div>
+                <span class="ribbon-group-label">Surface</span>
+              </div>
+            </div>
+
+            <div class="ribbon-panel" role="tabpanel" id="panel-export" data-ribbon="export" aria-labelledby="tab-export" hidden>
+              <div class="ribbon-group">
+                <div class="ribbon-group-tools">
+                  <button type="button" class="ribbon-btn ribbon-btn-wide" disabled title="PNG (coming soon)">PNG</button>
+                  <button type="button" class="ribbon-btn ribbon-btn-wide" disabled title="JPG (coming soon)">JPG</button>
+                  <button type="button" class="ribbon-btn ribbon-btn-wide" disabled title="SVG (coming soon)">SVG</button>
+                </div>
+                <span class="ribbon-group-label">Image</span>
+              </div>
+              <div class="ribbon-group">
+                <div class="ribbon-group-tools">
+                  <button type="button" class="ribbon-btn ribbon-btn-wide" disabled title="PDF (coming soon)">PDF</button>
+                  <button type="button" class="ribbon-btn ribbon-btn-wide" disabled title="DOCX (coming soon)">DOCX</button>
+                </div>
+                <span class="ribbon-group-label">Document</span>
+              </div>
+            </div>
+
+            <div class="ribbon-panel ribbon-panel-help" role="tabpanel" id="panel-help" data-ribbon="help" aria-labelledby="tab-help" hidden>
+              <div class="shortcut-list" aria-label="Keyboard shortcuts">
+                <span><kbd>V</kbd> Select</span>
+                <span><kbd>P</kbd> Pen</span>
+                <span><kbd>E</kbd> Eraser</span>
+                <span><kbd>T</kbd> Text</span>
+                <span><kbd>N</kbd> Sticky note</span>
+                <span><kbd>Ctrl</kbd>+<kbd>Z</kbd> Undo</span>
+                <span><kbd>Ctrl</kbd>+<kbd>Y</kbd> Redo</span>
+                <span><kbd>Ctrl</kbd>+<kbd>C</kbd> Copy</span>
+                <span><kbd>Ctrl</kbd>+<kbd>V</kbd> Paste</span>
+                <span><kbd>Ctrl</kbd>+<kbd>D</kbd> Duplicate</span>
+                <span><kbd>Del</kbd> Delete</span>
+                <span><kbd>Esc</kbd> Deselect</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="ribbon-persistent">
+            <div class="ribbon-group">
+              <div class="ribbon-group-tools color-tools">
+                <div class="color-targets" role="group" aria-label="Color target">
+                  <button type="button" class="color-target" data-color-target="stroke" aria-pressed="true" title="Stroke color">
+                    <span class="color-target-chip" id="stroke-preview"></span>
+                    <span class="visually-hidden">Stroke</span>
+                  </button>
+                  <button type="button" class="color-target" data-color-target="fill" aria-pressed="false" title="Fill color">
+                    <span class="color-target-chip" id="fill-preview"></span>
+                    <span class="visually-hidden">Fill</span>
+                  </button>
+                </div>
+                <div class="swatches" role="group" aria-label="Color">
+                  <button type="button" class="swatch" data-color="#1c1917" style="background-color: #1c1917" aria-label="Black" aria-pressed="true" title="Black"></button>
+                  <button type="button" class="swatch" data-color="#dc2626" style="background-color: #dc2626" aria-label="Red" aria-pressed="false" title="Red"></button>
+                  <button type="button" class="swatch" data-color="#2563eb" style="background-color: #2563eb" aria-label="Blue" aria-pressed="false" title="Blue"></button>
+                  <button type="button" class="swatch" data-color="#16a34a" style="background-color: #16a34a" aria-label="Green" aria-pressed="false" title="Green"></button>
+                  <button type="button" class="swatch" data-color="#ca8a04" style="background-color: #ca8a04" aria-label="Yellow" aria-pressed="false" title="Yellow"></button>
+                  <button type="button" class="swatch" data-color="#7c3aed" style="background-color: #7c3aed" aria-label="Purple" aria-pressed="false" title="Purple"></button>
+                  <label class="swatch swatch-custom" title="Custom color">
+                    <span class="visually-hidden">Custom color</span>
+                    <input id="custom-color" type="color" value="#1c1917" aria-label="Custom color" />
+                  </label>
+                  <button type="button" class="swatch swatch-none" data-color="none" aria-label="No fill" aria-pressed="false" title="No fill"></button>
+                </div>
+              </div>
+              <span class="ribbon-group-label">Color</span>
+            </div>
+
+            <div class="ribbon-group">
+              <div class="ribbon-group-tools">
+                <div class="size-control">
+                  <label class="visually-hidden" for="stroke-size">Stroke size</label>
+                  <output id="size-value" for="stroke-size">4px</output>
+                  <input id="stroke-size" type="range" min="0" max="4" step="1" value="1" title="Stroke size" aria-valuetext="4 pixels" />
+                </div>
+              </div>
+              <span class="ribbon-group-label">Size</span>
+            </div>
+
+            <div class="ribbon-group topbar-actions">
+              <div class="ribbon-group-tools">
+                <button type="button" id="undo-btn" class="ribbon-btn" title="Undo (Ctrl+Z)" aria-keyshortcuts="Control+Z" disabled>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8H4l4-4M4 8l4 4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 8h9.5a6.5 6.5 0 1 1 0 13H8" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+                  <span class="visually-hidden">Undo</span>
+                </button>
+                <button type="button" id="redo-btn" class="ribbon-btn" title="Redo (Ctrl+Y)" aria-keyshortcuts="Control+Y Control+Shift+Z" disabled>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 8h3l-4-4M20 8l-4 4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 8h-9.5a6.5 6.5 0 1 0 0 13H16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+                  <span class="visually-hidden">Redo</span>
+                </button>
+                <button type="button" id="delete-btn" class="ribbon-btn" title="Delete (Del)" aria-keyshortcuts="Delete Backspace" disabled>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 7h13M10 7V5.5A1.5 1.5 0 0 1 11.5 4h1A1.5 1.5 0 0 1 14 5.5V7M8 7l.7 12.2A1.5 1.5 0 0 0 10.2 20.5h3.6a1.5 1.5 0 0 0 1.5-1.3L16 7" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  <span class="visually-hidden">Delete</span>
+                </button>
+              </div>
+              <span class="ribbon-group-label">Edit</span>
+            </div>
+          </div>
         </div>
       </header>
 
       <div class="workspace">
-        <aside class="toolbar" role="toolbar" aria-label="Tools">
-          <button
-            type="button"
-            class="tool-btn"
-            data-tool="select"
-            aria-pressed="false"
-            aria-keyshortcuts="V"
-            title="Select (V)"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M5 4.5 19 12.2l-6.4 1.6L9.8 20.5 5 4.5Z"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.75"
-                stroke-linejoin="round"
-              />
-            </svg>
-            <span class="visually-hidden">Select</span>
-          </button>
-
-          <button
-            type="button"
-            class="tool-btn"
-            data-tool="pen"
-            aria-pressed="true"
-            aria-keyshortcuts="P"
-            title="Pen (P)"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M15.2 5.2 18.8 8.8 8.5 19.1 4.5 19.5l.4-4Z"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.75"
-                stroke-linejoin="round"
-              />
-              <path
-                d="M13.4 7l3.6 3.6"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.75"
-              />
-            </svg>
-            <span class="visually-hidden">Pen</span>
-          </button>
-
-          <button
-            type="button"
-            class="tool-btn"
-            data-tool="eraser"
-            aria-pressed="false"
-            aria-keyshortcuts="E"
-            title="Eraser (E)"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M15.8 5.4 20 9.6c.8.8.8 2 0 2.8l-7.2 7.2H8.4L4 15.2c-.8-.8-.8-2 0-2.8l8.96-8.96c.8-.8 2.1-.8 2.84-.04Z"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.75"
-                stroke-linejoin="round"
-              />
-              <path
-                d="M8.5 19.6h11"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.75"
-                stroke-linecap="round"
-              />
-            </svg>
-            <span class="visually-hidden">Eraser</span>
-          </button>
-
-          <hr class="toolbar-rule" />
-
-          <div class="shape-tools" role="group" aria-label="Shapes">
-            <button
-              type="button"
-              class="tool-btn"
-              data-tool="line"
-              aria-pressed="false"
-              title="Line"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  d="M5 19 19 5"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.75"
-                  stroke-linecap="round"
-                />
-              </svg>
-              <span class="visually-hidden">Line</span>
-            </button>
-
-            <button
-              type="button"
-              class="tool-btn"
-              data-tool="rect"
-              aria-pressed="false"
-              title="Rectangle"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <rect
-                  x="5"
-                  y="6"
-                  width="14"
-                  height="12"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.75"
-                />
-              </svg>
-              <span class="visually-hidden">Rectangle</span>
-            </button>
-
-            <button
-              type="button"
-              class="tool-btn"
-              data-tool="roundrect"
-              aria-pressed="false"
-              title="Rounded rectangle"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <rect
-                  x="5"
-                  y="6"
-                  width="14"
-                  height="12"
-                  rx="3.5"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.75"
-                />
-              </svg>
-              <span class="visually-hidden">Rounded rectangle</span>
-            </button>
-
-            <button
-              type="button"
-              class="tool-btn"
-              data-tool="ellipse"
-              aria-pressed="false"
-              title="Ellipse"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <ellipse
-                  cx="12"
-                  cy="12"
-                  rx="8"
-                  ry="6"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.75"
-                />
-              </svg>
-              <span class="visually-hidden">Ellipse</span>
-            </button>
-
-            <button
-              type="button"
-              class="tool-btn"
-              data-tool="triangle"
-              aria-pressed="false"
-              title="Triangle"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  d="M12 5.5 19.5 18.5h-15Z"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.75"
-                  stroke-linejoin="round"
-                />
-              </svg>
-              <span class="visually-hidden">Triangle</span>
-            </button>
-
-            <button
-              type="button"
-              class="tool-btn"
-              data-tool="arrow"
-              aria-pressed="false"
-              title="Arrow"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  d="M5 19 16.5 7.5"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.75"
-                  stroke-linecap="round"
-                />
-                <path
-                  d="M10.5 7.5h6v6"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.75"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
-              <span class="visually-hidden">Arrow</span>
-            </button>
-          </div>
-
-          <hr class="toolbar-rule" />
-
-          <div class="shape-tools" role="group" aria-label="Notes">
-            <button
-              type="button"
-              class="tool-btn"
-              data-tool="text"
-              aria-pressed="false"
-              aria-keyshortcuts="T"
-              title="Text (T)"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  d="M5 6.5h14M12 6.5V18.5M8.5 18.5h7"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.75"
-                  stroke-linecap="round"
-                />
-              </svg>
-              <span class="visually-hidden">Text</span>
-            </button>
-
-            <button
-              type="button"
-              class="tool-btn"
-              data-tool="sticky"
-              aria-pressed="false"
-              aria-keyshortcuts="N"
-              title="Sticky note (N)"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  d="M6 5.5h12v9.2L13.8 19H6V5.5Z"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.75"
-                  stroke-linejoin="round"
-                />
-                <path
-                  d="M18 14.7h-4.2V19"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.75"
-                  stroke-linejoin="round"
-                />
-              </svg>
-              <span class="visually-hidden">Sticky note</span>
-            </button>
-          </div>
-
-          <hr class="toolbar-rule" />
-
-          <div class="color-targets" role="group" aria-label="Color target">
-            <button
-              type="button"
-              class="color-target"
-              data-color-target="stroke"
-              aria-pressed="true"
-              title="Stroke color"
-            >
-              <span class="color-target-chip" id="stroke-preview"></span>
-              <span class="visually-hidden">Stroke</span>
-            </button>
-            <button
-              type="button"
-              class="color-target"
-              data-color-target="fill"
-              aria-pressed="false"
-              title="Fill color"
-            >
-              <span class="color-target-chip" id="fill-preview"></span>
-              <span class="visually-hidden">Fill</span>
-            </button>
-          </div>
-
-          <div class="swatches" role="group" aria-label="Color">
-            <button
-              type="button"
-              class="swatch"
-              data-color="#1c1917"
-              style="background-color: #1c1917"
-              aria-label="Black"
-              aria-pressed="true"
-              title="Black"
-            ></button>
-            <button
-              type="button"
-              class="swatch"
-              data-color="#dc2626"
-              style="background-color: #dc2626"
-              aria-label="Red"
-              aria-pressed="false"
-              title="Red"
-            ></button>
-            <button
-              type="button"
-              class="swatch"
-              data-color="#2563eb"
-              style="background-color: #2563eb"
-              aria-label="Blue"
-              aria-pressed="false"
-              title="Blue"
-            ></button>
-            <button
-              type="button"
-              class="swatch"
-              data-color="#16a34a"
-              style="background-color: #16a34a"
-              aria-label="Green"
-              aria-pressed="false"
-              title="Green"
-            ></button>
-            <button
-              type="button"
-              class="swatch"
-              data-color="#ca8a04"
-              style="background-color: #ca8a04"
-              aria-label="Yellow"
-              aria-pressed="false"
-              title="Yellow"
-            ></button>
-            <button
-              type="button"
-              class="swatch"
-              data-color="#7c3aed"
-              style="background-color: #7c3aed"
-              aria-label="Purple"
-              aria-pressed="false"
-              title="Purple"
-            ></button>
-            <label class="swatch swatch-custom" title="Custom color">
-              <span class="visually-hidden">Custom color</span>
-              <input
-                id="custom-color"
-                type="color"
-                value="#1c1917"
-                aria-label="Custom color"
-              />
-            </label>
-            <button
-              type="button"
-              class="swatch swatch-none"
-              data-color="none"
-              aria-label="No fill"
-              aria-pressed="false"
-              title="No fill"
-            ></button>
-          </div>
-
-          <hr class="toolbar-rule" />
-
-          <div class="size-control">
-            <label class="visually-hidden" for="stroke-size">Stroke size</label>
-            <output id="size-value" for="stroke-size">4px</output>
-            <input
-              id="stroke-size"
-              type="range"
-              min="0"
-              max="4"
-              step="1"
-              value="1"
-              title="Stroke size"
-              aria-valuetext="4 pixels"
-            />
-          </div>
-        </aside>
-
         <main class="canvas-wrap">
           <canvas id="board" aria-label="Whiteboard canvas"></canvas>
           <textarea
@@ -604,6 +473,11 @@
           ></textarea>
         </main>
       </div>
+
+      <footer class="statusbar">
+        <span class="status-item" title="Pages will arrive in a later stage">Page 1</span>
+        <span class="status-item" title="Zoom will arrive in a later stage">100%</span>
+      </footer>
     </div>
 
     <script src="js/app.js"></script>

@@ -59,12 +59,16 @@
     editingId: null,
     editingIsNew: false,
     skipCanvasClick: false,
+    ribbonTab: "home",
     queuedPoints: [],
     raf: 0,
   };
 
+  const RIBBON_TABS = ["home", "draw", "insert", "view", "page", "export", "help"];
+
   const canvas = document.getElementById("board");
-  const toolbar = document.querySelector(".toolbar");
+  const toolbar = document.querySelector(".ribbon");
+  const ribbonTabs = document.querySelector(".ribbon-tabs");
   const colorInput = document.getElementById("custom-color");
   const customSwatch = toolbar && toolbar.querySelector(".swatch-custom");
   const strokePreview = document.getElementById("stroke-preview");
@@ -75,6 +79,9 @@
   const undoBtn = document.getElementById("undo-btn");
   const redoBtn = document.getElementById("redo-btn");
   const deleteBtn = document.getElementById("delete-btn");
+  const copyBtn = document.getElementById("copy-btn");
+  const pasteBtn = document.getElementById("paste-btn");
+  const duplicateBtn = document.getElementById("duplicate-btn");
   const editor = document.getElementById("text-editor");
   const fontSizeSelect = document.getElementById("font-size");
 
@@ -91,6 +98,10 @@
     !undoBtn ||
     !redoBtn ||
     !deleteBtn ||
+    !copyBtn ||
+    !pasteBtn ||
+    !duplicateBtn ||
+    !ribbonTabs ||
     !editor ||
     !fontSizeSelect
   ) {
@@ -1045,6 +1056,9 @@
     undoBtn.disabled = state.past.length === 0;
     redoBtn.disabled = state.future.length === 0;
     deleteBtn.disabled = state.selectedIds.length === 0;
+    copyBtn.disabled = state.selectedIds.length === 0;
+    duplicateBtn.disabled = state.selectedIds.length === 0;
+    pasteBtn.disabled = state.clipboard.length === 0;
   }
 
   function setSelection(ids) {
@@ -1155,6 +1169,7 @@
     }
 
     state.clipboard = cloneData(selected);
+    syncEditUI();
   }
 
   function pasteClipboard() {
@@ -2164,10 +2179,66 @@
     endActive(event.pointerId);
   }
 
+  function setRibbonTab(name) {
+    if (!RIBBON_TABS.includes(name)) {
+      return;
+    }
+
+    state.ribbonTab = name;
+
+    for (const tab of ribbonTabs.querySelectorAll("[data-ribbon-tab]")) {
+      const selected = tab.dataset.ribbonTab === name;
+      tab.setAttribute("aria-selected", String(selected));
+      tab.tabIndex = selected ? 0 : -1;
+    }
+
+    for (const panel of toolbar.querySelectorAll(".ribbon-panel")) {
+      panel.hidden = panel.dataset.ribbon !== name;
+    }
+  }
+
+  function onRibbonTabKey(event) {
+    const tabs = [...ribbonTabs.querySelectorAll("[data-ribbon-tab]")];
+    const current = tabs.findIndex((tab) => tab.dataset.ribbonTab === state.ribbonTab);
+    if (current < 0) {
+      return;
+    }
+
+    let next = current;
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+      next = (current + 1) % tabs.length;
+    } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+      next = (current - 1 + tabs.length) % tabs.length;
+    } else if (event.key === "Home") {
+      next = 0;
+    } else if (event.key === "End") {
+      next = tabs.length - 1;
+    } else {
+      return;
+    }
+
+    event.preventDefault();
+    setRibbonTab(tabs[next].dataset.ribbonTab);
+    tabs[next].focus();
+  }
+
   function onToolbarClick(event) {
     const toolButton = event.target.closest("[data-tool]");
-    if (toolButton && toolbar.contains(toolButton)) {
+    if (toolButton && toolbar.contains(toolButton) && !toolButton.disabled) {
       setTool(toolButton.dataset.tool);
+      return;
+    }
+
+    const actionButton = event.target.closest("[data-action]");
+    if (actionButton && toolbar.contains(actionButton) && !actionButton.disabled) {
+      const action = actionButton.dataset.action;
+      if (action === "copy") {
+        copySelected();
+      } else if (action === "paste") {
+        pasteClipboard();
+      } else if (action === "duplicate") {
+        duplicateSelected();
+      }
       return;
     }
 
@@ -2317,6 +2388,13 @@
   }
 
   toolbar.addEventListener("click", onToolbarClick);
+  ribbonTabs.addEventListener("click", (event) => {
+    const tab = event.target.closest("[data-ribbon-tab]");
+    if (tab) {
+      setRibbonTab(tab.dataset.ribbonTab);
+    }
+  });
+  ribbonTabs.addEventListener("keydown", onRibbonTabKey);
   undoBtn.addEventListener("click", () => undo());
   redoBtn.addEventListener("click", () => redo());
   deleteBtn.addEventListener("click", () => {
@@ -2383,9 +2461,7 @@
         !(target instanceof Node) ||
         editor.contains(target) ||
         (target instanceof Element &&
-          (target.closest(".format-actions") ||
-            target.closest(".toolbar") ||
-            target.closest(".topbar-actions")))
+          (target.closest(".chrome") || target.closest(".statusbar")))
       ) {
         return;
       }
@@ -2433,6 +2509,7 @@
   observer.observe(canvas.parentElement);
   resizeCanvas();
   canvas.dataset.cursor = state.tool;
+  setRibbonTab("home");
   syncColorUI();
   syncEditUI();
   syncFormatUI();

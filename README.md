@@ -8,6 +8,8 @@ Development plan: see [ROADMAP.md](ROADMAP.md).
 
 Open `index.html` in a modern browser.
 
+The top bar is a ribbon. **Home** has the everyday tools. **Draw**, **Insert**, **View**, **Page**, **Export**, and **Help** group related actions. Color, size, undo, redo, and delete stay on the right of every tab. Items marked coming soon are visible for later stages and do not do anything yet.
+
 ### Tools
 
 | Tool   | Shortcut |

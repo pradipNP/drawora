@@ -12,7 +12,7 @@ Statuses:
 | ⚪ | PLANNED |
 | 🔴 | BLOCKED |
 
-**Current:** Stages 1–5 complete. Stage 6 is next.
+**Current:** Stages 1–6 complete. Stage 7 is next.
 
 ---
 
@@ -176,32 +176,24 @@ Do not rebuild unless necessary.
 
 ### Stage 6 — Professional ribbon / subnavbar
 
-**Status:** 🔵 NEXT
+**Status:** ✅ COMPLETED
 
-Transform the current toolbar into a professional application ribbon inspired by productivity apps.
+Application chrome is a compact ribbon: Home, Draw, Insert, View, Page, Export, Help.
 
-Logical groups (tabs may be adjusted if needed):
+- **Home** — Select, clipboard (copy/paste/duplicate), pen, eraser, shapes, text, sticky notes, font formatting
+- **Draw** — Pen and eraser, plus placeholders for pencil, marker, and highlighter
+- **Insert / View / Page / Export** — Grouped controls; later-stage actions are visible but disabled
+- **Help** — Existing keyboard shortcuts
+- Stroke color, fill, size, undo, redo, and delete stay available on every tab
+- Status bar shows placeholder Page 1 / 100% (not functional yet)
 
-- **Home** — Select, clipboard, pen, eraser, shapes, text, undo, redo, delete
-- **Draw** — Pen, pencil, marker, highlighter, eraser, stroke settings, colors
-- **Insert** — Image, text, table, shapes, files, page, link (placeholders / grouping only)
-- **View** — Zoom, pan, grid, rulers, guides, full screen (grouping only)
-- **Page** — Size, orientation, background, template (grouping only)
-- **Export** / **Help** — grouping only
-
-**This stage is primarily UI architecture.** Do not implement all tab functionality yet.
-
-Required: clean ribbon, tool grouping, active states, tooltips, keyboard accessibility, responsive compact design. No huge UI framework.
-
-Do **not** implement IndexedDB, PWA, collaboration, Cloudflare, full export, zoom/pan, pages, or new drawing tools.
-
-A small tool registry is acceptable if later stages will add many tools.
+Do not rebuild unless fixing an actual defect.
 
 ---
 
 ### Stage 7 — Advanced selection + clipboard
 
-**Status:** ⚪ PLANNED
+**Status:** 🔵 NEXT
 
 Multi-select, Shift-click, drag selection rectangle, select all, copy, paste, cut, duplicate, group, ungroup, delete, alignment where practical.
 
