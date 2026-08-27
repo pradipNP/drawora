@@ -12,7 +12,7 @@ Statuses:
 | ⚪ | PLANNED |
 | 🔴 | BLOCKED |
 
-**Current:** Stages 1–9 complete. Stage 10 is next.
+**Current:** Stages 1–10 complete. Stage 11 is next.
 
 ---
 
@@ -221,26 +221,26 @@ Add, delete, duplicate, rename, reorder, and switch pages. Status-bar thumbnails
 
 Each page keeps its own objects and camera. The visible sheet is a white page on the workspace; drawings are not clipped. **View → Fit** fits the page. Insert → Page adds a page.
 
-Do not make pages depend on cloud storage. Backgrounds and templates stay for Stage 10.
+Do not make pages depend on cloud storage.
 
 ---
 
 ### Stage 10 — Teacher / student page modes
 
-**Status:** 🔵 NEXT
+**Status:** ✅ COMPLETED
 
-Page templates behind user content. Changing background must not erase drawings.
+Page templates sit behind user content. Changing the background does not erase drawings.
 
-**Teacher:** plain white, presentation, dark board, grid, custom background.  
+**Teacher:** plain white, presentation, dark board, grid, custom paper color.  
 **Student:** ruled, narrow/wide ruled, graph, dotted, mathematics grid, handwriting paper.
 
-Modes: Teacher / Student / Custom. Adjustable line spacing, line color, margin, paper color, grid size.
+Modes: Teacher / Student / Custom. Paper color, line color, line spacing, grid size, and margin are adjustable. New pages inherit the current look.
 
 ---
 
 ### Stage 11 — Advanced text / Word-like editing
 
-**Status:** ⚪ PLANNED
+**Status:** 🔵 NEXT
 
 Double-click anywhere and start writing. Direct-canvas feel; wrapping by width; resize width; dynamic height.
 

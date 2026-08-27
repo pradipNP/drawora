@@ -430,16 +430,44 @@
               </div>
               <div class="ribbon-group">
                 <div class="ribbon-group-tools">
-                  <button type="button" class="ribbon-btn" disabled title="Background (coming soon)">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="5" width="15" height="14" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M4.5 15.5 9 11l3 3 3.2-3.6 4.3 5.1" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>
-                    <span class="visually-hidden">Background (coming soon)</span>
-                  </button>
-                  <button type="button" class="ribbon-btn" disabled title="Template (coming soon)">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4.5" width="14" height="15" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M8 9h8M8 12.5h8M8 16h5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
-                    <span class="visually-hidden">Template (coming soon)</span>
-                  </button>
+                  <button type="button" class="ribbon-btn ribbon-btn-wide" data-page-mode="teacher" aria-pressed="true" title="Teacher pages">Teacher</button>
+                  <button type="button" class="ribbon-btn ribbon-btn-wide" data-page-mode="student" aria-pressed="false" title="Student pages">Student</button>
+                  <button type="button" class="ribbon-btn ribbon-btn-wide" data-page-mode="custom" aria-pressed="false" title="Custom page look">Custom</button>
                 </div>
-                <span class="ribbon-group-label">Surface</span>
+                <span class="ribbon-group-label">Mode</span>
+              </div>
+              <div class="ribbon-group">
+                <div class="ribbon-group-tools page-template-tools">
+                  <button type="button" class="ribbon-btn ribbon-btn-wide" data-page-template="white" data-template-mode="teacher" aria-pressed="true" title="Plain white">White</button>
+                  <button type="button" class="ribbon-btn ribbon-btn-wide" data-page-template="presentation" data-template-mode="teacher" aria-pressed="false" title="Presentation">Present</button>
+                  <button type="button" class="ribbon-btn ribbon-btn-wide" data-page-template="dark" data-template-mode="teacher" aria-pressed="false" title="Dark board">Board</button>
+                  <button type="button" class="ribbon-btn ribbon-btn-wide" data-page-template="grid" data-template-mode="teacher" aria-pressed="false" title="Teacher grid">Grid</button>
+                  <button type="button" class="ribbon-btn ribbon-btn-wide" data-page-template="solid" data-template-mode="teacher" aria-pressed="false" title="Custom paper color">Color</button>
+                  <button type="button" class="ribbon-btn ribbon-btn-wide" data-page-template="ruled" data-template-mode="student" aria-pressed="false" title="Ruled" hidden>Ruled</button>
+                  <button type="button" class="ribbon-btn ribbon-btn-wide" data-page-template="narrow-ruled" data-template-mode="student" aria-pressed="false" title="Narrow ruled" hidden>Narrow</button>
+                  <button type="button" class="ribbon-btn ribbon-btn-wide" data-page-template="wide-ruled" data-template-mode="student" aria-pressed="false" title="Wide ruled" hidden>Wide</button>
+                  <button type="button" class="ribbon-btn ribbon-btn-wide" data-page-template="graph" data-template-mode="student" aria-pressed="false" title="Graph paper" hidden>Graph</button>
+                  <button type="button" class="ribbon-btn ribbon-btn-wide" data-page-template="dotted" data-template-mode="student" aria-pressed="false" title="Dotted paper" hidden>Dots</button>
+                  <button type="button" class="ribbon-btn ribbon-btn-wide" data-page-template="math" data-template-mode="student" aria-pressed="false" title="Mathematics grid" hidden>Math</button>
+                  <button type="button" class="ribbon-btn ribbon-btn-wide" data-page-template="handwriting" data-template-mode="student" aria-pressed="false" title="Handwriting paper" hidden>Hand</button>
+                </div>
+                <span class="ribbon-group-label">Template</span>
+              </div>
+              <div class="ribbon-group">
+                <div class="ribbon-group-tools page-look-tools">
+                  <label class="page-color-field" title="Paper color">
+                    <span>Paper</span>
+                    <input id="paper-color" type="color" value="#ffffff" aria-label="Paper color" />
+                  </label>
+                  <label class="page-color-field" title="Line color">
+                    <span>Lines</span>
+                    <input id="line-color" type="color" value="#d6d3d1" aria-label="Line color" />
+                  </label>
+                  <label class="page-dim-field">Space <input id="line-spacing" type="number" min="8" max="160" step="1" value="32" aria-label="Line spacing" /></label>
+                  <label class="page-dim-field">Grid <input id="grid-size" type="number" min="8" max="160" step="1" value="24" aria-label="Grid size" /></label>
+                  <label class="page-dim-field">Margin <input id="page-margin" type="number" min="0" max="240" step="1" value="56" aria-label="Page margin" /></label>
+                </div>
+                <span class="ribbon-group-label">Look</span>
               </div>
             </div>
 

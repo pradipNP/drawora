@@ -49,6 +49,22 @@
     letter: { width: 816, height: 1056, label: "Letter" },
     legal: { width: 816, height: 1344, label: "Legal" },
   };
+  const TEACHER_TEMPLATES = ["white", "presentation", "dark", "grid", "solid"];
+  const STUDENT_TEMPLATES = ["ruled", "narrow-ruled", "wide-ruled", "graph", "dotted", "math", "handwriting"];
+  const PAGE_TEMPLATES = {
+    white: { mode: "teacher", template: "white", paperColor: "#ffffff", lineColor: "#d6d3d1", lineSpacing: 32, margin: 56, gridSize: 24 },
+    presentation: { mode: "teacher", template: "presentation", paperColor: "#f1f5f9", lineColor: "#0f766e", lineSpacing: 32, margin: 0, gridSize: 24 },
+    dark: { mode: "teacher", template: "dark", paperColor: "#24362b", lineColor: "#4d7c5a", lineSpacing: 32, margin: 0, gridSize: 32 },
+    grid: { mode: "teacher", template: "grid", paperColor: "#ffffff", lineColor: "#e7e5e4", lineSpacing: 24, margin: 0, gridSize: 24 },
+    solid: { mode: "teacher", template: "solid", paperColor: "#ffffff", lineColor: "#d6d3d1", lineSpacing: 32, margin: 56, gridSize: 24 },
+    ruled: { mode: "student", template: "ruled", paperColor: "#fffef7", lineColor: "#93c5fd", lineSpacing: 32, margin: 64, gridSize: 24 },
+    "narrow-ruled": { mode: "student", template: "narrow-ruled", paperColor: "#fffef7", lineColor: "#93c5fd", lineSpacing: 22, margin: 64, gridSize: 24 },
+    "wide-ruled": { mode: "student", template: "wide-ruled", paperColor: "#fffef7", lineColor: "#7dd3fc", lineSpacing: 40, margin: 64, gridSize: 24 },
+    graph: { mode: "student", template: "graph", paperColor: "#ffffff", lineColor: "#d6d3d1", lineSpacing: 20, margin: 0, gridSize: 20 },
+    dotted: { mode: "student", template: "dotted", paperColor: "#ffffff", lineColor: "#a8a29e", lineSpacing: 24, margin: 0, gridSize: 24 },
+    math: { mode: "student", template: "math", paperColor: "#f8fafc", lineColor: "#cbd5e1", lineSpacing: 16, margin: 0, gridSize: 16 },
+    handwriting: { mode: "student", template: "handwriting", paperColor: "#fffef7", lineColor: "#7dd3fc", lineSpacing: 56, margin: 48, gridSize: 24 },
+  };
 
   const state = {
     tool: "pen",
@@ -121,6 +137,11 @@
   const pageStatus = document.getElementById("page-status");
   const pageDeleteBtn = document.getElementById("page-delete-btn");
   const statusbar = document.querySelector(".statusbar");
+  const paperColorInput = document.getElementById("paper-color");
+  const lineColorInput = document.getElementById("line-color");
+  const lineSpacingInput = document.getElementById("line-spacing");
+  const gridSizeInput = document.getElementById("grid-size");
+  const pageMarginInput = document.getElementById("page-margin");
 
   if (
     !canvas ||
@@ -153,7 +174,12 @@
     !pageThumbs ||
     !pageStatus ||
     !pageDeleteBtn ||
-    !statusbar
+    !statusbar ||
+    !paperColorInput ||
+    !lineColorInput ||
+    !lineSpacingInput ||
+    !gridSizeInput ||
+    !pageMarginInput
   ) {
     console.error("Drawora: missing canvas or toolbar controls.");
     return;
@@ -257,6 +283,42 @@
     return `${base} ${index}`;
   }
 
+  function defaultSurface(template) {
+    const spec = PAGE_TEMPLATES[template] || PAGE_TEMPLATES.white;
+    return { ...spec };
+  }
+
+  function normalizeSurface(surface) {
+    const base = defaultSurface(surface && surface.template);
+    if (!surface) {
+      return base;
+    }
+    return {
+      mode: surface.mode || base.mode,
+      template: PAGE_TEMPLATES[surface.template] ? surface.template : base.template,
+      paperColor: surface.paperColor || base.paperColor,
+      lineColor: surface.lineColor || base.lineColor,
+      lineSpacing: Math.min(160, Math.max(8, Number(surface.lineSpacing) || base.lineSpacing)),
+      margin: Math.min(240, Math.max(0, Number(surface.margin ?? base.margin))),
+      gridSize: Math.min(160, Math.max(8, Number(surface.gridSize) || base.gridSize)),
+    };
+  }
+
+  function pageSurface(page) {
+    return normalizeSurface(page && page.surface);
+  }
+
+  function hexLuminance(color) {
+    const hex = normalizeHex(String(color || "#ffffff")).replace("#", "");
+    if (hex.length !== 6) {
+      return 1;
+    }
+    const r = parseInt(hex.slice(0, 2), 16) / 255;
+    const g = parseInt(hex.slice(2, 4), 16) / 255;
+    const b = parseInt(hex.slice(4, 6), 16) / 255;
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  }
+
   function makePage(options = {}) {
     const source = options.source || currentPage();
     const preset = options.preset || (source && source.preset) || "a4";
@@ -279,6 +341,7 @@
           : orientation,
       width: size.width,
       height: size.height,
+      surface: normalizeSurface(options.surface || (source && source.surface) || defaultSurface("white")),
       objects: options.objects || [],
       zoom: options.zoom ?? 1,
       panX: options.panX ?? 0,
@@ -1132,20 +1195,140 @@
     }
   }
 
+  function strokePatternLine(target, x1, y1, x2, y2) {
+    target.beginPath();
+    target.moveTo(x1, y1);
+    target.lineTo(x2, y2);
+    target.stroke();
+  }
+
+  function drawGridLines(target, width, height, size, color, lineWidth, emphasis) {
+    target.save();
+    target.strokeStyle = color;
+    target.lineWidth = lineWidth;
+    for (let x = size; x < width; x += size) {
+      if (emphasis && Math.round(x / size) % 5 === 0) {
+        continue;
+      }
+      strokePatternLine(target, x, 0, x, height);
+    }
+    for (let y = size; y < height; y += size) {
+      if (emphasis && Math.round(y / size) % 5 === 0) {
+        continue;
+      }
+      strokePatternLine(target, 0, y, width, y);
+    }
+    if (emphasis) {
+      target.lineWidth = lineWidth * 1.8;
+      target.strokeStyle = color;
+      for (let x = size * 5; x < width; x += size * 5) {
+        strokePatternLine(target, x, 0, x, height);
+      }
+      for (let y = size * 5; y < height; y += size * 5) {
+        strokePatternLine(target, 0, y, width, y);
+      }
+    }
+    target.restore();
+  }
+
+  function drawRuledLines(target, width, height, spacing, margin, color, lineWidth, dashedMid) {
+    target.save();
+    target.strokeStyle = color;
+    target.lineWidth = lineWidth;
+    const top = spacing * 0.6;
+    for (let y = top; y < height - 8; y += spacing) {
+      if (dashedMid) {
+        target.setLineDash([]);
+        strokePatternLine(target, 0, y, width, y);
+        target.setLineDash([Math.max(lineWidth * 4, 6), Math.max(lineWidth * 3, 5)]);
+        strokePatternLine(target, 0, y + spacing / 2, width, y + spacing / 2);
+        target.setLineDash([]);
+        strokePatternLine(target, 0, y + spacing, width, y + spacing);
+        y += spacing * 0.45;
+      } else {
+        strokePatternLine(target, 0, y, width, y);
+      }
+    }
+    if (margin > 0) {
+      target.setLineDash([]);
+      target.strokeStyle = hexLuminance(color) < 0.4 ? "rgb(252 165 165 / 0.7)" : "#e11d48";
+      strokePatternLine(target, margin, 0, margin, height);
+    }
+    target.restore();
+  }
+
+  function drawDotGrid(target, width, height, size, color, radius) {
+    target.save();
+    target.fillStyle = color;
+    const r = Math.max(radius, 0.8);
+    for (let x = size; x < width; x += size) {
+      for (let y = size; y < height; y += size) {
+        target.fillRect(x - r, y - r, r * 2, r * 2);
+      }
+    }
+    target.restore();
+  }
+
+  function drawPagePattern(target, width, height, surface, unit) {
+    const lineWidth = unit(1);
+    const spacing = surface.lineSpacing;
+    const grid = surface.gridSize;
+    const margin = surface.margin;
+    const color = surface.lineColor;
+
+    if (surface.template === "presentation") {
+      target.fillStyle = color;
+      target.fillRect(0, 0, width, 40);
+      return;
+    }
+
+    if (surface.template === "dark" || surface.template === "grid" || surface.template === "graph") {
+      drawGridLines(target, width, height, grid, color, lineWidth, false);
+      return;
+    }
+
+    if (surface.template === "math") {
+      drawGridLines(target, width, height, grid, color, lineWidth, true);
+      return;
+    }
+
+    if (surface.template === "dotted") {
+      drawDotGrid(target, width, height, grid, color, unit(1.2));
+      return;
+    }
+
+    if (surface.template === "ruled" || surface.template === "narrow-ruled" || surface.template === "wide-ruled") {
+      drawRuledLines(target, width, height, spacing, margin, color, lineWidth, false);
+      return;
+    }
+
+    if (surface.template === "handwriting") {
+      drawRuledLines(target, width, height, spacing, margin, color, lineWidth, true);
+    }
+  }
+
   function drawPageSheet() {
     const page = currentPage();
     if (!page) {
       return;
     }
 
+    const surface = pageSurface(page);
+
     ctx.save();
     ctx.shadowColor = "rgb(28 25 23 / 0.16)";
     ctx.shadowBlur = viewLen(18);
     ctx.shadowOffsetY = viewLen(4);
-    ctx.fillStyle = "#ffffff";
+    ctx.fillStyle = surface.paperColor;
     ctx.fillRect(0, 0, page.width, page.height);
     ctx.shadowColor = "transparent";
-    ctx.strokeStyle = "rgb(28 25 23 / 0.1)";
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, page.width, page.height);
+    ctx.clip();
+    drawPagePattern(ctx, page.width, page.height, surface, viewLen);
+    ctx.restore();
+    ctx.strokeStyle = hexLuminance(surface.paperColor) < 0.35 ? "rgb(255 255 255 / 0.14)" : "rgb(28 25 23 / 0.1)";
     ctx.lineWidth = viewLen(1);
     ctx.strokeRect(0, 0, page.width, page.height);
     ctx.restore();
@@ -1349,6 +1532,7 @@
       orientation: page.orientation,
       width: page.width,
       height: page.height,
+      surface: pageSurface(page),
       objects: cloneData(page.id === state.currentPageId ? state.objects : page.objects),
     }));
   }
@@ -1452,10 +1636,19 @@
     const ph = page.height * scale;
     const ox = (cssW - pw) / 2;
     const oy = (cssH - ph) / 2;
-    thumb.fillStyle = "#ffffff";
-    thumb.strokeStyle = "rgb(28 25 23 / 0.12)";
+    const surface = pageSurface(page);
+    thumb.fillStyle = surface.paperColor;
+    thumb.strokeStyle = hexLuminance(surface.paperColor) < 0.35 ? "rgb(255 255 255 / 0.18)" : "rgb(28 25 23 / 0.12)";
     thumb.lineWidth = 1;
     thumb.fillRect(ox, oy, pw, ph);
+    thumb.save();
+    thumb.beginPath();
+    thumb.rect(ox, oy, pw, ph);
+    thumb.clip();
+    thumb.translate(ox, oy);
+    thumb.scale(scale, scale);
+    drawPagePattern(thumb, page.width, page.height, surface, (pixels) => pixels / scale);
+    thumb.restore();
     thumb.strokeRect(ox, oy, pw, ph);
 
     const objects = page.id === state.currentPageId ? state.objects : page.objects;
@@ -1470,7 +1663,7 @@
         continue;
       }
       const bounds = objectWorldBounds(object);
-      thumb.fillStyle = "rgb(28 25 23 / 0.22)";
+      thumb.fillStyle = hexLuminance(surface.paperColor) < 0.35 ? "rgb(255 255 255 / 0.45)" : "rgb(28 25 23 / 0.22)";
       thumb.fillRect(bounds.x, bounds.y, Math.max(bounds.width, 6), Math.max(bounds.height, 6));
     }
     thumb.restore();
@@ -1544,6 +1737,32 @@
     }
     for (const button of toolbar.querySelectorAll("[data-page-orientation]")) {
       button.setAttribute("aria-pressed", String(button.dataset.pageOrientation === page.orientation));
+    }
+
+    const surface = pageSurface(page);
+    page.surface = surface;
+    for (const button of toolbar.querySelectorAll("[data-page-mode]")) {
+      button.setAttribute("aria-pressed", String(button.dataset.pageMode === surface.mode));
+    }
+    for (const button of toolbar.querySelectorAll("[data-page-template]")) {
+      const group = button.dataset.templateMode;
+      button.hidden = surface.mode !== "custom" && group !== surface.mode;
+      button.setAttribute("aria-pressed", String(button.dataset.pageTemplate === surface.template));
+    }
+    if (document.activeElement !== paperColorInput) {
+      paperColorInput.value = surface.paperColor;
+    }
+    if (document.activeElement !== lineColorInput) {
+      lineColorInput.value = surface.lineColor;
+    }
+    if (document.activeElement !== lineSpacingInput) {
+      lineSpacingInput.value = String(surface.lineSpacing);
+    }
+    if (document.activeElement !== gridSizeInput) {
+      gridSizeInput.value = String(surface.gridSize);
+    }
+    if (document.activeElement !== pageMarginInput) {
+      pageMarginInput.value = String(surface.margin);
     }
 
     renderPageThumbs();
@@ -1715,6 +1934,82 @@
     commitIfChanged();
     redraw();
     syncPageUI();
+  }
+
+  function setPageMode(mode) {
+    const page = currentPage();
+    if (!page || (mode !== "teacher" && mode !== "student" && mode !== "custom")) {
+      return;
+    }
+
+    const surface = pageSurface(page);
+    captureBefore();
+    if (mode === "teacher" && !TEACHER_TEMPLATES.includes(surface.template)) {
+      page.surface = defaultSurface("white");
+    } else if (mode === "student" && !STUDENT_TEMPLATES.includes(surface.template)) {
+      page.surface = defaultSurface("ruled");
+    } else {
+      page.surface = { ...surface, mode };
+    }
+    commitIfChanged();
+    redraw();
+    syncPageUI();
+  }
+
+  function setPageTemplate(template) {
+    const page = currentPage();
+    if (!page || !PAGE_TEMPLATES[template]) {
+      return;
+    }
+
+    captureBefore();
+    const next = defaultSurface(template);
+    if (pageSurface(page).mode === "custom") {
+      next.mode = "custom";
+    }
+    page.surface = next;
+    commitIfChanged();
+    redraw();
+    syncPageUI();
+  }
+
+  function applySurfaceLook(commit) {
+    const page = currentPage();
+    if (!page) {
+      return;
+    }
+
+    const surface = pageSurface(page);
+    const next = normalizeSurface({
+      ...surface,
+      paperColor: paperColorInput.value || surface.paperColor,
+      lineColor: lineColorInput.value || surface.lineColor,
+      lineSpacing: lineSpacingInput.value,
+      gridSize: gridSizeInput.value,
+      margin: pageMarginInput.value,
+    });
+    const same =
+      next.paperColor === surface.paperColor &&
+      next.lineColor === surface.lineColor &&
+      next.lineSpacing === surface.lineSpacing &&
+      next.gridSize === surface.gridSize &&
+      next.margin === surface.margin;
+    if (same && !state.historyBefore) {
+      if (commit) {
+        syncPageUI();
+      }
+      return;
+    }
+
+    if (!state.historyBefore) {
+      captureBefore();
+    }
+    page.surface = next;
+    redraw();
+    if (commit) {
+      commitIfChanged();
+      syncPageUI();
+    }
   }
 
   function applyCustomPageSize(commit) {
@@ -3338,6 +3633,18 @@
       return;
     }
 
+    const modeButton = event.target.closest("[data-page-mode]");
+    if (modeButton && toolbar.contains(modeButton) && !modeButton.disabled) {
+      setPageMode(modeButton.dataset.pageMode);
+      return;
+    }
+
+    const templateButton = event.target.closest("[data-page-template]");
+    if (templateButton && toolbar.contains(templateButton) && !templateButton.disabled) {
+      setPageTemplate(templateButton.dataset.pageTemplate);
+      return;
+    }
+
     const targetButton = event.target.closest("[data-color-target]");
     if (targetButton && toolbar.contains(targetButton)) {
       setColorTarget(targetButton.dataset.colorTarget);
@@ -3706,6 +4013,19 @@
   pageHeightInput.addEventListener("change", () => applyCustomPageSize(true));
   pageWidthInput.addEventListener("blur", () => applyCustomPageSize(true));
   pageHeightInput.addEventListener("blur", () => applyCustomPageSize(true));
+  paperColorInput.addEventListener("input", () => applySurfaceLook(false));
+  lineColorInput.addEventListener("input", () => applySurfaceLook(false));
+  paperColorInput.addEventListener("change", () => applySurfaceLook(true));
+  lineColorInput.addEventListener("change", () => applySurfaceLook(true));
+  lineSpacingInput.addEventListener("input", () => applySurfaceLook(false));
+  gridSizeInput.addEventListener("input", () => applySurfaceLook(false));
+  pageMarginInput.addEventListener("input", () => applySurfaceLook(false));
+  lineSpacingInput.addEventListener("change", () => applySurfaceLook(true));
+  gridSizeInput.addEventListener("change", () => applySurfaceLook(true));
+  pageMarginInput.addEventListener("change", () => applySurfaceLook(true));
+  lineSpacingInput.addEventListener("blur", () => applySurfaceLook(true));
+  gridSizeInput.addEventListener("blur", () => applySurfaceLook(true));
+  pageMarginInput.addEventListener("blur", () => applySurfaceLook(true));
 
   statusbar.addEventListener("click", (event) => {
     if (event.target.closest('[data-action="page-add"]')) {

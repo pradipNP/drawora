@@ -165,9 +165,31 @@ button {
   gap: 2px;
 }
 
-.page-size-tools {
+.page-size-tools,
+.page-template-tools,
+.page-look-tools {
   flex-wrap: wrap;
   max-width: 420px;
+}
+
+.page-color-field {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 4px;
+  color: var(--ink-muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.page-color-field input {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  cursor: pointer;
 }
 
 .page-name-field input,
@@ -269,6 +291,10 @@ button {
 .ribbon-btn[aria-pressed="true"] {
   background: var(--accent-soft);
   color: var(--accent);
+}
+
+.ribbon-btn[hidden] {
+  display: none;
 }
 
 .ribbon-btn-wide {
