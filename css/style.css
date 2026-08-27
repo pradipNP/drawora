@@ -52,8 +52,9 @@ button {
 .topbar {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   height: var(--topbar-height);
-  padding: 0 16px;
+  padding: 0 12px 0 16px;
   background: var(--surface);
   border-bottom: 1px solid var(--line);
   flex-shrink: 0;
@@ -76,6 +77,42 @@ button {
   font-size: 1.05rem;
   font-weight: 600;
   letter-spacing: -0.02em;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.icon-btn {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  color: var(--ink-muted);
+}
+
+.icon-btn svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+.icon-btn:hover:not(:disabled) {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.icon-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.icon-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .workspace {

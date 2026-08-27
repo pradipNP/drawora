@@ -33,6 +33,83 @@
           </span>
           <h1>Drawora</h1>
         </div>
+
+        <div class="topbar-actions">
+          <button
+            type="button"
+            id="undo-btn"
+            class="icon-btn"
+            title="Undo (Ctrl+Z)"
+            aria-keyshortcuts="Control+Z"
+            disabled
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M7 8H4l4-4M4 8l4 4"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.75"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <path
+                d="M4 8h9.5a6.5 6.5 0 1 1 0 13H8"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.75"
+                stroke-linecap="round"
+              />
+            </svg>
+            <span class="visually-hidden">Undo</span>
+          </button>
+          <button
+            type="button"
+            id="redo-btn"
+            class="icon-btn"
+            title="Redo (Ctrl+Y)"
+            aria-keyshortcuts="Control+Y Control+Shift+Z"
+            disabled
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M17 8h3l-4-4M20 8l-4 4"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.75"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <path
+                d="M20 8h-9.5a6.5 6.5 0 1 0 0 13H16"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.75"
+                stroke-linecap="round"
+              />
+            </svg>
+            <span class="visually-hidden">Redo</span>
+          </button>
+          <button
+            type="button"
+            id="delete-btn"
+            class="icon-btn"
+            title="Delete (Del)"
+            aria-keyshortcuts="Delete Backspace"
+            disabled
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M5.5 7h13M10 7V5.5A1.5 1.5 0 0 1 11.5 4h1A1.5 1.5 0 0 1 14 5.5V7M8 7l.7 12.2A1.5 1.5 0 0 0 10.2 20.5h3.6a1.5 1.5 0 0 0 1.5-1.3L16 7"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.75"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <span class="visually-hidden">Delete</span>
+          </button>
+        </div>
       </header>
 
       <div class="workspace">

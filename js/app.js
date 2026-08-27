@@ -18,6 +18,14 @@
   ];
   const ROUND_RECT_RADIUS = 12;
   const MIN_SHAPE_SIZE = 2;
+  const MIN_FRAME = 8;
+  const HANDLE_SIZE = 7;
+  const HANDLE_HIT = 10;
+  const ROTATE_OFFSET = 26;
+  const HIT_PADDING = 8;
+  const DUPLICATE_OFFSET = 16;
+  const MAX_HISTORY = 50;
+  const SELECT_COLOR = "#0f766e";
 
   const state = {
     tool: "pen",
@@ -28,6 +36,11 @@
     dpr: 1,
     nextId: 1,
     objects: [],
+    selectedIds: [],
+    clipboard: [],
+    past: [],
+    future: [],
+    historyBefore: null,
     preview: null,
     active: null,
     queuedPoints: [],
@@ -43,6 +56,9 @@
   const fillTargetButton = toolbar && toolbar.querySelector('[data-color-target="fill"]');
   const sizeInput = document.getElementById("stroke-size");
   const sizeValue = document.getElementById("size-value");
+  const undoBtn = document.getElementById("undo-btn");
+  const redoBtn = document.getElementById("redo-btn");
+  const deleteBtn = document.getElementById("delete-btn");
 
   if (
     !canvas ||
@@ -53,7 +69,10 @@
     !fillPreview ||
     !fillTargetButton ||
     !sizeInput ||
-    !sizeValue
+    !sizeValue ||
+    !undoBtn ||
+    !redoBtn ||
+    !deleteBtn
   ) {
     console.error("Drawora: missing canvas or toolbar controls.");
     return;
@@ -82,6 +101,10 @@
     return SHAPE_TOOLS.includes(tool);
   }
 
+  function isSelectable(object) {
+    return !(object.type === "stroke" && object.tool === "eraser");
+  }
+
   function normalizeHex(color) {
     return color.trim().toLowerCase();
   }
@@ -90,6 +113,10 @@
     const id = `o${state.nextId}`;
     state.nextId += 1;
     return id;
+  }
+
+  function cloneData(value) {
+    return structuredClone(value);
   }
 
   function getPoint(event) {
@@ -101,9 +128,15 @@
   }
 
   function distance(a, b) {
-    const dx = b.x - a.x;
-    const dy = b.y - a.y;
-    return Math.hypot(dx, dy);
+    return Math.hypot(b.x - a.x, b.y - a.y);
+  }
+
+  function selectedObjects() {
+    return state.objects.filter((object) => state.selectedIds.includes(object.id));
+  }
+
+  function findObject(id) {
+    return state.objects.find((object) => object.id === id);
   }
 
   function normalizedBounds(start, end, square) {
@@ -136,6 +169,7 @@
         y2: end.y,
         stroke: state.stroke,
         size: state.size,
+        rotation: 0,
       };
     }
 
@@ -145,6 +179,7 @@
       stroke: state.stroke,
       fill: state.fill,
       size: state.size,
+      rotation: 0,
     };
 
     if (type === "roundrect") {
@@ -160,6 +195,97 @@
     }
 
     return shape.width >= MIN_SHAPE_SIZE || shape.height >= MIN_SHAPE_SIZE;
+  }
+
+  function getLocalBounds(object) {
+    if (object.type === "stroke") {
+      let minX = Infinity;
+      let minY = Infinity;
+      let maxX = -Infinity;
+      let maxY = -Infinity;
+      for (const point of object.points) {
+        minX = Math.min(minX, point.x);
+        minY = Math.min(minY, point.y);
+        maxX = Math.max(maxX, point.x);
+        maxY = Math.max(maxY, point.y);
+      }
+      if (!object.points.length) {
+        return { x: 0, y: 0, width: 0, height: 0 };
+      }
+      return {
+        x: minX,
+        y: minY,
+        width: Math.max(maxX - minX, MIN_SHAPE_SIZE),
+        height: Math.max(maxY - minY, MIN_SHAPE_SIZE),
+      };
+    }
+
+    if (object.type === "line" || object.type === "arrow") {
+      return {
+        x: Math.min(object.x1, object.x2),
+        y: Math.min(object.y1, object.y2),
+        width: Math.max(Math.abs(object.x2 - object.x1), MIN_SHAPE_SIZE),
+        height: Math.max(Math.abs(object.y2 - object.y1), MIN_SHAPE_SIZE),
+      };
+    }
+
+    return {
+      x: object.x,
+      y: object.y,
+      width: object.width,
+      height: object.height,
+    };
+  }
+
+  function getFrame(object) {
+    const bounds = getLocalBounds(object);
+    const pad = Math.max(6, (object.size || 4) / 2 + 2);
+    return {
+      x: bounds.x - pad,
+      y: bounds.y - pad,
+      width: Math.max(bounds.width + pad * 2, MIN_FRAME),
+      height: Math.max(bounds.height + pad * 2, MIN_FRAME),
+    };
+  }
+
+  function getCenterFromBounds(bounds) {
+    return {
+      x: bounds.x + bounds.width / 2,
+      y: bounds.y + bounds.height / 2,
+    };
+  }
+
+  function getCenter(object) {
+    return getCenterFromBounds(getLocalBounds(object));
+  }
+
+  function rotateAround(point, center, angle) {
+    const dx = point.x - center.x;
+    const dy = point.y - center.y;
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    return {
+      x: center.x + dx * cos - dy * sin,
+      y: center.y + dx * sin + dy * cos,
+    };
+  }
+
+  function worldToLocal(point, center, rotation) {
+    return rotateAround(point, center, -(rotation || 0));
+  }
+
+  function localToWorld(point, center, rotation) {
+    return rotateAround(point, center, rotation || 0);
+  }
+
+  function handlePositions(frame, center) {
+    return {
+      nw: { x: frame.x, y: frame.y },
+      ne: { x: frame.x + frame.width, y: frame.y },
+      sw: { x: frame.x, y: frame.y + frame.height },
+      se: { x: frame.x + frame.width, y: frame.y + frame.height },
+      rotate: { x: center.x, y: frame.y - ROTATE_OFFSET },
+    };
   }
 
   function configureStroke(stroke) {
@@ -289,49 +415,74 @@
     ctx.restore();
   }
 
+  function trianglePoints(shape) {
+    return [
+      { x: shape.x + shape.width / 2, y: shape.y },
+      { x: shape.x, y: shape.y + shape.height },
+      { x: shape.x + shape.width, y: shape.y + shape.height },
+    ];
+  }
+
   function drawTriangle(shape) {
+    const [a, b, c] = trianglePoints(shape);
     ctx.save();
     configureShape(shape);
     ctx.beginPath();
-    ctx.moveTo(shape.x + shape.width / 2, shape.y);
-    ctx.lineTo(shape.x, shape.y + shape.height);
-    ctx.lineTo(shape.x + shape.width, shape.y + shape.height);
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.lineTo(c.x, c.y);
     ctx.closePath();
     paintClosedPath(shape);
     ctx.restore();
   }
 
-  function drawArrow(shape) {
+  function arrowHeadPoints(shape) {
     const dx = shape.x2 - shape.x1;
     const dy = shape.y2 - shape.y1;
     const length = Math.hypot(dx, dy);
     if (length === 0) {
-      return;
+      return null;
     }
 
     const angle = Math.atan2(dy, dx);
     const headLength = Math.min(Math.max(12, shape.size * 4), length * 0.45);
     const headWidth = headLength * 0.55;
-    const shaftX = shape.x2 - Math.cos(angle) * headLength;
-    const shaftY = shape.y2 - Math.sin(angle) * headLength;
+    return {
+      angle,
+      headLength,
+      shaft: {
+        x: shape.x2 - Math.cos(angle) * headLength,
+        y: shape.y2 - Math.sin(angle) * headLength,
+      },
+      tip: { x: shape.x2, y: shape.y2 },
+      left: {
+        x: shape.x2 - Math.cos(angle) * headLength + Math.sin(angle) * headWidth,
+        y: shape.y2 - Math.sin(angle) * headLength - Math.cos(angle) * headWidth,
+      },
+      right: {
+        x: shape.x2 - Math.cos(angle) * headLength - Math.sin(angle) * headWidth,
+        y: shape.y2 - Math.sin(angle) * headLength + Math.cos(angle) * headWidth,
+      },
+    };
+  }
+
+  function drawArrow(shape) {
+    const head = arrowHeadPoints(shape);
+    if (!head) {
+      return;
+    }
 
     ctx.save();
     configureShape(shape);
     ctx.beginPath();
     ctx.moveTo(shape.x1, shape.y1);
-    ctx.lineTo(shaftX, shaftY);
+    ctx.lineTo(head.shaft.x, head.shaft.y);
     ctx.stroke();
 
     ctx.beginPath();
-    ctx.moveTo(shape.x2, shape.y2);
-    ctx.lineTo(
-      shape.x2 - Math.cos(angle) * headLength + Math.sin(angle) * headWidth,
-      shape.y2 - Math.sin(angle) * headLength - Math.cos(angle) * headWidth
-    );
-    ctx.lineTo(
-      shape.x2 - Math.cos(angle) * headLength - Math.sin(angle) * headWidth,
-      shape.y2 - Math.sin(angle) * headLength + Math.cos(angle) * headWidth
-    );
+    ctx.moveTo(head.tip.x, head.tip.y);
+    ctx.lineTo(head.left.x, head.left.y);
+    ctx.lineTo(head.right.x, head.right.y);
     ctx.closePath();
     ctx.fillStyle = shape.stroke;
     ctx.fill();
@@ -363,13 +514,132 @@
     }
   }
 
-  function drawObject(object) {
+  function drawObjectUnrotated(object) {
     if (object.type === "stroke") {
       drawStroke(object);
       return;
     }
 
     drawShape(object);
+  }
+
+  function drawObject(object) {
+    const rotation = object.rotation || 0;
+    if (!rotation) {
+      drawObjectUnrotated(object);
+      return;
+    }
+
+    const center = getCenter(object);
+    ctx.save();
+    ctx.translate(center.x, center.y);
+    ctx.rotate(rotation);
+    ctx.translate(-center.x, -center.y);
+    drawObjectUnrotated(object);
+    ctx.restore();
+  }
+
+  function drawHandleBox(x, y) {
+    const half = HANDLE_SIZE / 2;
+    ctx.beginPath();
+    ctx.rect(x - half, y - half, HANDLE_SIZE, HANDLE_SIZE);
+    ctx.fillStyle = "#ffffff";
+    ctx.strokeStyle = SELECT_COLOR;
+    ctx.lineWidth = 1.25;
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  function drawHandleCircle(x, y) {
+    ctx.beginPath();
+    ctx.arc(x, y, HANDLE_SIZE / 2 + 1, 0, Math.PI * 2);
+    ctx.fillStyle = "#ffffff";
+    ctx.strokeStyle = SELECT_COLOR;
+    ctx.lineWidth = 1.25;
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  function drawSingleSelection(object) {
+    const frame = getFrame(object);
+    const bounds = getLocalBounds(object);
+    const center = getCenterFromBounds(bounds);
+    const rotation = object.rotation || 0;
+    const handles = handlePositions(frame, center);
+
+    ctx.save();
+    ctx.translate(center.x, center.y);
+    ctx.rotate(rotation);
+    ctx.translate(-center.x, -center.y);
+
+    ctx.strokeStyle = SELECT_COLOR;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([5, 4]);
+    ctx.strokeRect(frame.x, frame.y, frame.width, frame.height);
+    ctx.setLineDash([]);
+
+    ctx.beginPath();
+    ctx.moveTo(handles.rotate.x, frame.y);
+    ctx.lineTo(handles.rotate.x, handles.rotate.y);
+    ctx.stroke();
+
+    drawHandleCircle(handles.rotate.x, handles.rotate.y);
+    drawHandleBox(handles.nw.x, handles.nw.y);
+    drawHandleBox(handles.ne.x, handles.ne.y);
+    drawHandleBox(handles.sw.x, handles.sw.y);
+    drawHandleBox(handles.se.x, handles.se.y);
+    ctx.restore();
+  }
+
+  function worldCorners(object) {
+    const frame = getFrame(object);
+    const center = getCenter(object);
+    const rotation = object.rotation || 0;
+    return [
+      { x: frame.x, y: frame.y },
+      { x: frame.x + frame.width, y: frame.y },
+      { x: frame.x + frame.width, y: frame.y + frame.height },
+      { x: frame.x, y: frame.y + frame.height },
+    ].map((point) => localToWorld(point, center, rotation));
+  }
+
+  function drawGroupSelection(objects) {
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    for (const object of objects) {
+      for (const corner of worldCorners(object)) {
+        minX = Math.min(minX, corner.x);
+        minY = Math.min(minY, corner.y);
+        maxX = Math.max(maxX, corner.x);
+        maxY = Math.max(maxY, corner.y);
+      }
+    }
+
+    if (!Number.isFinite(minX)) {
+      return;
+    }
+
+    ctx.save();
+    ctx.strokeStyle = SELECT_COLOR;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([5, 4]);
+    ctx.strokeRect(minX, minY, maxX - minX, maxY - minY);
+    ctx.restore();
+  }
+
+  function drawSelectionOverlay() {
+    const selected = selectedObjects();
+    if (selected.length === 1) {
+      drawSingleSelection(selected[0]);
+      return;
+    }
+
+    if (selected.length > 1) {
+      drawGroupSelection(selected);
+    }
   }
 
   function redraw() {
@@ -384,6 +654,8 @@
     if (state.preview) {
       drawShape(state.preview);
     }
+
+    drawSelectionOverlay();
   }
 
   function resizeCanvas() {
@@ -409,6 +681,607 @@
     canvas.style.width = `${width}px`;
     canvas.style.height = `${height}px`;
     redraw();
+  }
+
+  function distToSegment(point, a, b) {
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const length2 = dx * dx + dy * dy;
+    if (length2 === 0) {
+      return distance(point, a);
+    }
+
+    const t = Math.max(0, Math.min(1, ((point.x - a.x) * dx + (point.y - a.y) * dy) / length2));
+    return distance(point, { x: a.x + t * dx, y: a.y + t * dy });
+  }
+
+  function pointInTriangle(point, a, b, c) {
+    const sign = (p1, p2, p3) => (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y);
+    const d1 = sign(point, a, b);
+    const d2 = sign(point, b, c);
+    const d3 = sign(point, c, a);
+    const hasNeg = d1 < 0 || d2 < 0 || d3 < 0;
+    const hasPos = d1 > 0 || d2 > 0 || d3 > 0;
+    return !(hasNeg && hasPos);
+  }
+
+  function pointInBounds(point, x, y, width, height) {
+    return point.x >= x && point.x <= x + width && point.y >= y && point.y <= y + height;
+  }
+
+  function hitObjectAtLocal(object, point) {
+    const tolerance = Math.max(HIT_PADDING, (object.size || 4) / 2 + 3);
+
+    if (object.type === "stroke") {
+      const points = object.points;
+      if (points.length === 1) {
+        return distance(point, points[0]) <= tolerance;
+      }
+      for (let i = 1; i < points.length; i += 1) {
+        if (distToSegment(point, points[i - 1], points[i]) <= tolerance) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    if (object.type === "line") {
+      return distToSegment(point, { x: object.x1, y: object.y1 }, { x: object.x2, y: object.y2 }) <= tolerance;
+    }
+
+    if (object.type === "arrow") {
+      const head = arrowHeadPoints(object);
+      if (
+        distToSegment(point, { x: object.x1, y: object.y1 }, { x: object.x2, y: object.y2 }) <=
+        tolerance
+      ) {
+        return true;
+      }
+      return Boolean(head && pointInTriangle(point, head.tip, head.left, head.right));
+    }
+
+    if (object.type === "ellipse") {
+      const rx = object.width / 2;
+      const ry = object.height / 2;
+      if (rx < 0.5 || ry < 0.5) {
+        return false;
+      }
+      const nx = (point.x - (object.x + rx)) / rx;
+      const ny = (point.y - (object.y + ry)) / ry;
+      return nx * nx + ny * ny <= 1;
+    }
+
+    if (object.type === "triangle") {
+      const [a, b, c] = trianglePoints(object);
+      return pointInTriangle(point, a, b, c);
+    }
+
+    return pointInBounds(point, object.x, object.y, object.width, object.height);
+  }
+
+  function hitObject(point) {
+    for (let i = state.objects.length - 1; i >= 0; i -= 1) {
+      const object = state.objects[i];
+      if (!isSelectable(object)) {
+        continue;
+      }
+
+      const local = worldToLocal(point, getCenter(object), object.rotation || 0);
+      if (hitObjectAtLocal(object, local)) {
+        return object;
+      }
+    }
+
+    return null;
+  }
+
+  function hitHandle(point) {
+    if (state.selectedIds.length !== 1) {
+      return null;
+    }
+
+    const object = findObject(state.selectedIds[0]);
+    if (!object) {
+      return null;
+    }
+
+    const frame = getFrame(object);
+    const bounds = getLocalBounds(object);
+    const center = getCenterFromBounds(bounds);
+    const local = worldToLocal(point, center, object.rotation || 0);
+    const handles = handlePositions(frame, center);
+    const order = ["rotate", "nw", "ne", "sw", "se"];
+
+    for (const name of order) {
+      if (distance(local, handles[name]) <= HANDLE_HIT) {
+        return name;
+      }
+    }
+
+    return null;
+  }
+
+  function cloneBoard() {
+    return {
+      objects: cloneData(state.objects),
+      nextId: state.nextId,
+      selectedIds: [...state.selectedIds],
+    };
+  }
+
+  function restoreBoard(snapshot) {
+    state.objects = cloneData(snapshot.objects);
+    state.nextId = snapshot.nextId;
+    state.selectedIds = snapshot.selectedIds.filter((id) =>
+      state.objects.some((object) => object.id === id)
+    );
+    redraw();
+    syncEditUI();
+  }
+
+  function captureBefore() {
+    state.historyBefore = cloneBoard();
+  }
+
+  function boardsEqual(a, b) {
+    return JSON.stringify(a.objects) === JSON.stringify(b.objects);
+  }
+
+  function commitIfChanged() {
+    if (!state.historyBefore) {
+      return;
+    }
+
+    const current = cloneBoard();
+    if (boardsEqual(state.historyBefore, current)) {
+      state.historyBefore = null;
+      return;
+    }
+
+    state.past.push(state.historyBefore);
+    if (state.past.length > MAX_HISTORY) {
+      state.past.shift();
+    }
+    state.future = [];
+    state.historyBefore = null;
+    syncEditUI();
+  }
+
+  function discardHistoryCapture() {
+    state.historyBefore = null;
+  }
+
+  function undo() {
+    if (state.active || state.past.length === 0) {
+      return;
+    }
+
+    state.future.push(cloneBoard());
+    restoreBoard(state.past.pop());
+  }
+
+  function redo() {
+    if (state.active || state.future.length === 0) {
+      return;
+    }
+
+    state.past.push(cloneBoard());
+    restoreBoard(state.future.pop());
+  }
+
+  function syncEditUI() {
+    undoBtn.disabled = state.past.length === 0;
+    redoBtn.disabled = state.future.length === 0;
+    deleteBtn.disabled = state.selectedIds.length === 0;
+  }
+
+  function setSelection(ids) {
+    state.selectedIds = ids;
+    syncEditUI();
+  }
+
+  function clearSelection() {
+    if (state.selectedIds.length === 0) {
+      return;
+    }
+
+    setSelection([]);
+  }
+
+  function translateObject(object, dx, dy) {
+    if (object.type === "line" || object.type === "arrow") {
+      object.x1 += dx;
+      object.y1 += dy;
+      object.x2 += dx;
+      object.y2 += dy;
+      return;
+    }
+
+    if (object.type === "stroke") {
+      for (const point of object.points) {
+        point.x += dx;
+        point.y += dy;
+      }
+      return;
+    }
+
+    object.x += dx;
+    object.y += dy;
+  }
+
+  function applyScaledBounds(object, startObject, startBounds, newBounds) {
+    const sx = startBounds.width < 1 ? 1 : newBounds.width / startBounds.width;
+    const sy = startBounds.height < 1 ? 1 : newBounds.height / startBounds.height;
+
+    if (object.type === "line" || object.type === "arrow") {
+      object.x1 = newBounds.x + (startObject.x1 - startBounds.x) * sx;
+      object.y1 = newBounds.y + (startObject.y1 - startBounds.y) * sy;
+      object.x2 = newBounds.x + (startObject.x2 - startBounds.x) * sx;
+      object.y2 = newBounds.y + (startObject.y2 - startBounds.y) * sy;
+      return;
+    }
+
+    if (object.type === "stroke") {
+      object.points = startObject.points.map((point) => ({
+        x: newBounds.x + (point.x - startBounds.x) * sx,
+        y: newBounds.y + (point.y - startBounds.y) * sy,
+      }));
+      return;
+    }
+
+    object.x = newBounds.x;
+    object.y = newBounds.y;
+    object.width = newBounds.width;
+    object.height = newBounds.height;
+  }
+
+  function cloneObject(object, offset) {
+    const copy = cloneData(object);
+    copy.id = createId();
+    if (offset) {
+      translateObject(copy, offset, offset);
+    }
+    return copy;
+  }
+
+  function deleteSelected() {
+    if (state.selectedIds.length === 0 || state.active) {
+      return;
+    }
+
+    captureBefore();
+    const ids = new Set(state.selectedIds);
+    state.objects = state.objects.filter((object) => !ids.has(object.id));
+    setSelection([]);
+    commitIfChanged();
+    redraw();
+  }
+
+  function duplicateSelected() {
+    if (state.selectedIds.length === 0 || state.active) {
+      return;
+    }
+
+    captureBefore();
+    const copies = selectedObjects().map((object) => cloneObject(object, DUPLICATE_OFFSET));
+    for (const copy of copies) {
+      state.objects.push(copy);
+    }
+    setSelection(copies.map((copy) => copy.id));
+    commitIfChanged();
+    redraw();
+  }
+
+  function copySelected() {
+    const selected = selectedObjects();
+    if (selected.length === 0) {
+      return;
+    }
+
+    state.clipboard = cloneData(selected);
+  }
+
+  function pasteClipboard() {
+    if (state.clipboard.length === 0 || state.active) {
+      return;
+    }
+
+    captureBefore();
+    const copies = state.clipboard.map((object) => {
+      const copy = cloneData(object);
+      copy.id = createId();
+      translateObject(copy, DUPLICATE_OFFSET, DUPLICATE_OFFSET);
+      return copy;
+    });
+    for (const copy of copies) {
+      state.objects.push(copy);
+    }
+    setSelection(copies.map((copy) => copy.id));
+    commitIfChanged();
+    redraw();
+  }
+
+  function applyStyleToSelected() {
+    for (const object of selectedObjects()) {
+      if (object.type === "stroke") {
+        if (object.tool === "eraser") {
+          continue;
+        }
+        object.color = state.stroke;
+        object.size = state.size;
+        continue;
+      }
+
+      object.stroke = state.stroke;
+      object.size = state.size;
+      if (object.type !== "line" && object.type !== "arrow") {
+        object.fill = state.fill;
+      }
+    }
+  }
+
+  function replaceObjectFromClone(target, source) {
+    const id = target.id;
+    Object.keys(target).forEach((key) => {
+      delete target[key];
+    });
+    Object.assign(target, cloneData(source), { id });
+  }
+
+  function applyMove(point) {
+    const drag = state.active;
+    const dx = point.x - drag.startPoint.x;
+    const dy = point.y - drag.startPoint.y;
+    drag.targets.forEach((object, index) => {
+      replaceObjectFromClone(object, drag.startObjects[index]);
+      translateObject(object, dx, dy);
+    });
+  }
+
+  function applyRotate(point) {
+    const drag = state.active;
+    const object = drag.targets[0];
+    const start = drag.startObjects[0];
+    replaceObjectFromClone(object, start);
+    const angle = Math.atan2(point.y - drag.center.y, point.x - drag.center.x);
+    const origin = Math.atan2(
+      drag.startPoint.y - drag.center.y,
+      drag.startPoint.x - drag.center.x
+    );
+    object.rotation = (start.rotation || 0) + (angle - origin);
+  }
+
+  function applyResize(point) {
+    const drag = state.active;
+    const object = drag.targets[0];
+    const start = drag.startObjects[0];
+    replaceObjectFromClone(object, start);
+
+    const local = worldToLocal(point, drag.center, drag.rotation);
+    const startBounds = drag.startBounds;
+    let left = startBounds.x;
+    let top = startBounds.y;
+    let right = startBounds.x + startBounds.width;
+    let bottom = startBounds.y + startBounds.height;
+
+    if (drag.handle.includes("w")) {
+      left = local.x;
+    }
+    if (drag.handle.includes("e")) {
+      right = local.x;
+    }
+    if (drag.handle.includes("n")) {
+      top = local.y;
+    }
+    if (drag.handle.includes("s")) {
+      bottom = local.y;
+    }
+
+    if (right - left < MIN_FRAME) {
+      if (drag.handle.includes("w")) {
+        left = right - MIN_FRAME;
+      } else {
+        right = left + MIN_FRAME;
+      }
+    }
+    if (bottom - top < MIN_FRAME) {
+      if (drag.handle.includes("n")) {
+        top = bottom - MIN_FRAME;
+      } else {
+        bottom = top + MIN_FRAME;
+      }
+    }
+
+    const nextBounds = {
+      x: left,
+      y: top,
+      width: right - left,
+      height: bottom - top,
+    };
+
+    const fixedLocal = {
+      x: drag.handle.includes("w") ? right : left,
+      y: drag.handle.includes("n") ? bottom : top,
+    };
+    const worldBefore = localToWorld(fixedLocal, drag.center, drag.rotation);
+
+    applyScaledBounds(object, start, startBounds, nextBounds);
+
+    const worldAfter = localToWorld(fixedLocal, getCenter(object), object.rotation || 0);
+    translateObject(object, worldBefore.x - worldAfter.x, worldBefore.y - worldAfter.y);
+  }
+
+  function applyTransform(point) {
+    if (!state.active || state.active.kind !== "transform") {
+      return;
+    }
+
+    if (state.active.mode === "move") {
+      applyMove(point);
+      return;
+    }
+
+    if (state.active.mode === "rotate") {
+      applyRotate(point);
+      return;
+    }
+
+    applyResize(point);
+  }
+
+  function flushSelectDrag() {
+    state.raf = 0;
+    if (!state.active || state.active.kind !== "transform" || !state.active.point) {
+      return;
+    }
+
+    applyTransform(state.active.point);
+    redraw();
+  }
+
+  function queueSelectDrag(point) {
+    if (!state.active || state.active.kind !== "transform") {
+      return;
+    }
+
+    state.active.point = point;
+    if (!state.raf) {
+      state.raf = requestAnimationFrame(flushSelectDrag);
+    }
+  }
+
+  function startTransform(mode, handle, point, pointerId) {
+    const targets = selectedObjects();
+    const startObjects = targets.map((object) => cloneData(object));
+    const primary = targets[0];
+    const startBounds = primary
+      ? mode === "resize"
+        ? getFrame(primary)
+        : getLocalBounds(primary)
+      : null;
+    const center = primary ? getCenter(primary) : { x: 0, y: 0 };
+
+    state.active = {
+      kind: "transform",
+      mode,
+      handle,
+      pointerId,
+      point,
+      startPoint: point,
+      targets,
+      startObjects,
+      startBounds,
+      center,
+      rotation: primary ? primary.rotation || 0 : 0,
+    };
+    canvas.style.cursor = mode === "move" ? "grabbing" : canvas.style.cursor;
+  }
+
+  function finishTransform(pointerId) {
+    if (!state.active || state.active.kind !== "transform" || state.active.pointerId !== pointerId) {
+      return;
+    }
+
+    if (state.raf) {
+      cancelAnimationFrame(state.raf);
+      flushSelectDrag();
+    }
+
+    state.active = null;
+    releasePointer(pointerId);
+    commitIfChanged();
+    redraw();
+  }
+
+  function cancelActive() {
+    if (!state.active) {
+      clearSelection();
+      redraw();
+      return;
+    }
+
+    if (state.historyBefore) {
+      restoreBoard(state.historyBefore);
+      discardHistoryCapture();
+    }
+
+    const pointerId = state.active.pointerId;
+    if (state.raf) {
+      cancelAnimationFrame(state.raf);
+      state.raf = 0;
+    }
+    state.preview = null;
+    state.queuedPoints = [];
+    state.active = null;
+    if (pointerId != null) {
+      releasePointer(pointerId);
+    }
+    redraw();
+  }
+
+  function cursorForHandle(handle) {
+    if (handle === "rotate") {
+      return "grab";
+    }
+    if (handle === "nw" || handle === "se") {
+      return "nwse-resize";
+    }
+    if (handle === "ne" || handle === "sw") {
+      return "nesw-resize";
+    }
+    return "default";
+  }
+
+  function updateSelectCursor(point) {
+    if (state.tool !== "select" || state.active) {
+      return;
+    }
+
+    const handle = hitHandle(point);
+    if (handle) {
+      canvas.style.cursor = cursorForHandle(handle);
+      return;
+    }
+
+    canvas.style.cursor = hitObject(point) ? "move" : "default";
+  }
+
+  function onSelectPointerDown(event, point) {
+    const handle = hitHandle(point);
+    if (handle) {
+      captureBefore();
+      const mode = handle === "rotate" ? "rotate" : "resize";
+      canvas.style.cursor = handle === "rotate" ? "grabbing" : cursorForHandle(handle);
+      startTransform(mode, handle, point, event.pointerId);
+      return;
+    }
+
+    const object = hitObject(point);
+    if (object) {
+      if (event.shiftKey) {
+        if (state.selectedIds.includes(object.id)) {
+          setSelection(state.selectedIds.filter((id) => id !== object.id));
+        } else {
+          setSelection([...state.selectedIds, object.id]);
+        }
+        redraw();
+        return;
+      }
+
+      if (!state.selectedIds.includes(object.id)) {
+        setSelection([object.id]);
+      }
+
+      captureBefore();
+      startTransform("move", null, point, event.pointerId);
+      redraw();
+      return;
+    }
+
+    if (!event.shiftKey) {
+      clearSelection();
+      redraw();
+    }
   }
 
   function flushPoints() {
@@ -512,6 +1385,7 @@
 
     state.active = null;
     releasePointer(pointerId);
+    commitIfChanged();
   }
 
   function finishShape(pointerId) {
@@ -530,7 +1404,9 @@
     releasePointer(pointerId);
 
     if (shape && isShapeMeaningful(shape)) {
+      captureBefore();
       state.objects.push({ id: createId(), ...shape });
+      commitIfChanged();
     }
 
     redraw();
@@ -546,16 +1422,24 @@
       return;
     }
 
+    if (state.active.kind === "transform") {
+      finishTransform(pointerId);
+      return;
+    }
+
     endStroke(pointerId);
   }
 
   function startStroke(pointerId, point) {
+    clearSelection();
+    captureBefore();
     const stroke = {
       id: createId(),
       type: "stroke",
       tool: state.tool,
       color: state.stroke,
       size: state.size,
+      rotation: 0,
       points: [point],
     };
 
@@ -565,6 +1449,7 @@
   }
 
   function startShape(pointerId, point, shift) {
+    clearSelection();
     state.active = {
       kind: "shape",
       pointerId,
@@ -587,6 +1472,12 @@
 
     state.tool = tool;
     canvas.dataset.cursor = tool;
+    canvas.style.cursor = "";
+
+    if (tool !== "select") {
+      clearSelection();
+      redraw();
+    }
 
     for (const button of toolbar.querySelectorAll("[data-tool]")) {
       button.setAttribute("aria-pressed", String(button.dataset.tool === tool));
@@ -644,26 +1535,39 @@
     if (color === "none") {
       state.fill = null;
       state.colorTarget = "fill";
-      syncColorUI();
-      return;
-    }
-
-    const hex = normalizeHex(color);
-    if (state.colorTarget === "fill") {
-      state.fill = hex;
     } else {
-      state.stroke = hex;
+      const hex = normalizeHex(color);
+      if (state.colorTarget === "fill") {
+        state.fill = hex;
+      } else {
+        state.stroke = hex;
+      }
     }
 
     syncColorUI();
+
+    if (state.selectedIds.length > 0 && !state.active) {
+      captureBefore();
+      applyStyleToSelected();
+      commitIfChanged();
+      redraw();
+    }
   }
 
-  function setSizeByIndex(index) {
+  function setSizeByIndex(index, commit) {
     const nextIndex = Math.min(SIZE_STOPS.length - 1, Math.max(0, index));
     state.size = SIZE_STOPS[nextIndex];
     sizeInput.value = String(nextIndex);
     sizeValue.textContent = `${state.size}px`;
     sizeInput.setAttribute("aria-valuetext", `${state.size} pixels`);
+
+    if (state.selectedIds.length > 0 && !state.active) {
+      applyStyleToSelected();
+      redraw();
+      if (commit) {
+        commitIfChanged();
+      }
+    }
   }
 
   function capturePointer(pointerId) {
@@ -679,17 +1583,22 @@
       return;
     }
 
-    if (state.tool === "select") {
-      return;
-    }
-
     if (state.active) {
       return;
     }
 
     event.preventDefault();
-    capturePointer(event.pointerId);
     const point = getPoint(event);
+
+    if (state.tool === "select") {
+      onSelectPointerDown(event, point);
+      if (state.active) {
+        capturePointer(event.pointerId);
+      }
+      return;
+    }
+
+    capturePointer(event.pointerId);
 
     if (isShapeTool(state.tool)) {
       startShape(event.pointerId, point, event.shiftKey);
@@ -702,14 +1611,26 @@
   }
 
   function onPointerMove(event) {
-    if (!state.active || event.pointerId !== state.active.pointerId) {
+    const point = getPoint(event);
+
+    if (!state.active) {
+      updateSelectCursor(point);
+      return;
+    }
+
+    if (event.pointerId !== state.active.pointerId) {
       return;
     }
 
     event.preventDefault();
 
+    if (state.active.kind === "transform") {
+      queueSelectDrag(point);
+      return;
+    }
+
     if (state.active.kind === "shape") {
-      queueShapePreview(getPoint(event), event.shiftKey);
+      queueShapePreview(point, event.shiftKey);
       return;
     }
 
@@ -719,7 +1640,7 @@
         : [];
 
     if (coalesced.length === 0) {
-      queuePoint(getPoint(event));
+      queuePoint(point);
       return;
     }
 
@@ -729,11 +1650,12 @@
   }
 
   function onPointerUp(event) {
-    if (!state.active || event.pointerId !== state.active.pointerId) {
+    if (state.active && event.pointerId === state.active.pointerId) {
+      endActive(event.pointerId);
       return;
     }
 
-    endActive(event.pointerId);
+    releasePointer(event.pointerId);
   }
 
   function onPointerLeave(event) {
@@ -776,15 +1698,63 @@
   }
 
   function onKeyDown(event) {
+    if (isTypingTarget(event.target)) {
+      return;
+    }
+
     if (event.key === "Shift") {
       refreshShapeShift(true);
     }
 
-    if (event.metaKey || event.ctrlKey || event.altKey) {
+    const ctrl = event.ctrlKey || event.metaKey;
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      cancelActive();
       return;
     }
 
-    if (isTypingTarget(event.target)) {
+    if (ctrl && event.key.toLowerCase() === "z") {
+      event.preventDefault();
+      if (event.shiftKey) {
+        redo();
+      } else {
+        undo();
+      }
+      return;
+    }
+
+    if (ctrl && event.key.toLowerCase() === "y") {
+      event.preventDefault();
+      redo();
+      return;
+    }
+
+    if (ctrl && event.key.toLowerCase() === "c") {
+      event.preventDefault();
+      copySelected();
+      return;
+    }
+
+    if (ctrl && event.key.toLowerCase() === "v") {
+      event.preventDefault();
+      pasteClipboard();
+      return;
+    }
+
+    if (ctrl && event.key.toLowerCase() === "d") {
+      event.preventDefault();
+      duplicateSelected();
+      return;
+    }
+
+    if (event.key === "Delete" || event.key === "Backspace") {
+      event.preventDefault();
+      deleteSelected();
+      return;
+    }
+
+    if (ctrl || event.altKey) {
       return;
     }
 
@@ -804,11 +1774,24 @@
   }
 
   toolbar.addEventListener("click", onToolbarClick);
+  undoBtn.addEventListener("click", () => undo());
+  redoBtn.addEventListener("click", () => redo());
+  deleteBtn.addEventListener("click", () => deleteSelected());
   colorInput.addEventListener("input", () => {
     setColor(colorInput.value);
   });
+  sizeInput.addEventListener("pointerdown", () => {
+    if (state.selectedIds.length > 0 && !state.active) {
+      captureBefore();
+    }
+  });
   sizeInput.addEventListener("input", () => {
-    setSizeByIndex(Number(sizeInput.value));
+    setSizeByIndex(Number(sizeInput.value), false);
+  });
+  sizeInput.addEventListener("change", () => {
+    if (state.selectedIds.length > 0) {
+      commitIfChanged();
+    }
   });
   document.addEventListener("keydown", onKeyDown);
   document.addEventListener("keyup", onKeyUp);
@@ -828,4 +1811,5 @@
   resizeCanvas();
   canvas.dataset.cursor = state.tool;
   syncColorUI();
+  syncEditUI();
 })();
