@@ -119,19 +119,28 @@ button {
 .ribbon {
   display: flex;
   align-items: stretch;
-  min-height: 76px;
+  height: 80px;
+  min-height: 80px;
+  max-height: 80px;
+  overflow: visible;
 }
 
 .ribbon-panels {
   flex: 1;
   min-width: 0;
-  overflow-x: auto;
+  overflow: hidden;
 }
 
 .ribbon-panel {
   display: flex;
+  flex-wrap: nowrap;
   align-items: stretch;
-  min-height: 76px;
+  width: 100%;
+  min-width: 0;
+  height: 80px;
+  min-height: 80px;
+  max-height: 80px;
+  overflow: visible;
 }
 
 .ribbon-panel[hidden] {
@@ -141,17 +150,23 @@ button {
 .ribbon-persistent {
   display: flex;
   align-items: stretch;
-  flex-shrink: 0;
+  flex: 0 1 auto;
+  min-width: 0;
+  height: 80px;
+  overflow: hidden;
   border-left: 1px solid var(--line);
 }
 
 .ribbon-group {
+  position: relative;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   justify-content: space-between;
   gap: 4px;
-  padding: 8px 10px 6px;
+  flex: 0 0 auto;
+  height: 100%;
+  padding: 6px 8px 4px;
   border-right: 1px solid var(--line);
 }
 
@@ -159,17 +174,33 @@ button {
   border-right: 0;
 }
 
-.ribbon-group-tools {
+.ribbon-group-main {
   display: flex;
+  flex: 1 1 auto;
   align-items: center;
   gap: 2px;
+  width: max-content;
+  max-width: 100%;
+  height: 48px;
+}
+
+.ribbon-group-tools {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 2px;
+  width: max-content;
+  max-width: 100%;
+  height: 48px;
+  overflow: hidden;
 }
 
 .page-size-tools,
 .page-template-tools,
-.page-look-tools {
-  flex-wrap: wrap;
-  max-width: 420px;
+.page-look-tools,
+.format-tools {
+  flex-wrap: nowrap;
+  max-width: none;
 }
 
 .page-color-field {
@@ -247,10 +278,113 @@ button {
 }
 
 .ribbon-group-label {
+  width: 0;
+  min-width: 100%;
   font-size: 0.65rem;
   letter-spacing: 0.02em;
   color: var(--ink-muted);
   line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ribbon-more {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 18px;
+  height: 48px;
+  border-radius: var(--radius-sm);
+  color: var(--ink-muted);
+}
+
+.ribbon-more svg {
+  width: 12px;
+  height: 12px;
+}
+
+.ribbon-more:hover,
+.ribbon-more[aria-expanded="true"] {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.ribbon-more[hidden] {
+  display: none;
+}
+
+.ribbon-group.is-collapsed {
+  min-width: 4.5rem;
+}
+
+.ribbon-group.is-collapsed .ribbon-more {
+  width: 100%;
+}
+
+.ribbon-menu {
+  position: fixed;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 196px;
+  max-height: min(360px, calc(100vh - 120px));
+  overflow: auto;
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.ribbon-menu[hidden] {
+  display: none;
+}
+
+.ribbon-menu .ribbon-btn,
+.ribbon-menu .ribbon-btn-wide {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  height: auto;
+  min-height: 32px;
+  padding: 4px 8px;
+  gap: 8px;
+  font-weight: 500;
+}
+
+.ribbon-menu .ribbon-btn svg {
+  flex-shrink: 0;
+}
+
+.ribbon-menu .visually-hidden {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0;
+  overflow: visible;
+  clip: auto;
+  white-space: nowrap;
+}
+
+.ribbon-menu .page-dim-field,
+.ribbon-menu .page-color-field,
+.ribbon-menu .font-size-field,
+.ribbon-menu .page-name-field {
+  margin: 4px 6px;
+}
+
+.ribbon-menu .align-grid {
+  margin: 4px 6px;
+}
+
+.ribbon-menu .swatches {
+  flex-wrap: wrap;
+  max-width: 168px;
+  margin: 4px 6px;
 }
 
 .ribbon-btn {
@@ -306,11 +440,7 @@ button {
 }
 
 .ribbon-hint {
-  margin: auto 12px;
-  max-width: 220px;
-  font-size: 0.75rem;
-  color: var(--ink-muted);
-  line-height: 1.35;
+  display: none;
 }
 
 .font-size-field {
@@ -326,6 +456,7 @@ button {
   color: var(--ink);
   font: inherit;
   font-size: 0.8rem;
+  max-width: 88px;
 }
 
 .color-tools {
@@ -371,6 +502,7 @@ button {
 
 .swatches {
   display: flex;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 6px;
 }
@@ -448,11 +580,17 @@ button {
   accent-color: var(--accent);
 }
 
+.ribbon-panel-help {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
 .shortcut-list {
   display: flex;
-  flex-wrap: wrap;
-  align-content: center;
+  flex-wrap: nowrap;
+  align-items: center;
   gap: 6px 16px;
+  height: 100%;
   padding: 8px 14px;
 }
 
@@ -592,12 +730,14 @@ kbd {
   background: rgb(255 255 255 / 0.94);
   color: var(--ink);
   font: inherit;
-  line-height: 1.3;
+  line-height: 1.35;
   overflow: hidden;
   resize: none;
   outline: none;
   box-shadow: var(--shadow);
   user-select: text;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .text-editor.is-sticky {
@@ -645,18 +785,6 @@ kbd {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
-}
-
-@media (max-width: 960px) {
-  .ribbon {
-    flex-wrap: wrap;
-  }
-
-  .ribbon-persistent {
-    width: 100%;
-    border-left: 0;
-    border-top: 1px solid var(--line);
-  }
 }
 
 @media (pointer: coarse) {

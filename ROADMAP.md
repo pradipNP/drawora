@@ -12,7 +12,7 @@ Statuses:
 | ⚪ | PLANNED |
 | 🔴 | BLOCKED |
 
-**Current:** Stages 1–10 complete. Stage 11 is next.
+**Current:** Stages 1–11 complete. Stage 12 is next.
 
 ---
 
@@ -240,19 +240,19 @@ Modes: Teacher / Student / Custom. Paper color, line color, line spacing, grid s
 
 ### Stage 11 — Advanced text / Word-like editing
 
-**Status:** 🔵 NEXT
+**Status:** ✅ COMPLETED
 
-Double-click anywhere and start writing. Direct-canvas feel; wrapping by width; resize width; dynamic height.
+Double-click empty board to start writing. Text wraps by width; the box grows with height. Side handles resize width without scaling the font.
 
-Font, size, bold, italic, underline, strike-through, color, alignment, line height, letter spacing, text background, paragraph spacing, bullets, numbered lists, indentation, cursor, text selection.
+Font family and size, bold, italic, underline, strikethrough, color, alignment, line height, letter spacing, text background, paragraph spacing, bullets, numbered lists, and indent. The overlay editor provides the caret and text selection.
 
-Do not require manual line breaks for normal wrapping.
+Formatting is per text object (or sticky note), not per character.
 
 ---
 
 ### Stage 12 — Image system
 
-**Status:** ⚪ PLANNED
+**Status:** 🔵 NEXT
 
 Upload, drag and drop, paste; resize, move, rotate, crop, flip, opacity, border, rounded corners, shadow.
 

@@ -31,11 +31,20 @@
   const MAX_HISTORY = 50;
   const SELECT_COLOR = "#0f766e";
   const FONT_FAMILY = '"Segoe UI", system-ui, sans-serif';
-  const FONT_SIZES = [16, 20, 24, 32, 40];
+  const FONT_STACKS = {
+    sans: '"Segoe UI", system-ui, sans-serif',
+    serif: 'Georgia, "Times New Roman", serif',
+    mono: 'Consolas, "Courier New", monospace',
+  };
+  const FONT_SIZES = [12, 14, 16, 20, 24, 32, 40, 48, 72];
   const TEXT_PAD = 12;
-  const TEXT_DEFAULT = { width: 240, height: 64 };
+  const TEXT_DEFAULT = { width: 280, height: 48 };
   const STICKY_DEFAULT = { width: 176, height: 176 };
   const STICKY_FILL = "#fde68a";
+  const INDENT_STEP = 24;
+  const MAX_INDENT = 6;
+  const LIST_GUTTER = 22;
+  const MIN_TEXT_WIDTH = 80;
   const MIN_ZOOM = 0.1;
   const MAX_ZOOM = 8;
   const ZOOM_STEP = 1.2;
@@ -73,9 +82,18 @@
     colorTarget: "stroke",
     size: 4,
     fontSize: 24,
+    fontKey: "sans",
     bold: false,
     italic: false,
+    underline: false,
+    strike: false,
     align: "left",
+    lineHeight: 1.35,
+    letterSpacing: 0,
+    paragraphSpacing: 0,
+    textBack: null,
+    list: "none",
+    indent: 0,
     dpr: 1,
     nextId: 1,
     nextPageId: 1,
@@ -128,6 +146,11 @@
   const ungroupBtn = document.getElementById("ungroup-btn");
   const editor = document.getElementById("text-editor");
   const fontSizeSelect = document.getElementById("font-size");
+  const fontFamilySelect = document.getElementById("font-family");
+  const lineHeightInput = document.getElementById("line-height");
+  const letterSpacingInput = document.getElementById("letter-spacing");
+  const paraSpacingInput = document.getElementById("para-spacing");
+  const textBackInput = document.getElementById("text-back");
   const zoomLabel = document.getElementById("zoom-label");
   const zoomValue = document.getElementById("zoom-value");
   const pageNameInput = document.getElementById("page-name");
@@ -166,6 +189,11 @@
     !ribbonTabs ||
     !editor ||
     !fontSizeSelect ||
+    !fontFamilySelect ||
+    !lineHeightInput ||
+    !letterSpacingInput ||
+    !paraSpacingInput ||
+    !textBackInput ||
     !zoomLabel ||
     !zoomValue ||
     !pageNameInput ||
@@ -653,14 +681,19 @@
     return rotateAround(point, center, rotation || 0);
   }
 
-  function handlePositions(frame, center) {
-    return {
+  function handlePositions(frame, center, object) {
+    const handles = {
       nw: { x: frame.x, y: frame.y },
       ne: { x: frame.x + frame.width, y: frame.y },
       sw: { x: frame.x, y: frame.y + frame.height },
       se: { x: frame.x + frame.width, y: frame.y + frame.height },
       rotate: { x: center.x, y: frame.y - viewLen(ROTATE_OFFSET) },
     };
+    if (object && isTextLike(object)) {
+      handles.e = { x: frame.x + frame.width, y: center.y };
+      handles.w = { x: frame.x, y: center.y };
+    }
+    return handles;
   }
 
   function configureStroke(stroke) {
@@ -864,22 +897,45 @@
     ctx.restore();
   }
 
+  function objectFontFamily(object) {
+    return FONT_STACKS[object && object.fontKey] || FONT_FAMILY;
+  }
+
   function objectFont(object) {
     const italic = object.italic ? "italic " : "";
     const weight = object.bold ? "700 " : "400 ";
-    return `${italic}${weight}${object.fontSize}px ${FONT_FAMILY}`;
+    const size = object.fontSize || 24;
+    return `${italic}${weight}${size}px ${objectFontFamily(object)}`;
   }
 
-  function wrapCanvasText(text, maxWidth, font) {
-    ctx.font = font;
+  function applyTextMeasure(object) {
+    ctx.font = objectFont(object);
+    if ("letterSpacing" in ctx) {
+      ctx.letterSpacing = `${object.letterSpacing || 0}px`;
+    }
+  }
+
+  function textIndentWidth(object) {
+    const indent = Math.max(0, object.indent || 0) * INDENT_STEP;
+    const list = object.list && object.list !== "none" ? LIST_GUTTER : 0;
+    return indent + list;
+  }
+
+  function textMaxWidth(object) {
+    return Math.max(12, object.width - TEXT_PAD * 2 - textIndentWidth(object));
+  }
+
+  function wrapTextLayout(object) {
+    applyTextMeasure(object);
+    const maxWidth = textMaxWidth(object);
     const lines = [];
-    const paragraphs = String(text || "").split("\n");
+    const paragraphs = String(object.text || "").split("\n");
+    let number = 0;
 
     function breakLongWord(word) {
       if (ctx.measureText(word).width <= maxWidth) {
         return [word];
       }
-
       const chunks = [];
       let chunk = "";
       for (const char of word) {
@@ -897,14 +953,24 @@
       return chunks.length ? chunks : [word];
     }
 
-    for (const paragraph of paragraphs) {
+    for (let paraIndex = 0; paraIndex < paragraphs.length; paraIndex += 1) {
+      const paragraph = paragraphs[paraIndex];
+      let marker = "";
+      if (object.list === "bullet") {
+        marker = "•";
+      } else if (object.list === "number" && paragraph !== "") {
+        number += 1;
+        marker = `${number}.`;
+      }
+
       if (paragraph === "") {
-        lines.push("");
+        lines.push({ text: "", paraIndex, first: true, marker });
         continue;
       }
 
       const words = paragraph.split(" ");
       let line = "";
+      let first = true;
       for (const word of words) {
         const pieces = breakLongWord(word);
         for (let i = 0; i < pieces.length; i += 1) {
@@ -912,53 +978,130 @@
           const glued = i > 0;
           const next = line && !glued ? `${line} ${piece}` : line + piece;
           if (line && ctx.measureText(next).width > maxWidth) {
-            lines.push(line);
+            lines.push({ text: line, paraIndex, first, marker: first ? marker : "" });
             line = piece;
+            first = false;
           } else {
             line = next;
           }
         }
       }
-      lines.push(line);
+      lines.push({ text: line, paraIndex, first, marker: first ? marker : "" });
     }
 
+    if ("letterSpacing" in ctx) {
+      ctx.letterSpacing = "0px";
+    }
     return lines;
   }
 
+  function textLineHeight(object) {
+    return (object.fontSize || 24) * (object.lineHeight || 1.35);
+  }
+
+  function textContentHeight(object) {
+    const lines = wrapTextLayout(object);
+    const lineHeight = textLineHeight(object);
+    const paraGap = object.paragraphSpacing || 0;
+    let height = TEXT_PAD * 2;
+    let lastPara = -1;
+    for (const line of lines) {
+      if (lastPara !== -1 && line.paraIndex !== lastPara) {
+        height += paraGap;
+      }
+      height += lineHeight;
+      lastPara = line.paraIndex;
+    }
+    const minHeight = object.type === "sticky" ? STICKY_DEFAULT.height : 40;
+    return Math.max(minHeight, height);
+  }
+
+  function reflowTextHeight(object) {
+    if (!isTextLike(object)) {
+      return;
+    }
+    object.height = textContentHeight(object);
+  }
+
   function textLineX(object) {
+    const left = object.x + TEXT_PAD + textIndentWidth(object);
     if (object.align === "center") {
-      return object.x + object.width / 2;
+      return object.x + (object.width + textIndentWidth(object)) / 2;
     }
     if (object.align === "right") {
       return object.x + object.width - TEXT_PAD;
     }
-    return object.x + TEXT_PAD;
+    return left;
+  }
+
+  function drawTextDecorations(object, text, x, y, align) {
+    if (!object.underline && !object.strike) {
+      return;
+    }
+    applyTextMeasure(object);
+    const width = ctx.measureText(text).width;
+    let left = x;
+    if (align === "center") {
+      left = x - width / 2;
+    } else if (align === "right") {
+      left = x - width;
+    }
+    const size = object.fontSize || 24;
+    ctx.strokeStyle = object.color || "#1c1917";
+    ctx.lineWidth = Math.max(1, size / 16);
+    ctx.beginPath();
+    if (object.underline) {
+      const uy = y + size * 0.92;
+      ctx.moveTo(left, uy);
+      ctx.lineTo(left + width, uy);
+    }
+    if (object.strike) {
+      const sy = y + size * 0.52;
+      ctx.moveTo(left, sy);
+      ctx.lineTo(left + width, sy);
+    }
+    ctx.stroke();
   }
 
   function drawWrappedText(object) {
-    const font = objectFont(object);
-    const maxWidth = Math.max(12, object.width - TEXT_PAD * 2);
-    const lines = wrapCanvasText(object.text, maxWidth, font);
-    const lineHeight = object.fontSize * 1.3;
+    const lines = wrapTextLayout(object);
+    const lineHeight = textLineHeight(object);
+    const paraGap = object.paragraphSpacing || 0;
+    const align = object.align || "left";
 
     ctx.save();
     ctx.beginPath();
     ctx.rect(object.x, object.y, object.width, object.height);
     ctx.clip();
-    ctx.font = font;
+    applyTextMeasure(object);
     ctx.fillStyle = object.color || "#1c1917";
-    ctx.textAlign = object.align || "left";
+    ctx.textAlign = align;
     ctx.textBaseline = "top";
 
+    const markerX = object.x + TEXT_PAD + (object.indent || 0) * INDENT_STEP;
     let y = object.y + TEXT_PAD;
+    let lastPara = -1;
     for (const line of lines) {
-      ctx.fillText(line, textLineX(object), y);
+      if (lastPara !== -1 && line.paraIndex !== lastPara) {
+        y += paraGap;
+      }
+      if (line.marker) {
+        ctx.textAlign = "left";
+        ctx.fillText(line.marker, markerX, y);
+        ctx.textAlign = align;
+      }
+      ctx.fillText(line.text, textLineX(object), y);
+      drawTextDecorations(object, line.text, textLineX(object), y, align);
       y += lineHeight;
+      lastPara = line.paraIndex;
       if (y > object.y + object.height) {
         break;
       }
     }
     ctx.restore();
+    if ("letterSpacing" in ctx) {
+      ctx.letterSpacing = "0px";
+    }
   }
 
   function drawSticky(object) {
@@ -980,6 +1123,14 @@
   function drawTextBox(object) {
     if (state.editingId === object.id) {
       return;
+    }
+
+    if (object.textBack) {
+      ctx.save();
+      ctx.globalCompositeOperation = "source-over";
+      ctx.fillStyle = object.textBack;
+      ctx.fillRect(object.x, object.y, object.width, object.height);
+      ctx.restore();
     }
 
     drawWrappedText(object);
@@ -1071,7 +1222,7 @@
     const bounds = getLocalBounds(object);
     const center = getCenterFromBounds(bounds);
     const rotation = object.rotation || 0;
-    const handles = handlePositions(frame, center);
+    const handles = handlePositions(frame, center, object);
 
     ctx.save();
     ctx.translate(center.x, center.y);
@@ -1094,6 +1245,10 @@
     drawHandleBox(handles.ne.x, handles.ne.y);
     drawHandleBox(handles.sw.x, handles.sw.y);
     drawHandleBox(handles.se.x, handles.se.y);
+    if (handles.e) {
+      drawHandleBox(handles.e.x, handles.e.y);
+      drawHandleBox(handles.w.x, handles.w.y);
+    }
     ctx.restore();
   }
 
@@ -1512,8 +1667,10 @@
     const bounds = getLocalBounds(object);
     const center = getCenterFromBounds(bounds);
     const local = worldToLocal(point, center, object.rotation || 0);
-    const handles = handlePositions(frame, center);
-    const order = ["rotate", "nw", "ne", "sw", "se"];
+    const handles = handlePositions(frame, center, object);
+    const order = isTextLike(object)
+      ? ["rotate", "nw", "ne", "sw", "se", "e", "w"]
+      : ["rotate", "nw", "ne", "sw", "se"];
 
     for (const name of order) {
       if (distance(local, handles[name]) <= viewLen(HANDLE_HIT)) {
@@ -1766,6 +1923,7 @@
     }
 
     renderPageThumbs();
+    layoutRibbonOverflow();
   }
 
   function switchPage(id) {
@@ -2165,8 +2323,8 @@
     object.y = newBounds.y;
     object.width = newBounds.width;
     object.height = newBounds.height;
-    if (isTextLike(object) && startObject.fontSize) {
-      object.fontSize = Math.max(12, Math.round(startObject.fontSize * sy));
+    if (isTextLike(object)) {
+      reflowTextHeight(object);
     }
   }
 
@@ -2421,12 +2579,22 @@
       if (isTextLike(object)) {
         object.color = state.stroke;
         object.fontSize = state.fontSize;
+        object.fontKey = state.fontKey;
         object.bold = state.bold;
         object.italic = state.italic;
+        object.underline = state.underline;
+        object.strike = state.strike;
         object.align = state.align;
+        object.lineHeight = state.lineHeight;
+        object.letterSpacing = state.letterSpacing;
+        object.paragraphSpacing = state.paragraphSpacing;
+        object.textBack = state.textBack;
+        object.list = state.list;
+        object.indent = state.indent;
         if (object.type === "sticky") {
           object.fill = state.fill || object.fill || STICKY_FILL;
         }
+        reflowTextHeight(object);
         continue;
       }
 
@@ -2500,6 +2668,13 @@
         left = right - MIN_FRAME;
       } else {
         right = left + MIN_FRAME;
+      }
+    }
+    if (isTextLike(object) && right - left < MIN_TEXT_WIDTH) {
+      if (drag.handle.includes("w")) {
+        left = right - MIN_TEXT_WIDTH;
+      } else {
+        right = left + MIN_TEXT_WIDTH;
       }
     }
     if (bottom - top < MIN_FRAME) {
@@ -2645,17 +2820,50 @@
   function syncFormatUI() {
     for (const button of document.querySelectorAll("[data-format]")) {
       const format = button.dataset.format;
-      const pressed =
-        format === "bold"
-          ? state.bold
-          : format === "italic"
-            ? state.italic
-            : format === `align-${state.align}`;
+      let pressed = false;
+      if (format === "bold") {
+        pressed = state.bold;
+      } else if (format === "italic") {
+        pressed = state.italic;
+      } else if (format === "underline") {
+        pressed = state.underline;
+      } else if (format === "strike") {
+        pressed = state.strike;
+      } else if (format === `align-${state.align}`) {
+        pressed = true;
+      } else if (format === "list-bullet") {
+        pressed = state.list === "bullet";
+      } else if (format === "list-number") {
+        pressed = state.list === "number";
+      } else if (format === "text-back-none") {
+        pressed = !state.textBack;
+      }
+      if (
+        format === "indent" ||
+        format === "outdent"
+      ) {
+        continue;
+      }
       button.setAttribute("aria-pressed", String(Boolean(pressed)));
     }
 
     if (Number(fontSizeSelect.value) !== state.fontSize) {
-      fontSizeSelect.value = String(state.fontSize);
+      fontSizeSelect.value = FONT_SIZES.includes(state.fontSize) ? String(state.fontSize) : "24";
+    }
+    if (fontFamilySelect.value !== state.fontKey) {
+      fontFamilySelect.value = FONT_STACKS[state.fontKey] ? state.fontKey : "sans";
+    }
+    if (document.activeElement !== lineHeightInput) {
+      lineHeightInput.value = String(state.lineHeight);
+    }
+    if (document.activeElement !== letterSpacingInput) {
+      letterSpacingInput.value = String(state.letterSpacing);
+    }
+    if (document.activeElement !== paraSpacingInput) {
+      paraSpacingInput.value = String(state.paragraphSpacing);
+    }
+    if (state.textBack && document.activeElement !== textBackInput) {
+      textBackInput.value = state.textBack;
     }
   }
 
@@ -2664,9 +2872,18 @@
     if (selected.length === 1 && isTextLike(selected[0])) {
       const object = selected[0];
       state.fontSize = object.fontSize || 24;
+      state.fontKey = object.fontKey || "sans";
       state.bold = Boolean(object.bold);
       state.italic = Boolean(object.italic);
+      state.underline = Boolean(object.underline);
+      state.strike = Boolean(object.strike);
       state.align = object.align || "left";
+      state.lineHeight = object.lineHeight || 1.35;
+      state.letterSpacing = object.letterSpacing || 0;
+      state.paragraphSpacing = object.paragraphSpacing || 0;
+      state.textBack = object.textBack || null;
+      state.list = object.list || "none";
+      state.indent = object.indent || 0;
       if (object.color) {
         state.stroke = object.color;
       }
@@ -2682,10 +2899,23 @@
   function styleEditor(object) {
     const italic = object.italic ? "italic " : "";
     const weight = object.bold ? "700 " : "400 ";
-    editor.style.font = `${italic}${weight}${object.fontSize * state.zoom}px ${FONT_FAMILY}`;
+    const size = (object.fontSize || 24) * state.zoom;
+    const padX = (TEXT_PAD + textIndentWidth(object)) * state.zoom;
+    const padY = TEXT_PAD * state.zoom;
+    editor.style.font = `${italic}${weight}${size}px ${objectFontFamily(object)}`;
     editor.style.color = object.color || "#1c1917";
     editor.style.textAlign = object.align || "left";
-    editor.style.padding = `${10 * state.zoom}px ${TEXT_PAD * state.zoom}px`;
+    editor.style.padding = `${padY}px ${TEXT_PAD * state.zoom}px ${padY}px ${padX}px`;
+    editor.style.lineHeight = String(object.lineHeight || 1.35);
+    editor.style.letterSpacing = `${(object.letterSpacing || 0) * state.zoom}px`;
+    editor.style.textDecoration = [object.underline ? "underline" : "", object.strike ? "line-through" : ""]
+      .filter(Boolean)
+      .join(" ") || "none";
+    if (object.type === "sticky") {
+      editor.style.background = "transparent";
+    } else {
+      editor.style.background = object.textBack || "rgb(255 255 255 / 0.94)";
+    }
     editor.classList.toggle("is-sticky", object.type === "sticky");
   }
 
@@ -2758,6 +2988,9 @@
     }
 
     object.text = text;
+    if (isTextLike(object)) {
+      reflowTextHeight(object);
+    }
     if (object.type === "text" && !text.trim()) {
       if (state.editingIsNew && state.historyBefore) {
         restoreBoard(state.historyBefore);
@@ -2785,9 +3018,18 @@
       text: "",
       color: state.stroke,
       fontSize: state.fontSize,
+      fontKey: state.fontKey,
       bold: state.bold,
       italic: state.italic,
+      underline: state.underline,
+      strike: state.strike,
       align: state.align,
+      lineHeight: state.lineHeight,
+      letterSpacing: state.letterSpacing,
+      paragraphSpacing: state.paragraphSpacing,
+      textBack: state.textBack,
+      list: state.list,
+      indent: state.indent,
       rotation: 0,
     };
 
@@ -2899,19 +3141,30 @@
     startEditing(object, true);
   }
 
-  function applyFormatChange() {
+  function applyFormatChange(commit) {
+    const shouldCommit = commit !== false;
     syncFormatUI();
     if (state.editingId) {
       const object = findObject(state.editingId);
       if (isTextLike(object)) {
         object.color = state.stroke;
         object.fontSize = state.fontSize;
+        object.fontKey = state.fontKey;
         object.bold = state.bold;
         object.italic = state.italic;
+        object.underline = state.underline;
+        object.strike = state.strike;
         object.align = state.align;
+        object.lineHeight = state.lineHeight;
+        object.letterSpacing = state.letterSpacing;
+        object.paragraphSpacing = state.paragraphSpacing;
+        object.textBack = state.textBack;
+        object.list = state.list;
+        object.indent = state.indent;
         if (object.type === "sticky") {
           object.fill = state.fill || object.fill || STICKY_FILL;
         }
+        reflowTextHeight(object);
         positionEditor(object);
         redraw();
       }
@@ -2919,16 +3172,23 @@
     }
 
     if (state.selectedIds.length > 0 && !state.active) {
-      captureBefore();
+      if (!state.historyBefore) {
+        captureBefore();
+      }
       applyStyleToSelected();
-      commitIfChanged();
       redraw();
+      if (shouldCommit) {
+        commitIfChanged();
+      }
     }
   }
 
   function cursorForHandle(handle) {
     if (handle === "rotate") {
       return "grab";
+    }
+    if (handle === "e" || handle === "w") {
+      return "ew-resize";
     }
     if (handle === "nw" || handle === "se") {
       return "nwse-resize";
@@ -3538,6 +3798,7 @@
     }
 
     state.ribbonTab = name;
+    closeRibbonMenus();
 
     for (const tab of ribbonTabs.querySelectorAll("[data-ribbon-tab]")) {
       const selected = tab.dataset.ribbonTab === name;
@@ -3548,6 +3809,188 @@
     for (const panel of toolbar.querySelectorAll(".ribbon-panel")) {
       panel.hidden = panel.dataset.ribbon !== name;
     }
+
+    layoutRibbonOverflow();
+    requestAnimationFrame(layoutRibbonOverflow);
+  }
+
+  function isRibbonToolItem(element) {
+    return (
+      element instanceof HTMLElement &&
+      !element.classList.contains("ribbon-more") &&
+      !element.classList.contains("ribbon-menu")
+    );
+  }
+
+  function prepareRibbonOverflow() {
+    for (const group of toolbar.querySelectorAll(".ribbon-group")) {
+      const tools = group.querySelector(":scope > .ribbon-group-tools");
+      if (!tools || group.querySelector(":scope > .ribbon-group-main")) {
+        continue;
+      }
+
+      [...tools.children].forEach((item, index) => {
+        if (isRibbonToolItem(item)) {
+          item.dataset.ribbonIndex = String(index);
+        }
+      });
+
+      const main = document.createElement("div");
+      main.className = "ribbon-group-main";
+      const more = document.createElement("button");
+      more.type = "button";
+      more.className = "ribbon-more";
+      more.hidden = true;
+      more.setAttribute("aria-expanded", "false");
+      const label = group.querySelector(".ribbon-group-label");
+      more.title = label ? `More ${label.textContent.trim()} options` : "More options";
+      more.setAttribute("aria-label", more.title);
+      more.innerHTML =
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9.5 12 14.5 17 9.5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      const menu = document.createElement("div");
+      menu.className = "ribbon-menu";
+      menu.hidden = true;
+      menu.setAttribute("role", "menu");
+      tools.replaceWith(main);
+      main.append(tools, more);
+      group.insertBefore(menu, label || null);
+    }
+  }
+
+  function restoreRibbonItems(group) {
+    const tools = group.querySelector(".ribbon-group-tools");
+    const menu = group.querySelector(".ribbon-menu");
+    if (!tools || !menu) {
+      return;
+    }
+    while (menu.firstChild) {
+      tools.appendChild(menu.firstChild);
+    }
+    [...tools.children]
+      .filter(isRibbonToolItem)
+      .sort((a, b) => Number(a.dataset.ribbonIndex) - Number(b.dataset.ribbonIndex))
+      .forEach((item) => tools.appendChild(item));
+  }
+
+  function closeRibbonMenus() {
+    for (const menu of toolbar.querySelectorAll(".ribbon-menu")) {
+      menu.hidden = true;
+    }
+    for (const more of toolbar.querySelectorAll(".ribbon-more")) {
+      more.setAttribute("aria-expanded", "false");
+    }
+  }
+
+  function positionRibbonMenu(more, menu) {
+    const rect = more.getBoundingClientRect();
+    menu.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - 220))}px`;
+    menu.style.top = `${rect.bottom + 4}px`;
+  }
+
+  function hideRibbonMore(group) {
+    const more = group.querySelector(".ribbon-more");
+    const menu = group.querySelector(".ribbon-menu");
+    group.classList.remove("is-collapsed");
+    if (more) {
+      more.hidden = true;
+      more.setAttribute("aria-expanded", "false");
+    }
+    if (menu) {
+      menu.hidden = true;
+    }
+  }
+
+  function sortRibbonMenu(menu) {
+    [...menu.children]
+      .filter(isRibbonToolItem)
+      .sort((a, b) => Number(a.dataset.ribbonIndex) - Number(b.dataset.ribbonIndex))
+      .forEach((item) => menu.appendChild(item));
+  }
+
+  function syncRibbonCollapsed(group) {
+    const tools = group.querySelector(".ribbon-group-tools");
+    const more = group.querySelector(".ribbon-more");
+    const visible = Boolean(
+      tools && [...tools.children].some((item) => isRibbonToolItem(item) && !item.hidden)
+    );
+    group.classList.toggle("is-collapsed", Boolean(more && !more.hidden && !visible));
+  }
+
+  function stripOverflows(strip, groups) {
+    const right = strip.getBoundingClientRect().right;
+    return groups.some((group) => group.getBoundingClientRect().right > right + 1);
+  }
+
+  function parkGroupUntilStripFits(group, strip) {
+    const tools = group.querySelector(".ribbon-group-tools");
+    const more = group.querySelector(".ribbon-more");
+    const menu = group.querySelector(".ribbon-menu");
+    if (!tools || !more || !menu) {
+      return;
+    }
+
+    let guard = 40;
+    while (guard > 0 && group.getBoundingClientRect().right > strip.getBoundingClientRect().right + 1) {
+      guard -= 1;
+      const items = [...tools.children].filter((item) => isRibbonToolItem(item) && !item.hidden);
+      if (items.length === 0) {
+        break;
+      }
+      more.hidden = false;
+      menu.appendChild(items[items.length - 1]);
+      syncRibbonCollapsed(group);
+    }
+    sortRibbonMenu(menu);
+    if (!menu.childElementCount) {
+      more.hidden = true;
+    }
+    syncRibbonCollapsed(group);
+  }
+
+  function layoutRibbonStrip(strip) {
+    if (!strip) {
+      return;
+    }
+
+    const groups = [...strip.querySelectorAll(":scope > .ribbon-group")];
+    for (const group of groups) {
+      restoreRibbonItems(group);
+      hideRibbonMore(group);
+    }
+
+    if (strip.hidden) {
+      return;
+    }
+
+    for (let index = groups.length - 1; index >= 0 && stripOverflows(strip, groups); index -= 1) {
+      parkGroupUntilStripFits(groups[index], strip);
+    }
+  }
+
+  function layoutRibbonOverflow() {
+    closeRibbonMenus();
+    for (const panel of toolbar.querySelectorAll(".ribbon-panel")) {
+      layoutRibbonStrip(panel);
+    }
+    layoutRibbonStrip(toolbar.querySelector(".ribbon-persistent"));
+  }
+
+  function toggleRibbonMenu(more) {
+    const group = more.closest(".ribbon-group");
+    const menu = group && group.querySelector(".ribbon-menu");
+    if (!menu) {
+      return;
+    }
+
+    const open = menu.hidden;
+    closeRibbonMenus();
+    if (!open) {
+      return;
+    }
+
+    menu.hidden = false;
+    more.setAttribute("aria-expanded", "true");
+    positionRibbonMenu(more, menu);
   }
 
   function onRibbonTabKey(event) {
@@ -3575,7 +4018,86 @@
     tabs[next].focus();
   }
 
+  function changeIndent(delta) {
+    state.indent = Math.min(MAX_INDENT, Math.max(0, (state.indent || 0) + delta));
+    applyFormatChange();
+  }
+
+  function applyFormatCommand(format) {
+    if (format === "bold") {
+      state.bold = !state.bold;
+    } else if (format === "italic") {
+      state.italic = !state.italic;
+    } else if (format === "underline") {
+      state.underline = !state.underline;
+    } else if (format === "strike") {
+      state.strike = !state.strike;
+    } else if (format.startsWith("align-")) {
+      state.align = format.slice("align-".length);
+    } else if (format === "list-bullet") {
+      state.list = state.list === "bullet" ? "none" : "bullet";
+    } else if (format === "list-number") {
+      state.list = state.list === "number" ? "none" : "number";
+    } else if (format === "indent") {
+      changeIndent(1);
+      return;
+    } else if (format === "outdent") {
+      changeIndent(-1);
+      return;
+    } else if (format === "text-back-none") {
+      state.textBack = null;
+    } else {
+      return;
+    }
+    applyFormatChange();
+  }
+
+  function applyTextMetrics(commit) {
+    const lineHeight = Math.min(3, Math.max(1, Number(lineHeightInput.value) || 1.35));
+    const letterSpacing = Math.min(16, Math.max(-4, Number(letterSpacingInput.value) || 0));
+    const paragraphSpacing = Math.min(48, Math.max(0, Number(paraSpacingInput.value) || 0));
+    const same =
+      lineHeight === state.lineHeight &&
+      letterSpacing === state.letterSpacing &&
+      paragraphSpacing === state.paragraphSpacing;
+    if (same && !state.historyBefore) {
+      return;
+    }
+    state.lineHeight = lineHeight;
+    state.letterSpacing = letterSpacing;
+    state.paragraphSpacing = paragraphSpacing;
+    applyFormatChange(commit);
+  }
+
+  function beginBoardText(point) {
+    finishOpenWork();
+    const page = currentPage();
+    const maxWidth = page ? Math.max(MIN_TEXT_WIDTH, page.width - point.x - 32) : TEXT_DEFAULT.width;
+    captureBefore();
+    const object = createTextLike("text", {
+      x: point.x,
+      y: point.y,
+      width: Math.max(MIN_TEXT_WIDTH, Math.min(TEXT_DEFAULT.width, maxWidth)),
+      height: TEXT_DEFAULT.height,
+    });
+    state.objects.push(object);
+    setSelection([object.id]);
+    startEditing(object, true);
+  }
+
   function onToolbarClick(event) {
+    const more = event.target.closest(".ribbon-more");
+    if (more && toolbar.contains(more)) {
+      toggleRibbonMenu(more);
+      return;
+    }
+
+    const formatButton = event.target.closest("[data-format]");
+    if (formatButton && toolbar.contains(formatButton) && !formatButton.disabled) {
+      applyFormatCommand(formatButton.dataset.format);
+      return;
+    }
+
     const toolButton = event.target.closest("[data-tool]");
     if (toolButton && toolbar.contains(toolButton) && !toolButton.disabled) {
       setTool(toolButton.dataset.tool);
@@ -3694,6 +4216,19 @@
       return true;
     }
 
+    if (ctrl && event.key.toLowerCase() === "u") {
+      event.preventDefault();
+      state.underline = !state.underline;
+      applyFormatChange();
+      return true;
+    }
+
+    if (event.key === "Tab") {
+      event.preventDefault();
+      changeIndent(event.shiftKey ? -1 : 1);
+      return true;
+    }
+
     return false;
   }
 
@@ -3713,6 +4248,10 @@
 
     if (event.key === "Escape") {
       event.preventDefault();
+      if ([...toolbar.querySelectorAll(".ribbon-menu")].some((menu) => !menu.hidden)) {
+        closeRibbonMenus();
+        return;
+      }
       cancelActive();
       return;
     }
@@ -3727,6 +4266,13 @@
     if (ctrl && event.key.toLowerCase() === "i") {
       event.preventDefault();
       state.italic = !state.italic;
+      applyFormatChange();
+      return;
+    }
+
+    if (ctrl && event.key.toLowerCase() === "u") {
+      event.preventDefault();
+      state.underline = !state.underline;
       applyFormatChange();
       return;
     }
@@ -3878,26 +4424,27 @@
     }
     deleteSelected();
   });
-  document.querySelector(".format-actions").addEventListener("click", (event) => {
-    const button = event.target.closest("[data-format]");
-    if (!button) {
-      return;
-    }
-
-    const format = button.dataset.format;
-    if (format === "bold") {
-      state.bold = !state.bold;
-    } else if (format === "italic") {
-      state.italic = !state.italic;
-    } else if (format.startsWith("align-")) {
-      state.align = format.slice("align-".length);
-    }
-
-    applyFormatChange();
-  });
   fontSizeSelect.addEventListener("change", () => {
     state.fontSize = Number(fontSizeSelect.value);
     applyFormatChange();
+  });
+  fontFamilySelect.addEventListener("change", () => {
+    state.fontKey = fontFamilySelect.value;
+    applyFormatChange();
+  });
+  lineHeightInput.addEventListener("input", () => applyTextMetrics(false));
+  letterSpacingInput.addEventListener("input", () => applyTextMetrics(false));
+  paraSpacingInput.addEventListener("input", () => applyTextMetrics(false));
+  lineHeightInput.addEventListener("change", () => applyTextMetrics(true));
+  letterSpacingInput.addEventListener("change", () => applyTextMetrics(true));
+  paraSpacingInput.addEventListener("change", () => applyTextMetrics(true));
+  textBackInput.addEventListener("input", () => {
+    state.textBack = textBackInput.value;
+    applyFormatChange(false);
+  });
+  textBackInput.addEventListener("change", () => {
+    state.textBack = textBackInput.value;
+    applyFormatChange(true);
   });
   editor.addEventListener("input", () => {
     const object = findObject(state.editingId);
@@ -3906,23 +4453,28 @@
     }
 
     object.text = editor.value;
-    const minHeight = object.type === "sticky" ? STICKY_DEFAULT.height : TEXT_DEFAULT.height;
-    const nextHeight = Math.max(minHeight, editor.scrollHeight / state.zoom);
-    if (nextHeight > object.height + 1) {
-      object.height = nextHeight;
-      positionEditor(object);
-      redraw();
-    }
+    reflowTextHeight(object);
+    const nextHeight = Math.max(object.height, editor.scrollHeight / state.zoom);
+    object.height = nextHeight;
+    positionEditor(object);
+    redraw();
   });
   canvas.addEventListener("dblclick", (event) => {
-    if (state.tool !== "select") {
+    if (event.button !== 0 || state.spacePan || state.tool === "pan") {
       return;
     }
 
-    const object = hitObject(getPoint(event));
+    const point = getPoint(event);
+    const object = hitObject(point);
     if (isTextLike(object)) {
       startEditing(object, false);
+      return;
     }
+    if (object) {
+      return;
+    }
+
+    beginBoardText(point);
   });
   document.addEventListener(
     "pointerdown",
@@ -4084,7 +4636,26 @@
   state.pages = [firstPage];
   attachPage(firstPage);
 
+  prepareRibbonOverflow();
+  window.addEventListener("resize", layoutRibbonOverflow);
+  document.addEventListener("pointerdown", (event) => {
+    const target = event.target;
+    if (
+      target instanceof Element &&
+      (target.closest(".ribbon-menu") || target.closest(".ribbon-more"))
+    ) {
+      return;
+    }
+    closeRibbonMenus();
+  });
+  toolbar.addEventListener("click", (event) => {
+    if (event.target.closest(".ribbon-menu") && event.target.closest("button.ribbon-btn, button.ribbon-btn-wide")) {
+      closeRibbonMenus();
+    }
+  });
+
   const observer = new ResizeObserver(resizeCanvas);
+  new ResizeObserver(layoutRibbonOverflow).observe(toolbar);
   observer.observe(canvas.parentElement);
   resizeCanvas();
   fitCanvas();

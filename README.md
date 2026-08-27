@@ -27,9 +27,9 @@ On the **Page** tab, pick **Teacher**, **Student**, or **Custom** and a template
 
 Shape tools: line, rectangle, rounded rectangle, ellipse, triangle, and arrow.
 
-Text tools: **Text** (`T`) and **Sticky note** (`N`). Click to place, or drag to set the size. Double-click a text object or sticky note to edit it. Press `Esc`, `Ctrl+Enter`, or click the canvas to finish editing. An empty new text box is discarded; an empty sticky note is kept.
+Text tools: **Text** (`T`) and **Sticky note** (`N`). Click to place, or drag to set the size. Double-click empty board to start a text box; double-click a text object or sticky note to edit it. Text wraps to the box width and the box grows as you type. Side handles change width only (font size stays). Press `Esc`, `Ctrl+Enter`, or click the canvas to finish editing. An empty new text box is discarded; an empty sticky note is kept.
 
-Formatting (bold, italic, alignment, and font size) applies to the selected text or sticky note, and to the next one you create.
+Formatting (font, size, bold, italic, underline, strikethrough, alignment, line height, letter spacing, paragraph spacing, lists, indent, and text background) applies to the selected text or sticky note, and to the next one you create. `Ctrl+B` / `Ctrl+I` / `Ctrl+U`; `Tab` / `Shift+Tab` indent while editing.
 
 ### Editing
 
