@@ -1,11 +1,14 @@
 (() => {
   const DRAW_TOOLS = ["pen", "eraser"];
   const SHAPE_TOOLS = ["line", "rect", "roundrect", "ellipse", "triangle", "arrow"];
-  const TOOLS = ["select", ...DRAW_TOOLS, ...SHAPE_TOOLS];
+  const TEXT_TOOLS = ["text", "sticky"];
+  const TOOLS = ["select", ...DRAW_TOOLS, ...SHAPE_TOOLS, ...TEXT_TOOLS];
   const SHORTCUTS = {
     v: "select",
     p: "pen",
     e: "eraser",
+    t: "text",
+    n: "sticky",
   };
   const SIZE_STOPS = [2, 4, 8, 12, 20];
   const PRESET_COLORS = [
@@ -26,6 +29,12 @@
   const DUPLICATE_OFFSET = 16;
   const MAX_HISTORY = 50;
   const SELECT_COLOR = "#0f766e";
+  const FONT_FAMILY = '"Segoe UI", system-ui, sans-serif';
+  const FONT_SIZES = [16, 20, 24, 32, 40];
+  const TEXT_PAD = 12;
+  const TEXT_DEFAULT = { width: 240, height: 64 };
+  const STICKY_DEFAULT = { width: 176, height: 176 };
+  const STICKY_FILL = "#fde68a";
 
   const state = {
     tool: "pen",
@@ -33,6 +42,10 @@
     fill: null,
     colorTarget: "stroke",
     size: 4,
+    fontSize: 24,
+    bold: false,
+    italic: false,
+    align: "left",
     dpr: 1,
     nextId: 1,
     objects: [],
@@ -43,6 +56,9 @@
     historyBefore: null,
     preview: null,
     active: null,
+    editingId: null,
+    editingIsNew: false,
+    skipCanvasClick: false,
     queuedPoints: [],
     raf: 0,
   };
@@ -59,6 +75,8 @@
   const undoBtn = document.getElementById("undo-btn");
   const redoBtn = document.getElementById("redo-btn");
   const deleteBtn = document.getElementById("delete-btn");
+  const editor = document.getElementById("text-editor");
+  const fontSizeSelect = document.getElementById("font-size");
 
   if (
     !canvas ||
@@ -72,7 +90,9 @@
     !sizeValue ||
     !undoBtn ||
     !redoBtn ||
-    !deleteBtn
+    !deleteBtn ||
+    !editor ||
+    !fontSizeSelect
   ) {
     console.error("Drawora: missing canvas or toolbar controls.");
     return;
@@ -99,6 +119,14 @@
 
   function isShapeTool(tool) {
     return SHAPE_TOOLS.includes(tool);
+  }
+
+  function isTextTool(tool) {
+    return TEXT_TOOLS.includes(tool);
+  }
+
+  function isTextLike(object) {
+    return object && (object.type === "text" || object.type === "sticky");
   }
 
   function isSelectable(object) {
@@ -489,6 +517,127 @@
     ctx.restore();
   }
 
+  function objectFont(object) {
+    const italic = object.italic ? "italic " : "";
+    const weight = object.bold ? "700 " : "400 ";
+    return `${italic}${weight}${object.fontSize}px ${FONT_FAMILY}`;
+  }
+
+  function wrapCanvasText(text, maxWidth, font) {
+    ctx.font = font;
+    const lines = [];
+    const paragraphs = String(text || "").split("\n");
+
+    function breakLongWord(word) {
+      if (ctx.measureText(word).width <= maxWidth) {
+        return [word];
+      }
+
+      const chunks = [];
+      let chunk = "";
+      for (const char of word) {
+        const next = chunk + char;
+        if (chunk && ctx.measureText(next).width > maxWidth) {
+          chunks.push(chunk);
+          chunk = char;
+        } else {
+          chunk = next;
+        }
+      }
+      if (chunk) {
+        chunks.push(chunk);
+      }
+      return chunks.length ? chunks : [word];
+    }
+
+    for (const paragraph of paragraphs) {
+      if (paragraph === "") {
+        lines.push("");
+        continue;
+      }
+
+      const words = paragraph.split(" ");
+      let line = "";
+      for (const word of words) {
+        const pieces = breakLongWord(word);
+        for (let i = 0; i < pieces.length; i += 1) {
+          const piece = pieces[i];
+          const glued = i > 0;
+          const next = line && !glued ? `${line} ${piece}` : line + piece;
+          if (line && ctx.measureText(next).width > maxWidth) {
+            lines.push(line);
+            line = piece;
+          } else {
+            line = next;
+          }
+        }
+      }
+      lines.push(line);
+    }
+
+    return lines;
+  }
+
+  function textLineX(object) {
+    if (object.align === "center") {
+      return object.x + object.width / 2;
+    }
+    if (object.align === "right") {
+      return object.x + object.width - TEXT_PAD;
+    }
+    return object.x + TEXT_PAD;
+  }
+
+  function drawWrappedText(object) {
+    const font = objectFont(object);
+    const maxWidth = Math.max(12, object.width - TEXT_PAD * 2);
+    const lines = wrapCanvasText(object.text, maxWidth, font);
+    const lineHeight = object.fontSize * 1.3;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(object.x, object.y, object.width, object.height);
+    ctx.clip();
+    ctx.font = font;
+    ctx.fillStyle = object.color || "#1c1917";
+    ctx.textAlign = object.align || "left";
+    ctx.textBaseline = "top";
+
+    let y = object.y + TEXT_PAD;
+    for (const line of lines) {
+      ctx.fillText(line, textLineX(object), y);
+      y += lineHeight;
+      if (y > object.y + object.height) {
+        break;
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawSticky(object) {
+    ctx.save();
+    ctx.globalCompositeOperation = "source-over";
+    ctx.fillStyle = object.fill || STICKY_FILL;
+    ctx.strokeStyle = "rgb(28 25 23 / 0.08)";
+    ctx.lineWidth = 1;
+    pathRoundRect(object.x, object.y, object.width, object.height, 8);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+
+    if (state.editingId !== object.id) {
+      drawWrappedText(object);
+    }
+  }
+
+  function drawTextBox(object) {
+    if (state.editingId === object.id) {
+      return;
+    }
+
+    drawWrappedText(object);
+  }
+
   function drawShape(shape) {
     switch (shape.type) {
       case "line":
@@ -517,6 +666,16 @@
   function drawObjectUnrotated(object) {
     if (object.type === "stroke") {
       drawStroke(object);
+      return;
+    }
+
+    if (object.type === "sticky") {
+      drawSticky(object);
+      return;
+    }
+
+    if (object.type === "text") {
+      drawTextBox(object);
       return;
     }
 
@@ -631,6 +790,10 @@
   }
 
   function drawSelectionOverlay() {
+    if (state.editingId) {
+      return;
+    }
+
     const selected = selectedObjects();
     if (selected.length === 1) {
       drawSingleSelection(selected[0]);
@@ -852,6 +1015,11 @@
   }
 
   function undo() {
+    if (state.editingId) {
+      cancelEditing();
+      return;
+    }
+
     if (state.active || state.past.length === 0) {
       return;
     }
@@ -861,6 +1029,10 @@
   }
 
   function redo() {
+    if (state.editingId) {
+      finishEditing();
+    }
+
     if (state.active || state.future.length === 0) {
       return;
     }
@@ -878,6 +1050,7 @@
   function setSelection(ids) {
     state.selectedIds = ids;
     syncEditUI();
+    syncFormatFromSelection();
   }
 
   function clearSelection() {
@@ -933,6 +1106,9 @@
     object.y = newBounds.y;
     object.width = newBounds.width;
     object.height = newBounds.height;
+    if (isTextLike(object) && startObject.fontSize) {
+      object.fontSize = Math.max(12, Math.round(startObject.fontSize * sy));
+    }
   }
 
   function cloneObject(object, offset) {
@@ -1009,6 +1185,18 @@
         }
         object.color = state.stroke;
         object.size = state.size;
+        continue;
+      }
+
+      if (isTextLike(object)) {
+        object.color = state.stroke;
+        object.fontSize = state.fontSize;
+        object.bold = state.bold;
+        object.italic = state.italic;
+        object.align = state.align;
+        if (object.type === "sticky") {
+          object.fill = state.fill || object.fill || STICKY_FILL;
+        }
         continue;
       }
 
@@ -1195,8 +1383,12 @@
 
   function cancelActive() {
     if (!state.active) {
-      clearSelection();
-      redraw();
+      if (state.editingId) {
+        finishEditing();
+      } else {
+        clearSelection();
+        redraw();
+      }
       return;
     }
 
@@ -1217,6 +1409,287 @@
       releasePointer(pointerId);
     }
     redraw();
+  }
+
+  function syncFormatUI() {
+    for (const button of document.querySelectorAll("[data-format]")) {
+      const format = button.dataset.format;
+      const pressed =
+        format === "bold"
+          ? state.bold
+          : format === "italic"
+            ? state.italic
+            : format === `align-${state.align}`;
+      button.setAttribute("aria-pressed", String(Boolean(pressed)));
+    }
+
+    if (Number(fontSizeSelect.value) !== state.fontSize) {
+      fontSizeSelect.value = String(state.fontSize);
+    }
+  }
+
+  function syncFormatFromSelection() {
+    const selected = selectedObjects();
+    if (selected.length === 1 && isTextLike(selected[0])) {
+      const object = selected[0];
+      state.fontSize = object.fontSize || 24;
+      state.bold = Boolean(object.bold);
+      state.italic = Boolean(object.italic);
+      state.align = object.align || "left";
+      if (object.color) {
+        state.stroke = object.color;
+      }
+      if (object.type === "sticky" && object.fill) {
+        state.fill = object.fill;
+      }
+      syncColorUI();
+    }
+
+    syncFormatUI();
+  }
+
+  function styleEditor(object) {
+    editor.style.font = objectFont(object);
+    editor.style.color = object.color || "#1c1917";
+    editor.style.textAlign = object.align || "left";
+    editor.classList.toggle("is-sticky", object.type === "sticky");
+  }
+
+  function positionEditor(object) {
+    editor.style.left = `${object.x}px`;
+    editor.style.top = `${object.y}px`;
+    editor.style.width = `${object.width}px`;
+    editor.style.height = `${object.height}px`;
+    editor.style.transform = object.rotation
+      ? `rotate(${object.rotation}rad)`
+      : "none";
+    editor.style.transformOrigin = "center center";
+    styleEditor(object);
+  }
+
+  function hideEditor() {
+    editor.hidden = true;
+    editor.value = "";
+    state.editingId = null;
+  }
+
+  function startEditing(object, isNew) {
+    if (!isTextLike(object)) {
+      return;
+    }
+
+    if (!isNew) {
+      captureBefore();
+    }
+
+    state.editingId = object.id;
+    state.editingIsNew = Boolean(isNew);
+    editor.hidden = false;
+    editor.value = object.text || "";
+    positionEditor(object);
+    redraw();
+    editor.focus();
+    editor.setSelectionRange(editor.value.length, editor.value.length);
+  }
+
+  function cancelEditing() {
+    if (!state.editingId) {
+      return;
+    }
+
+    hideEditor();
+    state.editingIsNew = false;
+    if (state.historyBefore) {
+      restoreBoard(state.historyBefore);
+      discardHistoryCapture();
+    } else {
+      redraw();
+    }
+  }
+
+  function finishEditing() {
+    if (!state.editingId) {
+      return;
+    }
+
+    const object = findObject(state.editingId);
+    const text = editor.value;
+    hideEditor();
+
+    if (!object) {
+      discardHistoryCapture();
+      state.editingIsNew = false;
+      redraw();
+      return;
+    }
+
+    object.text = text;
+    if (object.type === "text" && !text.trim()) {
+      if (state.editingIsNew && state.historyBefore) {
+        restoreBoard(state.historyBefore);
+        discardHistoryCapture();
+        state.editingIsNew = false;
+        return;
+      }
+
+      state.objects = state.objects.filter((item) => item.id !== object.id);
+      setSelection(state.selectedIds.filter((id) => id !== object.id));
+    }
+
+    commitIfChanged();
+    redraw();
+    state.editingIsNew = false;
+  }
+
+  function createTextLike(type, bounds) {
+    const base = {
+      id: createId(),
+      x: bounds.x,
+      y: bounds.y,
+      width: bounds.width,
+      height: bounds.height,
+      text: "",
+      color: state.stroke,
+      fontSize: state.fontSize,
+      bold: state.bold,
+      italic: state.italic,
+      align: state.align,
+      rotation: 0,
+    };
+
+    if (type === "sticky") {
+      return {
+        ...base,
+        type: "sticky",
+        fill: state.fill || STICKY_FILL,
+      };
+    }
+
+    return {
+      ...base,
+      type: "text",
+    };
+  }
+
+  function defaultTextBounds(type, point) {
+    const size = type === "sticky" ? STICKY_DEFAULT : TEXT_DEFAULT;
+    return {
+      x: point.x,
+      y: point.y,
+      width: size.width,
+      height: size.height,
+    };
+  }
+
+  function startTextBox(pointerId, point, type) {
+    const existing = hitObject(point);
+    if (existing && existing.type === type) {
+      setSelection([existing.id]);
+      startEditing(existing, false);
+      return;
+    }
+
+    clearSelection();
+    state.active = {
+      kind: "textbox",
+      pointerId,
+      textType: type,
+      start: point,
+      point,
+    };
+    queueTextboxPreview(point);
+  }
+
+  function queueTextboxPreview(point) {
+    if (!state.active || state.active.kind !== "textbox") {
+      return;
+    }
+
+    state.active.point = point;
+    if (!state.raf) {
+      state.raf = requestAnimationFrame(flushTextboxPreview);
+    }
+  }
+
+  function flushTextboxPreview() {
+    state.raf = 0;
+    if (!state.active || state.active.kind !== "textbox") {
+      return;
+    }
+
+    const bounds = normalizedBounds(state.active.start, state.active.point);
+    state.preview = {
+      type: state.active.textType === "sticky" ? "roundrect" : "rect",
+      ...bounds,
+      radius: 8,
+      stroke: SELECT_COLOR,
+      fill: state.active.textType === "sticky" ? state.fill || STICKY_FILL : null,
+      size: 1,
+      rotation: 0,
+    };
+    redraw();
+  }
+
+  function finishTextBox(pointerId) {
+    if (!state.active || state.active.kind !== "textbox" || state.active.pointerId !== pointerId) {
+      return;
+    }
+
+    if (state.raf) {
+      cancelAnimationFrame(state.raf);
+      flushTextboxPreview();
+    }
+
+    const type = state.active.textType;
+    const start = state.active.start;
+    const point = state.active.point;
+    const dragged = normalizedBounds(start, point);
+    state.preview = null;
+    state.active = null;
+    releasePointer(pointerId);
+
+    const isClick = dragged.width < 8 && dragged.height < 8;
+    const bounds = isClick
+      ? defaultTextBounds(type, start)
+      : {
+          x: dragged.x,
+          y: dragged.y,
+          width: Math.max(dragged.width, type === "sticky" ? 120 : 160),
+          height: Math.max(dragged.height, type === "sticky" ? 120 : 48),
+        };
+
+    captureBefore();
+    const object = createTextLike(type, bounds);
+    state.objects.push(object);
+    setSelection([object.id]);
+    startEditing(object, true);
+  }
+
+  function applyFormatChange() {
+    syncFormatUI();
+    if (state.editingId) {
+      const object = findObject(state.editingId);
+      if (isTextLike(object)) {
+        object.color = state.stroke;
+        object.fontSize = state.fontSize;
+        object.bold = state.bold;
+        object.italic = state.italic;
+        object.align = state.align;
+        if (object.type === "sticky") {
+          object.fill = state.fill || object.fill || STICKY_FILL;
+        }
+        positionEditor(object);
+        redraw();
+      }
+      return;
+    }
+
+    if (state.selectedIds.length > 0 && !state.active) {
+      captureBefore();
+      applyStyleToSelected();
+      commitIfChanged();
+      redraw();
+    }
   }
 
   function cursorForHandle(handle) {
@@ -1427,6 +1900,11 @@
       return;
     }
 
+    if (state.active.kind === "textbox") {
+      finishTextBox(pointerId);
+      return;
+    }
+
     endStroke(pointerId);
   }
 
@@ -1468,6 +1946,10 @@
 
     if (state.active) {
       endActive(state.active.pointerId);
+    }
+
+    if (state.editingId) {
+      finishEditing();
     }
 
     state.tool = tool;
@@ -1545,13 +2027,7 @@
     }
 
     syncColorUI();
-
-    if (state.selectedIds.length > 0 && !state.active) {
-      captureBefore();
-      applyStyleToSelected();
-      commitIfChanged();
-      redraw();
-    }
+    applyFormatChange();
   }
 
   function setSizeByIndex(index, commit) {
@@ -1587,11 +2063,24 @@
       return;
     }
 
+    if (state.skipCanvasClick) {
+      state.skipCanvasClick = false;
+      return;
+    }
+
     event.preventDefault();
     const point = getPoint(event);
 
     if (state.tool === "select") {
       onSelectPointerDown(event, point);
+      if (state.active) {
+        capturePointer(event.pointerId);
+      }
+      return;
+    }
+
+    if (isTextTool(state.tool)) {
+      startTextBox(event.pointerId, point, state.tool);
       if (state.active) {
         capturePointer(event.pointerId);
       }
@@ -1626,6 +2115,11 @@
 
     if (state.active.kind === "transform") {
       queueSelectDrag(point);
+      return;
+    }
+
+    if (state.active.kind === "textbox") {
+      queueTextboxPreview(point);
       return;
     }
 
@@ -1697,8 +2191,43 @@
     queueShapePreview(state.active.point, shift);
   }
 
+  function handleEditorKeys(event) {
+    const ctrl = event.ctrlKey || event.metaKey;
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      cancelActive();
+      return true;
+    }
+
+    if (ctrl && event.key === "Enter") {
+      event.preventDefault();
+      finishEditing();
+      return true;
+    }
+
+    if (ctrl && event.key.toLowerCase() === "b") {
+      event.preventDefault();
+      state.bold = !state.bold;
+      applyFormatChange();
+      return true;
+    }
+
+    if (ctrl && event.key.toLowerCase() === "i") {
+      event.preventDefault();
+      state.italic = !state.italic;
+      applyFormatChange();
+      return true;
+    }
+
+    return false;
+  }
+
   function onKeyDown(event) {
     if (isTypingTarget(event.target)) {
+      if (event.target === editor) {
+        handleEditorKeys(event);
+      }
       return;
     }
 
@@ -1711,6 +2240,20 @@
     if (event.key === "Escape") {
       event.preventDefault();
       cancelActive();
+      return;
+    }
+
+    if (ctrl && event.key.toLowerCase() === "b") {
+      event.preventDefault();
+      state.bold = !state.bold;
+      applyFormatChange();
+      return;
+    }
+
+    if (ctrl && event.key.toLowerCase() === "i") {
+      event.preventDefault();
+      state.italic = !state.italic;
+      applyFormatChange();
       return;
     }
 
@@ -1776,7 +2319,87 @@
   toolbar.addEventListener("click", onToolbarClick);
   undoBtn.addEventListener("click", () => undo());
   redoBtn.addEventListener("click", () => redo());
-  deleteBtn.addEventListener("click", () => deleteSelected());
+  deleteBtn.addEventListener("click", () => {
+    if (state.editingId) {
+      finishEditing();
+    }
+    deleteSelected();
+  });
+  document.querySelector(".format-actions").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-format]");
+    if (!button) {
+      return;
+    }
+
+    const format = button.dataset.format;
+    if (format === "bold") {
+      state.bold = !state.bold;
+    } else if (format === "italic") {
+      state.italic = !state.italic;
+    } else if (format.startsWith("align-")) {
+      state.align = format.slice("align-".length);
+    }
+
+    applyFormatChange();
+  });
+  fontSizeSelect.addEventListener("change", () => {
+    state.fontSize = Number(fontSizeSelect.value);
+    applyFormatChange();
+  });
+  editor.addEventListener("input", () => {
+    const object = findObject(state.editingId);
+    if (!isTextLike(object)) {
+      return;
+    }
+
+    object.text = editor.value;
+    const minHeight = object.type === "sticky" ? STICKY_DEFAULT.height : TEXT_DEFAULT.height;
+    const nextHeight = Math.max(minHeight, editor.scrollHeight);
+    if (nextHeight > object.height + 1) {
+      object.height = nextHeight;
+      positionEditor(object);
+      redraw();
+    }
+  });
+  canvas.addEventListener("dblclick", (event) => {
+    if (state.tool !== "select") {
+      return;
+    }
+
+    const object = hitObject(getPoint(event));
+    if (isTextLike(object)) {
+      startEditing(object, false);
+    }
+  });
+  document.addEventListener(
+    "pointerdown",
+    (event) => {
+      if (!state.editingId) {
+        return;
+      }
+
+      const target = event.target;
+      if (
+        !(target instanceof Node) ||
+        editor.contains(target) ||
+        (target instanceof Element &&
+          (target.closest(".format-actions") ||
+            target.closest(".toolbar") ||
+            target.closest(".topbar-actions")))
+      ) {
+        return;
+      }
+
+      finishEditing();
+      if (
+        isTextTool(state.tool) &&
+        (event.target === canvas || event.target === canvas.parentElement)
+      ) {
+        state.skipCanvasClick = true;
+      }
+    },
+    true
+  );
   colorInput.addEventListener("input", () => {
     setColor(colorInput.value);
   });
@@ -1812,4 +2435,5 @@
   canvas.dataset.cursor = state.tool;
   syncColorUI();
   syncEditUI();
+  syncFormatUI();
 })();

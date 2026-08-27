@@ -16,6 +16,10 @@ Open `index.html` in a modern browser.
 
 Shape tools: line, rectangle, rounded rectangle, ellipse, triangle, and arrow.
 
+Text tools: **Text** (`T`) and **Sticky note** (`N`). Click to place, or drag to set the size. Double-click a text object or sticky note to edit it. Press `Esc`, `Ctrl+Enter`, or click the canvas to finish editing. An empty new text box is discarded; an empty sticky note is kept.
+
+Formatting (bold, italic, alignment, and font size) applies to the selected text or sticky note, and to the next one you create.
+
 ### Editing
 
 | Action        | Shortcut              |

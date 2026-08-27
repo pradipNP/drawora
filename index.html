@@ -34,6 +34,110 @@
           <h1>Drawora</h1>
         </div>
 
+        <div class="format-actions" role="group" aria-label="Text formatting">
+          <button
+            type="button"
+            class="icon-btn"
+            data-format="bold"
+            title="Bold (Ctrl+B)"
+            aria-pressed="false"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M7 5h7.2A3.8 3.8 0 0 1 18 8.8 3.3 3.3 0 0 1 15.2 12 3.6 3.6 0 0 1 19 15.6 4 4 0 0 1 14.8 20H7V5Z"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.75"
+                stroke-linejoin="round"
+              />
+              <path d="M7 12h8" fill="none" stroke="currentColor" stroke-width="1.75" />
+            </svg>
+            <span class="visually-hidden">Bold</span>
+          </button>
+          <button
+            type="button"
+            class="icon-btn"
+            data-format="italic"
+            title="Italic (Ctrl+I)"
+            aria-pressed="false"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M10 5h9M5 19h9M14.5 5 9.5 19"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.75"
+                stroke-linecap="round"
+              />
+            </svg>
+            <span class="visually-hidden">Italic</span>
+          </button>
+          <button
+            type="button"
+            class="icon-btn"
+            data-format="align-left"
+            title="Align left"
+            aria-pressed="true"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M5 6h14M5 10h10M5 14h14M5 18h8"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.75"
+                stroke-linecap="round"
+              />
+            </svg>
+            <span class="visually-hidden">Align left</span>
+          </button>
+          <button
+            type="button"
+            class="icon-btn"
+            data-format="align-center"
+            title="Align center"
+            aria-pressed="false"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M5 6h14M7 10h10M5 14h14M8 18h8"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.75"
+                stroke-linecap="round"
+              />
+            </svg>
+            <span class="visually-hidden">Align center</span>
+          </button>
+          <button
+            type="button"
+            class="icon-btn"
+            data-format="align-right"
+            title="Align right"
+            aria-pressed="false"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M5 6h14M9 10h10M5 14h14M11 18h8"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.75"
+                stroke-linecap="round"
+              />
+            </svg>
+            <span class="visually-hidden">Align right</span>
+          </button>
+          <label class="font-size-field" title="Font size">
+            <span class="visually-hidden">Font size</span>
+            <select id="font-size" aria-label="Font size">
+              <option value="16">16</option>
+              <option value="20">20</option>
+              <option value="24" selected>24</option>
+              <option value="32">32</option>
+              <option value="40">40</option>
+            </select>
+          </label>
+        </div>
+
         <div class="topbar-actions">
           <button
             type="button"
@@ -322,6 +426,57 @@
 
           <hr class="toolbar-rule" />
 
+          <div class="shape-tools" role="group" aria-label="Notes">
+            <button
+              type="button"
+              class="tool-btn"
+              data-tool="text"
+              aria-pressed="false"
+              aria-keyshortcuts="T"
+              title="Text (T)"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M5 6.5h14M12 6.5V18.5M8.5 18.5h7"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.75"
+                  stroke-linecap="round"
+                />
+              </svg>
+              <span class="visually-hidden">Text</span>
+            </button>
+
+            <button
+              type="button"
+              class="tool-btn"
+              data-tool="sticky"
+              aria-pressed="false"
+              aria-keyshortcuts="N"
+              title="Sticky note (N)"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M6 5.5h12v9.2L13.8 19H6V5.5Z"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.75"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M18 14.7h-4.2V19"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.75"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              <span class="visually-hidden">Sticky note</span>
+            </button>
+          </div>
+
+          <hr class="toolbar-rule" />
+
           <div class="color-targets" role="group" aria-label="Color target">
             <button
               type="button"
@@ -439,6 +594,14 @@
 
         <main class="canvas-wrap">
           <canvas id="board" aria-label="Whiteboard canvas"></canvas>
+          <textarea
+            id="text-editor"
+            class="text-editor"
+            hidden
+            spellcheck="false"
+            autocomplete="off"
+            aria-label="Edit text"
+          ></textarea>
         </main>
       </div>
     </div>
