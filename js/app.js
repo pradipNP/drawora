@@ -1,15 +1,32 @@
 (() => {
-  const DRAW_TOOLS = ["pen", "eraser"];
-  const SHAPE_TOOLS = ["line", "rect", "roundrect", "ellipse", "triangle", "arrow"];
+  const DRAW_TOOLS = ["pen", "pencil", "brush", "marker", "highlighter", "spray", "eraser"];
+  const SHAPE_TOOLS = [
+    "line",
+    "rect",
+    "roundrect",
+    "ellipse",
+    "triangle",
+    "arrow",
+    "diamond",
+    "pentagon",
+    "hexagon",
+    "star",
+  ];
+  const POLYGON_SHAPES = ["triangle", "diamond", "pentagon", "hexagon", "star"];
   const TEXT_TOOLS = ["text", "sticky"];
-  const TOOLS = ["select", "pan", ...DRAW_TOOLS, ...SHAPE_TOOLS, ...TEXT_TOOLS];
+  const EXTRA_TOOLS = ["fill", "eyedropper", "lasso"];
+  const TOOLS = ["select", "pan", ...DRAW_TOOLS, ...SHAPE_TOOLS, ...TEXT_TOOLS, ...EXTRA_TOOLS];
   const SHORTCUTS = {
     v: "select",
     h: "pan",
     p: "pen",
+    b: "brush",
     e: "eraser",
     t: "text",
     n: "sticky",
+    f: "fill",
+    i: "eyedropper",
+    l: "lasso",
   };
   const SIZE_STOPS = [2, 4, 8, 12, 20];
   const PRESET_COLORS = [
@@ -124,6 +141,7 @@
     pageDragMoved: false,
     pageThumbKey: "",
     cropping: false,
+    eyedropperReturn: "pen",
   };
 
   const RIBBON_TABS = ["home", "draw", "insert", "view", "page", "export", "help"];
@@ -284,6 +302,14 @@
 
   function isShapeTool(tool) {
     return SHAPE_TOOLS.includes(tool);
+  }
+
+  function isInkTool(tool) {
+    return DRAW_TOOLS.includes(tool);
+  }
+
+  function isPolygonShape(object) {
+    return object && POLYGON_SHAPES.includes(object.type);
   }
 
   function isTextTool(tool) {
@@ -519,6 +545,12 @@
 
   function normalizeHex(color) {
     return color.trim().toLowerCase();
+  }
+
+  function rgbToHex(r, g, b) {
+    return `#${[r, g, b]
+      .map((value) => Math.max(0, Math.min(255, Math.round(value))).toString(16).padStart(2, "0"))
+      .join("")}`;
   }
 
   function createId() {
@@ -847,7 +879,11 @@
 
     const shape = {
       type,
-      ...normalizedBounds(start, end, shift && type === "ellipse"),
+      ...normalizedBounds(
+        start,
+        end,
+        shift && (type === "ellipse" || POLYGON_SHAPES.includes(type))
+      ),
       stroke: state.stroke,
       fill: state.fill,
       size: state.size,
@@ -972,23 +1008,57 @@
   }
 
   function configureStroke(stroke) {
-    if (stroke.tool === "eraser") {
+    const tool = stroke.tool || "pen";
+    if (tool === "eraser") {
       ctx.globalCompositeOperation = "destination-out";
       ctx.strokeStyle = "#000000";
       ctx.fillStyle = "#000000";
-    } else {
-      ctx.globalCompositeOperation = "source-over";
-      ctx.strokeStyle = stroke.color;
-      ctx.fillStyle = stroke.color;
+      ctx.globalAlpha = 1;
+      ctx.lineWidth = stroke.size;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      return;
     }
 
-    ctx.lineWidth = stroke.size;
-    ctx.lineCap = "round";
+    ctx.globalCompositeOperation = tool === "highlighter" ? "multiply" : "source-over";
+    ctx.strokeStyle = stroke.color;
+    ctx.fillStyle = stroke.color;
+    if (tool === "pencil") {
+      ctx.globalAlpha = 0.92;
+      ctx.lineWidth = Math.max(1, stroke.size * 0.65);
+      ctx.lineCap = "round";
+    } else if (tool === "brush") {
+      ctx.globalAlpha = 0.42;
+      ctx.lineWidth = stroke.size * 2.2;
+      ctx.lineCap = "round";
+    } else if (tool === "marker") {
+      ctx.globalAlpha = 0.92;
+      ctx.lineWidth = stroke.size * 1.45;
+      ctx.lineCap = "square";
+    } else if (tool === "highlighter") {
+      ctx.globalAlpha = 0.38;
+      ctx.lineWidth = stroke.size * 3.4;
+      ctx.lineCap = "butt";
+    } else if (tool === "spray") {
+      ctx.globalAlpha = 0.55;
+      ctx.lineWidth = Math.max(1.5, stroke.size * 0.35);
+      ctx.lineCap = "round";
+    } else {
+      ctx.globalAlpha = 1;
+      ctx.lineWidth = stroke.size;
+      ctx.lineCap = "round";
+    }
     ctx.lineJoin = "round";
+  }
+
+  function strokeNeedsRedraw(stroke) {
+    const tool = stroke && stroke.tool;
+    return tool === "brush" || tool === "highlighter" || tool === "spray";
   }
 
   function configureShape(shape) {
     ctx.globalCompositeOperation = "source-over";
+    ctx.globalAlpha = 1;
     ctx.strokeStyle = shape.stroke;
     ctx.fillStyle = shape.fill || "transparent";
     ctx.lineWidth = shape.size;
@@ -1007,7 +1077,8 @@
     ctx.save();
     configureStroke(stroke);
     ctx.beginPath();
-    ctx.arc(point.x, point.y, stroke.size / 2, 0, Math.PI * 2);
+    const radius = (stroke.tool === "spray" ? Math.max(1.2, stroke.size * 0.22) : ctx.lineWidth) / 2;
+    ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }
@@ -1015,6 +1086,13 @@
   function drawStroke(stroke) {
     const points = stroke.points;
     if (points.length === 0) {
+      return;
+    }
+
+    if (stroke.tool === "spray") {
+      for (const point of points) {
+        drawDot(stroke, point);
+      }
       return;
     }
 
@@ -1094,6 +1172,100 @@
       0,
       Math.PI * 2
     );
+    paintClosedPath(shape);
+    ctx.restore();
+  }
+
+  function regularPolygonPoints(shape, sides) {
+    const cx = shape.x + shape.width / 2;
+    const cy = shape.y + shape.height / 2;
+    const rx = shape.width / 2;
+    const ry = shape.height / 2;
+    const points = [];
+    for (let i = 0; i < sides; i += 1) {
+      const angle = -Math.PI / 2 + (i * Math.PI * 2) / sides;
+      points.push({
+        x: cx + rx * Math.cos(angle),
+        y: cy + ry * Math.sin(angle),
+      });
+    }
+    return points;
+  }
+
+  function diamondPoints(shape) {
+    const cx = shape.x + shape.width / 2;
+    const cy = shape.y + shape.height / 2;
+    return [
+      { x: cx, y: shape.y },
+      { x: shape.x + shape.width, y: cy },
+      { x: cx, y: shape.y + shape.height },
+      { x: shape.x, y: cy },
+    ];
+  }
+
+  function starPoints(shape) {
+    const cx = shape.x + shape.width / 2;
+    const cy = shape.y + shape.height / 2;
+    const rx = shape.width / 2;
+    const ry = shape.height / 2;
+    const points = [];
+    for (let i = 0; i < 10; i += 1) {
+      const r = i % 2 === 0 ? 1 : 0.4;
+      const angle = -Math.PI / 2 + (i * Math.PI) / 5;
+      points.push({
+        x: cx + rx * r * Math.cos(angle),
+        y: cy + ry * r * Math.sin(angle),
+      });
+    }
+    return points;
+  }
+
+  function polygonPoints(shape) {
+    if (shape.type === "triangle") {
+      return trianglePoints(shape);
+    }
+    if (shape.type === "diamond") {
+      return diamondPoints(shape);
+    }
+    if (shape.type === "pentagon") {
+      return regularPolygonPoints(shape, 5);
+    }
+    if (shape.type === "hexagon") {
+      return regularPolygonPoints(shape, 6);
+    }
+    if (shape.type === "star") {
+      return starPoints(shape);
+    }
+    return null;
+  }
+
+  function pointInPolygon(point, polygon) {
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i, i += 1) {
+      const a = polygon[i];
+      const b = polygon[j];
+      const intersect =
+        a.y > point.y !== b.y > point.y &&
+        point.x < ((b.x - a.x) * (point.y - a.y)) / (b.y - a.y || Number.EPSILON) + a.x;
+      if (intersect) {
+        inside = !inside;
+      }
+    }
+    return inside;
+  }
+
+  function drawPolygon(shape, points) {
+    if (!points || points.length < 2) {
+      return;
+    }
+    ctx.save();
+    configureShape(shape);
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i += 1) {
+      ctx.lineTo(points[i].x, points[i].y);
+    }
+    ctx.closePath();
     paintClosedPath(shape);
     ctx.restore();
   }
@@ -1428,6 +1600,12 @@
       case "triangle":
         drawTriangle(shape);
         break;
+      case "diamond":
+      case "pentagon":
+      case "hexagon":
+      case "star":
+        drawPolygon(shape, polygonPoints(shape));
+        break;
       case "arrow":
         drawArrow(shape);
         break;
@@ -1609,7 +1787,9 @@
 
   function drawObject(object) {
     const rotation = object.rotation || 0;
-    if (!rotation) {
+    const flipX = !isImage(object) && object.flipX;
+    const flipY = !isImage(object) && object.flipY;
+    if (!rotation && !flipX && !flipY) {
       drawObjectUnrotated(object);
       return;
     }
@@ -1618,6 +1798,7 @@
     ctx.save();
     ctx.translate(center.x, center.y);
     ctx.rotate(rotation);
+    ctx.scale(flipX ? -1 : 1, flipY ? -1 : 1);
     ctx.translate(-center.x, -center.y);
     drawObjectUnrotated(object);
     ctx.restore();
@@ -1950,6 +2131,10 @@
       drawMarquee(normalizedBounds(state.active.start, state.active.point));
     }
 
+    if (state.active && state.active.kind === "lasso") {
+      drawLasso(state.active.points);
+    }
+
     drawSelectionOverlay();
     paintCurrentPageThumb();
   }
@@ -1966,6 +2151,29 @@
     ctx.setLineDash([viewLen(4), viewLen(3)]);
     ctx.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
     ctx.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+    ctx.restore();
+  }
+
+  function drawLasso(points) {
+    if (!points || points.length < 2) {
+      return;
+    }
+
+    ctx.save();
+    ctx.fillStyle = "rgb(15 118 110 / 0.08)";
+    ctx.strokeStyle = SELECT_COLOR;
+    ctx.lineWidth = viewLen(1);
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    ctx.setLineDash([viewLen(4), viewLen(3)]);
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i += 1) {
+      ctx.lineTo(points[i].x, points[i].y);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
     ctx.restore();
   }
 
@@ -2062,12 +2270,24 @@
       return nx * nx + ny * ny <= 1;
     }
 
-    if (object.type === "triangle") {
-      const [a, b, c] = trianglePoints(object);
-      return pointInTriangle(point, a, b, c);
+    if (object.type === "triangle" || isPolygonShape(object)) {
+      const polygon = polygonPoints(object);
+      return Boolean(polygon && pointInPolygon(point, polygon));
     }
 
     return pointInBounds(point, object.x, object.y, object.width, object.height);
+  }
+
+  function objectLocalPoint(object, point) {
+    const center = getCenter(object);
+    const local = worldToLocal(point, center, object.rotation || 0);
+    if (isImage(object) || (!object.flipX && !object.flipY)) {
+      return local;
+    }
+    return {
+      x: center.x + (local.x - center.x) * (object.flipX ? -1 : 1),
+      y: center.y + (local.y - center.y) * (object.flipY ? -1 : 1),
+    };
   }
 
   function hitObject(point) {
@@ -2077,7 +2297,7 @@
         continue;
       }
 
-      const local = worldToLocal(point, getCenter(object), object.rotation || 0);
+      const local = objectLocalPoint(object, point);
       if (hitObjectAtLocal(object, local)) {
         return object;
       }
@@ -2699,6 +2919,9 @@
     ungroupBtn.disabled = !info.canUngroup;
     for (const button of toolbar.querySelectorAll('[data-action="align"]')) {
       button.disabled = units.length < 2;
+    }
+    for (const button of toolbar.querySelectorAll('[data-action="flip-h"], [data-action="flip-v"]')) {
+      button.disabled = !hasSelection;
     }
   }
 
@@ -3575,7 +3798,10 @@
   function syncImageUI() {
     const image = selectedImage();
     const enabled = Boolean(image);
-    imageCropBtn.disabled = !enabled;
+    for (const button of toolbar.querySelectorAll('[data-action="image-crop"]')) {
+      button.disabled = !enabled;
+      button.setAttribute("aria-pressed", String(Boolean(enabled && state.cropping)));
+    }
     imageFlipHBtn.disabled = !enabled;
     imageFlipVBtn.disabled = !enabled;
     imageShadowBtn.disabled = !enabled;
@@ -3586,7 +3812,6 @@
     imageContrastInput.disabled = !enabled;
     imageSaturationInput.disabled = !enabled;
     imageBlurInput.disabled = !enabled;
-    imageCropBtn.setAttribute("aria-pressed", String(Boolean(enabled && state.cropping)));
     imageShadowBtn.setAttribute("aria-pressed", String(Boolean(image && image.shadow)));
     imageGrayBtn.setAttribute("aria-pressed", String(Boolean(image && image.grayscale)));
     if (!image) {
@@ -3652,6 +3877,158 @@
     }
     captureBefore();
     image[name] = !image[name];
+    commitIfChanged();
+    syncImageUI();
+    redraw();
+  }
+
+  function fillColor() {
+    return state.fill || state.stroke;
+  }
+
+  function applyFillAt(point) {
+    const object = hitObject(point);
+    if (!object) {
+      return;
+    }
+    const color = fillColor();
+    captureBefore();
+    if (object.type === "stroke") {
+      if (object.tool !== "eraser") {
+        object.color = color;
+      }
+    } else if (object.type === "line" || object.type === "arrow") {
+      object.stroke = color;
+    } else if (isLink(object)) {
+      object.color = color;
+    } else if (isImage(object)) {
+      object.stroke = color;
+    } else if (isTextLike(object)) {
+      if (object.type === "sticky") {
+        object.fill = color;
+      } else {
+        object.textBack = color;
+      }
+    } else {
+      object.fill = color;
+    }
+    commitIfChanged();
+    redraw();
+  }
+
+  function sampleCanvasColor(event) {
+    const screen = getScreenPoint(event);
+    const x = Math.max(0, Math.min(canvas.width - 1, Math.round(screen.x * state.dpr)));
+    const y = Math.max(0, Math.min(canvas.height - 1, Math.round(screen.y * state.dpr)));
+    const data = ctx.getImageData(x, y, 1, 1).data;
+    if (data[3] < 12) {
+      return null;
+    }
+    return rgbToHex(data[0], data[1], data[2]);
+  }
+
+  function pickColorAt(event) {
+    const hex = sampleCanvasColor(event);
+    if (hex) {
+      if (state.colorTarget === "fill") {
+        state.fill = hex;
+      } else {
+        state.stroke = hex;
+      }
+      syncColorUI();
+    }
+    const next =
+      state.eyedropperReturn && state.eyedropperReturn !== "eyedropper" ? state.eyedropperReturn : "pen";
+    setTool(next);
+  }
+
+  function startLasso(pointerId, point, shift) {
+    state.active = {
+      kind: "lasso",
+      pointerId,
+      points: [point],
+      shift,
+    };
+    canvas.style.cursor = "crosshair";
+    redraw();
+  }
+
+  function queueLasso(point, shift) {
+    if (!state.active || state.active.kind !== "lasso") {
+      return;
+    }
+    state.active.shift = shift;
+    const last = state.active.points[state.active.points.length - 1];
+    if (last && distance(last, point) < viewLen(2)) {
+      return;
+    }
+    state.active.points.push(point);
+    if (!state.raf) {
+      state.raf = requestAnimationFrame(flushLasso);
+    }
+  }
+
+  function flushLasso() {
+    state.raf = 0;
+    if (!state.active || state.active.kind !== "lasso") {
+      return;
+    }
+    redraw();
+  }
+
+  function finishLasso(pointerId) {
+    if (!state.active || state.active.kind !== "lasso" || state.active.pointerId !== pointerId) {
+      return;
+    }
+    if (state.raf) {
+      cancelAnimationFrame(state.raf);
+      state.raf = 0;
+    }
+    const points = state.active.points;
+    const additive = state.active.shift;
+    state.active = null;
+    releasePointer(pointerId);
+
+    let hits;
+    if (points.length < 3) {
+      const object = hitObject(points[0]);
+      hits = object ? [object.id] : [];
+    } else {
+      hits = state.objects
+        .filter((object) => isSelectable(object) && pointInPolygon(getCenter(object), points))
+        .map((object) => object.id);
+    }
+    const ids = expandGroupIds(hits);
+    if (additive) {
+      setSelection([...new Set([...state.selectedIds, ...ids])]);
+    } else {
+      setSelection(ids);
+    }
+    canvas.style.cursor = "";
+    redraw();
+  }
+
+  function flipSelected(axis) {
+    const objects = selectedObjects();
+    if (!objects.length) {
+      return;
+    }
+    captureBefore();
+    const bounds = unionBounds(objects.map(objectWorldBounds));
+    const cx = bounds.x + bounds.width / 2;
+    const cy = bounds.y + bounds.height / 2;
+    for (const object of objects) {
+      const center = getCenter(object);
+      if (axis === "h") {
+        translateObject(object, 2 * (cx - center.x), 0);
+        object.flipX = !object.flipX;
+        object.rotation = -(object.rotation || 0);
+      } else {
+        translateObject(object, 0, 2 * (cy - center.y));
+        object.flipY = !object.flipY;
+        object.rotation = -(object.rotation || 0);
+      }
+    }
     commitIfChanged();
     syncImageUI();
     redraw();
@@ -4335,9 +4712,22 @@
       return;
     }
 
+    if (stroke.tool === "spray") {
+      for (const point of added) {
+        scatterSpray(stroke, point);
+      }
+      redraw();
+      return;
+    }
+
     const from = stroke.points[stroke.points.length - 1];
     for (const point of added) {
       stroke.points.push(point);
+    }
+
+    if (strokeNeedsRedraw(stroke)) {
+      redraw();
+      return;
     }
 
     ctx.save();
@@ -4463,6 +4853,11 @@
       return;
     }
 
+    if (state.active.kind === "lasso") {
+      finishLasso(pointerId);
+      return;
+    }
+
     if (state.active.kind === "pan") {
       finishPan(pointerId);
       return;
@@ -4555,6 +4950,19 @@
     redraw();
   }
 
+  function scatterSpray(stroke, origin) {
+    const count = 8;
+    const radius = Math.max(6, stroke.size * 1.8);
+    for (let i = 0; i < count; i += 1) {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = Math.sqrt(Math.random()) * radius;
+      stroke.points.push({
+        x: origin.x + Math.cos(angle) * dist,
+        y: origin.y + Math.sin(angle) * dist,
+      });
+    }
+  }
+
   function startStroke(pointerId, point) {
     clearSelection();
     captureBefore();
@@ -4565,12 +4973,22 @@
       color: state.stroke,
       size: state.size,
       rotation: 0,
-      points: [point],
+      points: [],
     };
+
+    if (state.tool === "spray") {
+      scatterSpray(stroke, point);
+    } else {
+      stroke.points.push(point);
+    }
 
     state.objects.push(stroke);
     state.active = { kind: "stroke", pointerId, stroke };
-    drawDot(stroke, point);
+    if (stroke.tool === "spray" || strokeNeedsRedraw(stroke)) {
+      redraw();
+    } else {
+      drawDot(stroke, point);
+    }
   }
 
   function startShape(pointerId, point, shift) {
@@ -4591,6 +5009,10 @@
       return;
     }
 
+    if (tool === "eyedropper") {
+      state.eyedropperReturn = state.tool;
+    }
+
     if (state.active) {
       endActive(state.active.pointerId);
     }
@@ -4607,7 +5029,7 @@
     canvas.dataset.cursor = tool;
     canvas.style.cursor = "";
 
-    if (tool !== "select" && tool !== "pan") {
+    if (tool !== "select" && tool !== "pan" && tool !== "lasso") {
       clearSelection();
       redraw();
     }
@@ -4745,6 +5167,22 @@
       return;
     }
 
+    if (state.tool === "fill") {
+      applyFillAt(point);
+      return;
+    }
+
+    if (state.tool === "eyedropper") {
+      pickColorAt(event);
+      return;
+    }
+
+    if (state.tool === "lasso") {
+      startLasso(event.pointerId, point, event.shiftKey);
+      capturePointer(event.pointerId);
+      return;
+    }
+
     if (isTextTool(state.tool)) {
       startTextBox(event.pointerId, point, state.tool);
       if (state.active) {
@@ -4760,7 +5198,7 @@
       return;
     }
 
-    if (state.tool === "pen" || state.tool === "eraser") {
+    if (isInkTool(state.tool)) {
       startStroke(event.pointerId, point);
     }
   }
@@ -4801,6 +5239,11 @@
 
     if (state.active.kind === "marquee") {
       queueMarquee(point);
+      return;
+    }
+
+    if (state.active.kind === "lasso") {
+      queueLasso(point, event.shiftKey);
       return;
     }
 
@@ -5207,6 +5650,10 @@
         toggleImageFlag("shadow");
       } else if (action === "image-grayscale") {
         toggleImageFlag("grayscale");
+      } else if (action === "flip-h") {
+        flipSelected("h");
+      } else if (action === "flip-v") {
+        flipSelected("v");
       }
       return;
     }

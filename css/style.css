@@ -854,7 +854,11 @@ kbd {
   cursor: text;
 }
 
-#board[data-cursor="sticky"] {
+#board[data-cursor="fill"] {
+  cursor: cell;
+}
+
+#board[data-cursor="eyedropper"] {
   cursor: copy;
 }
 

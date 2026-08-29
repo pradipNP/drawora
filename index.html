@@ -125,6 +125,22 @@
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19 16.5 7.5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/><path d="M10.5 7.5h6v6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     <span class="visually-hidden">Arrow</span>
                   </button>
+                  <button type="button" class="ribbon-btn" data-tool="diamond" aria-pressed="false" title="Diamond">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.5 19.5 12 12 19.5 4.5 12Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>
+                    <span class="visually-hidden">Diamond</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-tool="pentagon" aria-pressed="false" title="Pentagon">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.2 20 10.1 16.9 19.5H7.1L4 10.1Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>
+                    <span class="visually-hidden">Pentagon</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-tool="hexagon" aria-pressed="false" title="Hexagon">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 5.5h9L20.5 12l-4 6.5h-9L3.5 12Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>
+                    <span class="visually-hidden">Hexagon</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-tool="star" aria-pressed="false" title="Star">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.2 14.4 9.5 20.2 10.2 16 14.2 17.2 20 12 17 6.8 20 8 14.2 3.8 10.2 9.6 9.5Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>
+                    <span class="visually-hidden">Star</span>
+                  </button>
                 </div>
                 <span class="ribbon-group-label">Shapes</span>
               </div>
@@ -280,26 +296,88 @@
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.2 5.2 18.8 8.8 8.5 19.1 4.5 19.5l.4-4Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/><path d="M13.4 7l3.6 3.6" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>
                     <span class="visually-hidden">Pen</span>
                   </button>
-                  <button type="button" class="ribbon-btn" disabled title="Pencil (coming soon)">
+                  <button type="button" class="ribbon-btn" data-tool="pencil" aria-pressed="false" title="Pencil">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.8 5.4 18.6 9.2 8.4 19.4H4.6v-3.8Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/><path d="M13 7.2 16.8 11" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>
-                    <span class="visually-hidden">Pencil (coming soon)</span>
+                    <span class="visually-hidden">Pencil</span>
                   </button>
-                  <button type="button" class="ribbon-btn" disabled title="Marker (coming soon)">
+                  <button type="button" class="ribbon-btn" data-tool="brush" aria-pressed="false" aria-keyshortcuts="B" title="Brush (B)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 19.5c2.2 0 3.2-1.2 3.2-2.6 0-2.4-3.4-2.2-3.4-4.4C6.8 11.2 8.2 10 10 10c2.6 0 4.4 1.8 4.4 4.2 0 3.2-2.6 5.3-7.4 5.3Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/><path d="M13.8 9.2 19 4.2 20.6 5.8 15.4 11" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>
+                    <span class="visually-hidden">Brush</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-tool="marker" aria-pressed="false" title="Marker">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 19.5h10M9.2 16.8 15 4.5h2.2L11.4 16.8Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>
-                    <span class="visually-hidden">Marker (coming soon)</span>
+                    <span class="visually-hidden">Marker</span>
                   </button>
-                  <button type="button" class="ribbon-btn" disabled title="Highlighter (coming soon)">
+                  <button type="button" class="ribbon-btn" data-tool="highlighter" aria-pressed="false" title="Highlighter">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 18h14M8 15.5 12.2 6h3.2L11.2 15.5Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/><path d="M7.5 18v-2.2h6.4V18" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>
-                    <span class="visually-hidden">Highlighter (coming soon)</span>
+                    <span class="visually-hidden">Highlighter</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-tool="spray" aria-pressed="false" title="Spray">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="1.1" fill="currentColor"/><circle cx="12.5" cy="6.5" r="1.1" fill="currentColor"/><circle cx="16.5" cy="9" r="1.1" fill="currentColor"/><circle cx="7.5" cy="12.5" r="1.1" fill="currentColor"/><circle cx="11.5" cy="11" r="1.1" fill="currentColor"/><circle cx="15.5" cy="13.5" r="1.1" fill="currentColor"/><circle cx="10" cy="16.5" r="1.1" fill="currentColor"/><circle cx="14" cy="17.2" r="1.1" fill="currentColor"/></svg>
+                    <span class="visually-hidden">Spray</span>
                   </button>
                   <button type="button" class="ribbon-btn" data-tool="eraser" aria-pressed="false" aria-keyshortcuts="E" title="Eraser (E)">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.8 5.4 20 9.6c.8.8.8 2 0 2.8l-7.2 7.2H8.4L4 15.2c-.8-.8-.8-2 0-2.8l8.96-8.96c.8-.8 2.1-.8 2.84-.04Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/><path d="M8.5 19.6h11" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
                     <span class="visually-hidden">Eraser</span>
                   </button>
                 </div>
-                <span class="ribbon-group-label">Draw</span>
+                <span class="ribbon-group-label">Ink</span>
               </div>
-              <p class="ribbon-hint">Stroke size and colors stay available on the right.</p>
+              <div class="ribbon-group">
+                <div class="ribbon-group-tools">
+                  <button type="button" class="ribbon-btn" data-tool="fill" aria-pressed="false" aria-keyshortcuts="F" title="Fill (F)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 13.5 12.2 6.3c.8-.8 2-.8 2.8 0L18.5 10c.8.8.8 2 0 2.8L11.2 20H5v-6.5Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/><path d="M16.5 16.5c1.4 1.6 3.2 1.6 3.2 3.2 0 1.2-1 1.8-1.8 1.8s-1.8-.6-1.8-1.8" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+                    <span class="visually-hidden">Fill</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-tool="eyedropper" aria-pressed="false" aria-keyshortcuts="I" title="Eyedropper (I)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.2 4.8c.8-.8 2-.8 2.8 0l1.2 1.2c.8.8.8 2 0 2.8L12 16l-4 1 1-4Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/><path d="M11.2 8.8 15.2 12.8" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>
+                    <span class="visually-hidden">Eyedropper</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-tool="lasso" aria-pressed="false" aria-keyshortcuts="L" title="Lasso select (L)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8.5c1.2-2 4-3.2 6.5-2.4 3.2 1 4.8 4.2 3.6 7.2-1 2.4-3.6 3.6-6.2 3.2" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/><path d="M7.2 12.5c-.2 2.2 1.2 4.2 3.4 4.8" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+                    <span class="visually-hidden">Lasso</span>
+                  </button>
+                </div>
+                <span class="ribbon-group-label">Tools</span>
+              </div>
+              <div class="ribbon-group">
+                <div class="ribbon-group-tools">
+                  <button type="button" class="ribbon-btn" data-tool="diamond" aria-pressed="false" title="Diamond">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.5 19.5 12 12 19.5 4.5 12Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>
+                    <span class="visually-hidden">Diamond</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-tool="pentagon" aria-pressed="false" title="Pentagon">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.2 20 10.1 16.9 19.5H7.1L4 10.1Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>
+                    <span class="visually-hidden">Pentagon</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-tool="hexagon" aria-pressed="false" title="Hexagon">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 5.5h9L20.5 12l-4 6.5h-9L3.5 12Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>
+                    <span class="visually-hidden">Hexagon</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-tool="star" aria-pressed="false" title="Star">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.2 14.4 9.5 20.2 10.2 16 14.2 17.2 20 12 17 6.8 20 8 14.2 3.8 10.2 9.6 9.5Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>
+                    <span class="visually-hidden">Star</span>
+                  </button>
+                </div>
+                <span class="ribbon-group-label">Shapes</span>
+              </div>
+              <div class="ribbon-group">
+                <div class="ribbon-group-tools">
+                  <button type="button" class="ribbon-btn" data-action="image-crop" title="Crop image" disabled>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v14h14M3 7h14v14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span class="visually-hidden">Crop</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-action="flip-h" title="Flip horizontal" disabled>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v16M5 8v8l4-4Zm14 0v8l-4-4Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span class="visually-hidden">Flip horizontal</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-action="flip-v" title="Flip vertical" disabled>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16M8 5h8l-4 4Zm0 14h8l-4-4Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span class="visually-hidden">Flip vertical</span>
+                  </button>
+                </div>
+                <span class="ribbon-group-label">Image</span>
+              </div>
             </div>
 
             <div class="ribbon-panel" role="tabpanel" id="panel-insert" data-ribbon="insert" aria-labelledby="tab-insert" hidden>
@@ -341,6 +419,22 @@
                   <button type="button" class="ribbon-btn" data-insert="arrow" title="Insert arrow">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19 16.5 7.5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/><path d="M10.5 7.5h6v6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     <span class="visually-hidden">Insert arrow</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-insert="diamond" title="Insert diamond">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.5 19.5 12 12 19.5 4.5 12Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>
+                    <span class="visually-hidden">Insert diamond</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-insert="pentagon" title="Insert pentagon">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.2 20 10.1 16.9 19.5H7.1L4 10.1Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>
+                    <span class="visually-hidden">Insert pentagon</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-insert="hexagon" title="Insert hexagon">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 5.5h9L20.5 12l-4 6.5h-9L3.5 12Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>
+                    <span class="visually-hidden">Insert hexagon</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-insert="star" title="Insert star">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.2 14.4 9.5 20.2 10.2 16 14.2 17.2 20 12 17 6.8 20 8 14.2 3.8 10.2 9.6 9.5Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>
+                    <span class="visually-hidden">Insert star</span>
                   </button>
                 </div>
                 <span class="ribbon-group-label">Shapes</span>
@@ -590,9 +684,13 @@
               <div class="shortcut-list" aria-label="Keyboard shortcuts">
                 <span><kbd>V</kbd> Select</span>
                 <span><kbd>P</kbd> Pen</span>
+                <span><kbd>B</kbd> Brush</span>
                 <span><kbd>E</kbd> Eraser</span>
                 <span><kbd>T</kbd> Text</span>
                 <span><kbd>N</kbd> Sticky note</span>
+                <span><kbd>F</kbd> Fill</span>
+                <span><kbd>I</kbd> Eyedropper</span>
+                <span><kbd>L</kbd> Lasso</span>
                 <span>Double-click the board to type</span>
                 <span><kbd>Ctrl</kbd>+<kbd>B</kbd> Bold</span>
                 <span><kbd>Ctrl</kbd>+<kbd>I</kbd> Italic</span>
@@ -620,6 +718,8 @@
                 <span>Insert places objects on the page</span>
                 <span>Insert, drop, or paste an image</span>
                 <span>Double-click a link to edit · Ctrl+click to open</span>
+                <span>Fill paints the object you click</span>
+                <span>Draw tab: pencil, brush, marker, highlighter, spray</span>
                 <span>Middle-mouse drag to pan</span>
               </div>
             </div>

@@ -25,11 +25,17 @@ On the **Page** tab, pick **Teacher**, **Student**, or **Custom** and a template
 | Select | `V`      |
 | Pan    | `H` (or hold Space) |
 | Pen    | `P`      |
+| Brush  | `B`      |
 | Eraser | `E`      |
+| Fill   | `F`      |
+| Eyedropper | `I`  |
+| Lasso  | `L`      |
 
-Shape tools: line, rectangle, rounded rectangle, ellipse, triangle, and arrow.
+Shape tools: line, rectangle, rounded rectangle, ellipse, triangle, arrow, diamond, pentagon, hexagon, and star.
 
 Text tools: **Text** (`T`) and **Sticky note** (`N`). Click to place, or drag to set the size. Double-click empty board to start a text box; double-click a text object or sticky note to edit it. Text wraps to the box width and the box grows as you type. Side handles change width only (font size stays). Press `Esc`, `Ctrl+Enter`, or click the canvas to finish editing. An empty new text box is discarded; an empty sticky note is kept.
+
+**Draw** has pencil, brush (`B`), marker, highlighter, and spray, plus fill (`F`), eyedropper (`I`), and lasso select (`L`). Fill applies color to the object you click. The eyedropper samples the board. **Draw → Image** flips the selection; crop is for a selected picture. Object handles still resize.
 
 Formatting (font, size, bold, italic, underline, strikethrough, alignment, line height, letter spacing, paragraph spacing, lists, indent, and text background) applies to the selected text or sticky note, and to the next one you create. `Ctrl+B` / `Ctrl+I` / `Ctrl+U`; `Tab` / `Shift+Tab` indent while editing.
 

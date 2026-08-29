@@ -12,7 +12,7 @@ Statuses:
 | ⚪ | PLANNED |
 | 🔴 | BLOCKED |
 
-**Current:** Stages 1–13 complete. Stage 14 is next.
+**Current:** Stages 1–14 complete. Stage 15 is next.
 
 ---
 
@@ -276,17 +276,19 @@ Links: double-click to edit, Ctrl+click or Open to visit (http, https, mailto). 
 
 ### Stage 14 — Paint-level tools
 
-**Status:** 🔵 NEXT
+**Status:** ✅ COMPLETED
 
-Useful painting tools that fit the object architecture: pencil, brush, marker, highlighter, spray where practical, fill/bucket, color picker, more shapes, freeform/rectangular selection, crop, flip, resize, image editing.
+Ink tools on the Draw tab: pencil, brush, marker, highlighter, spray, plus the existing pen and eraser. Each stroke is still an object with a `tool` style.
 
-Do not blindly copy every Paint feature.
+Fill paints the object you click (shape fill, sticky/text background, or stroke color). Eyedropper samples the board and returns to the previous tool. Lasso selects objects whose centers lie inside the path. Extra shapes: diamond, pentagon, hexagon, star. Draw → Image flips the selection (and crops a selected picture). Resize stays on the object handles.
+
+Do not treat this as a bitmap Paint clone.
 
 ---
 
 ### Stage 15 — Teaching tools
 
-**Status:** ⚪ PLANNED
+**Status:** 🔵 NEXT
 
 Prioritize tools teachers actually use: laser pointer (non-permanent), spotlight, ruler, protractor, compass, grid, guides, measurement, math symbols where practical, presentation pointer, board clear with confirmation, freeze/unfreeze if practical.
 
