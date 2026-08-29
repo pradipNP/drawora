@@ -291,6 +291,7 @@
   const presenterWhiteBtn = document.getElementById("presenter-white-btn");
   const presentationCurtain = document.getElementById("presentation-curtain");
   const presentStartBtn = document.getElementById("present-start-btn");
+  const installAppBtn = document.getElementById("install-app-btn");
 
   if (
     !canvas ||
@@ -402,7 +403,8 @@
     !presenterBlackBtn ||
     !presenterWhiteBtn ||
     !presentationCurtain ||
-    !presentStartBtn
+    !presentStartBtn ||
+    !installAppBtn
   ) {
     console.error("Drawora: missing canvas or toolbar controls.");
     return;
@@ -10860,6 +10862,57 @@
     }
   }
 
+  let deferredInstallPrompt = null;
+
+  function setupPwa() {
+    if (
+      "serviceWorker" in navigator &&
+      (window.location.protocol === "https:" ||
+        window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1")
+    ) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker
+          .register("./sw.js")
+          .then((reg) => {
+            console.log("Drawora: Service Worker registered with scope:", reg.scope);
+          })
+          .catch((err) => {
+            console.warn("Drawora: Service Worker registration failed:", err);
+          });
+      });
+    }
+
+    window.addEventListener("beforeinstallprompt", (event) => {
+      event.preventDefault();
+      deferredInstallPrompt = event;
+      if (installAppBtn) {
+        installAppBtn.hidden = false;
+      }
+    });
+
+    if (installAppBtn) {
+      installAppBtn.addEventListener("click", async () => {
+        if (!deferredInstallPrompt) {
+          return;
+        }
+        installAppBtn.hidden = true;
+        deferredInstallPrompt.prompt();
+        const { outcome } = await deferredInstallPrompt.userChoice;
+        console.log("Drawora: User install choice outcome:", outcome);
+        deferredInstallPrompt = null;
+      });
+    }
+
+    window.addEventListener("appinstalled", () => {
+      deferredInstallPrompt = null;
+      if (installAppBtn) {
+        installAppBtn.hidden = true;
+      }
+      console.log("Drawora: PWA installed successfully.");
+    });
+  }
+
   const observer = new ResizeObserver(resizeCanvas);
   new ResizeObserver(layoutRibbonOverflow).observe(toolbar);
   observer.observe(canvas.parentElement);
@@ -10877,4 +10930,5 @@
   syncTeachUI();
 
   initProjectManager();
+  setupPwa();
 })();

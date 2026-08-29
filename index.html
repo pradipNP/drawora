@@ -8,10 +8,17 @@
       content="Drawora is a free, open-source whiteboard for drawing and notes in the browser."
     />
     <title>Drawora</title>
+    <meta name="theme-color" content="#0f766e" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Drawora" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="icons/icon-192.png" />
     <link
       rel="icon"
       type="image/svg+xml"
-      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230f766e'/%3E%3Cpath d='M7 21c4-10 14-12 18-8' fill='none' stroke='%23fff' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E"
+      href="icons/icon.svg"
     />
     <link rel="stylesheet" href="css/style.css" />
   </head>
@@ -43,6 +50,10 @@
             <span class="board-meta-divider" aria-hidden="true">/</span>
             <input id="board-title-input" class="board-title-input" type="text" maxlength="80" value="Untitled Board" aria-label="Board title" title="Click to rename board" />
             <span id="save-status" class="save-status" title="IndexedDB Autosave status">Saved</span>
+            <button type="button" class="menubar-btn menubar-install-btn" id="install-app-btn" title="Install Drawora App (offline &amp; standalone)" hidden>
+              <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M12 3v11M7.5 9.5 12 14l4.5-4.5M4 17.5v2A1.5 1.5 0 0 0 5.5 21h13a1.5 1.5 0 0 0 1.5-1.5v-2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span>Install</span>
+            </button>
           </div>
 
           <div class="ribbon-tabs" role="tablist" aria-label="Ribbon">

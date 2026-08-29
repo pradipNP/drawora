@@ -12,7 +12,7 @@ Statuses:
 | ⚪ | PLANNED |
 | 🔴 | BLOCKED |
 
-**Current:** Stages 1–21 complete. Stage 22 is next.
+**Current:** Stages 1–22 complete. Stage 23 is next.
 
 ---
 
@@ -359,17 +359,20 @@ Dedicated distraction-free presentation experience:
 
 ### Stage 22 — PWA / install / offline
 
-**Status:** 🔵 NEXT
+**Status:** ✅ COMPLETED
 
-Manifest, service worker, icons, standalone window, install button, offline shell, local board access offline.
-
-Must not break the normal browser version.
+Progressive Web App (PWA) & Offline Shell:
+- Web App Manifest (`manifest.webmanifest`) with standalone window configuration, theme color `#0f766e`, background `#f3f0eb`, app shortcuts, and categories.
+- High-resolution adaptive app icons (192x192, 512x512, SVG, and maskable).
+- Service Worker (`sw.js`) caching all core application assets (HTML, CSS, JS, manifest, icons) with cache-first and stale-while-revalidate strategy for instant offline startup.
+- Seamless PWA install prompt button integrated into the menubar, reacting to `beforeinstallprompt` and `appinstalled` events.
+- 100% offline board creation and management powered by browser IndexedDB without breaking local `file://` execution or desktop browsers.
 
 ---
 
 ### Stage 23 — Cloudflare deployment
 
-**Status:** ⚪ PLANNED
+**Status:** 🔵 NEXT
 
 Cloudflare Pages, Workers where required, public `.pages.dev` site.
 

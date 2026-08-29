@@ -88,6 +88,11 @@ Select an object to move, resize, or rotate it. Click empty canvas and drag to s
 - Instant **Black Screen** (`B` / `.`) or **White Screen** (`W` / `,`) curtains to focus attention during lectures.
 - Navigate pages effortlessly with arrow keys, `Space`, `PageUp`, or `PageDown`, and exit with `Esc`.
 
+**Progressive Web App (PWA) & Offline**:
+- Installable standalone app on Windows, macOS, Linux, Android, and iOS.
+- Complete offline capability via Service Worker caching (`sw.js`) and IndexedDB persistence.
+- Install button in top menubar appears when installation is supported.
+
 **Export** (`Ctrl+E` or the **Export** ribbon tab) offers high-resolution output formats:
 - **PNG / JPG**: Scalable resolution from 1× to 4×, custom background transparency, and JPEG quality compression.
 - **SVG**: Clean vector graphic output preserving text, paths, strokes, and shapes.
