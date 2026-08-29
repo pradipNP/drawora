@@ -260,6 +260,25 @@
   const projectsGrid = document.getElementById("projects-grid");
   const projectsEmpty = document.getElementById("projects-empty");
   const projectsCount = document.getElementById("projects-count");
+  const exportDialog = document.getElementById("export-dialog");
+  const exportPreviewImg = document.getElementById("export-preview-img");
+  const exportPreviewPlaceholder = document.getElementById("export-preview-placeholder");
+  const exportPreviewBadge = document.getElementById("export-preview-badge");
+  const exportFormatSelect = document.getElementById("export-format");
+  const exportScopeSelect = document.getElementById("export-scope");
+  const exportScaleSelect = document.getElementById("export-scale");
+  const exportTransparentBg = document.getElementById("export-transparent-bg");
+  const exportQualityRange = document.getElementById("export-quality");
+  const exportQualityVal = document.getElementById("export-quality-val");
+  const exportQualityWrap = document.getElementById("export-quality-wrap");
+  const exportScaleWrap = document.getElementById("export-scale-wrap");
+  const exportBgWrap = document.getElementById("export-bg-wrap");
+  const exportScopeWrap = document.getElementById("export-scope-wrap");
+  const exportFilenameInput = document.getElementById("export-filename");
+  const exportDownloadBtn = document.getElementById("export-download-btn");
+  const exportInfo = document.getElementById("export-info");
+  const projectFileInput = document.getElementById("project-file");
+  const importProjectBtn = document.getElementById("import-project-btn");
 
   if (
     !canvas ||
@@ -343,7 +362,26 @@
     !projectsSearch ||
     !projectsGrid ||
     !projectsEmpty ||
-    !projectsCount
+    !projectsCount ||
+    !exportDialog ||
+    !exportPreviewImg ||
+    !exportPreviewPlaceholder ||
+    !exportPreviewBadge ||
+    !exportFormatSelect ||
+    !exportScopeSelect ||
+    !exportScaleSelect ||
+    !exportTransparentBg ||
+    !exportQualityRange ||
+    !exportQualityVal ||
+    !exportQualityWrap ||
+    !exportScaleWrap ||
+    !exportBgWrap ||
+    !exportScopeWrap ||
+    !exportFilenameInput ||
+    !exportDownloadBtn ||
+    !exportInfo ||
+    !projectFileInput ||
+    !importProjectBtn
   ) {
     console.error("Drawora: missing canvas or toolbar controls.");
     return;
@@ -4736,18 +4774,765 @@
     }
   }
 
-  function undo() {
-    if (state.editingId) {
-      cancelEditing();
+  function renderPageToCanvas(page, options = {}) {
+    const scale = options.scale || 1;
+    const transparent = Boolean(options.transparent);
+    const objects = options.objects || (page.id === state.currentPageId ? state.objects : page.objects || []);
+
+    let minX = 0;
+    let minY = 0;
+    let width = page.width;
+    let height = page.height;
+
+    if (options.scope === "selection" && options.bounds) {
+      minX = options.bounds.x;
+      minY = options.bounds.y;
+      width = Math.max(options.bounds.width, 20);
+      height = Math.max(options.bounds.height, 20);
+    }
+
+    const expCanvas = document.createElement("canvas");
+    expCanvas.width = Math.max(1, Math.round(width * scale));
+    expCanvas.height = Math.max(1, Math.round(height * scale));
+    const ectx = expCanvas.getContext("2d");
+    if (!ectx) return expCanvas;
+
+    ectx.scale(scale, scale);
+    ectx.translate(-minX, -minY);
+
+    const surface = pageSurface(page);
+    if (!transparent) {
+      ectx.fillStyle = surface.paperColor || "#ffffff";
+      ectx.fillRect(minX, minY, width, height);
+      if (options.scope !== "selection") {
+        drawPagePattern(ectx, page.width, page.height, surface, (p) => p);
+      }
+    }
+
+    for (const object of objects) {
+      if (!object || object.hidden) continue;
+      drawObjectToContext(ectx, object);
+    }
+
+    return expCanvas;
+  }
+
+  function drawObjectToContext(targetCtx, object) {
+    const rotation = object.rotation || 0;
+    const flipX = !isImage(object) && object.flipX;
+    const flipY = !isImage(object) && object.flipY;
+    targetCtx.save();
+    if (rotation || flipX || flipY) {
+      const center = getCenter(object);
+      targetCtx.translate(center.x, center.y);
+      targetCtx.rotate(rotation);
+      targetCtx.scale(flipX ? -1 : 1, flipY ? -1 : 1);
+      targetCtx.translate(-center.x, -center.y);
+    }
+    drawSingleObjectToContext(targetCtx, object);
+    targetCtx.restore();
+  }
+
+  function drawSingleObjectToContext(targetCtx, object) {
+    if (object.type === "stroke") {
+      drawStrokeToContext(targetCtx, object);
+    } else if (object.type === "sticky") {
+      drawStickyToContext(targetCtx, object);
+    } else if (object.type === "text") {
+      drawTextBoxToContext(targetCtx, object);
+    } else if (object.type === "image") {
+      drawPictureToContext(targetCtx, object);
+    } else if (object.type === "link") {
+      drawLinkToContext(targetCtx, object);
+    } else if (object.type === "table") {
+      drawTableToContext(targetCtx, object);
+    } else if (object.type === "file") {
+      drawFileCardToContext(targetCtx, object);
+    } else {
+      drawShapeToContext(targetCtx, object);
+    }
+  }
+
+  function drawStrokeToContext(targetCtx, stroke) {
+    if (stroke.tool === "eraser") return;
+    const points = stroke.points;
+    if (!points || points.length === 0) return;
+    targetCtx.save();
+    targetCtx.strokeStyle = stroke.color || "#0f172a";
+    targetCtx.fillStyle = stroke.color || "#0f172a";
+    targetCtx.lineWidth = Math.max(stroke.size || 2, 1);
+    targetCtx.lineCap = "round";
+    targetCtx.lineJoin = "round";
+    if (stroke.tool === "highlighter") {
+      targetCtx.globalAlpha = 0.35;
+      targetCtx.lineWidth = (stroke.size || 16) * 1.5;
+    } else if (stroke.tool === "marker") {
+      targetCtx.globalAlpha = 0.75;
+    }
+    if (points.length === 1) {
+      targetCtx.beginPath();
+      targetCtx.arc(points[0].x, points[0].y, targetCtx.lineWidth / 2, 0, Math.PI * 2);
+      targetCtx.fill();
+    } else {
+      targetCtx.beginPath();
+      targetCtx.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < points.length; i++) {
+        targetCtx.lineTo(points[i].x, points[i].y);
+      }
+      targetCtx.stroke();
+    }
+    targetCtx.restore();
+  }
+
+  function drawStickyToContext(targetCtx, object) {
+    targetCtx.save();
+    targetCtx.shadowColor = "rgba(0,0,0,0.12)";
+    targetCtx.shadowBlur = 6;
+    targetCtx.shadowOffsetY = 2;
+    targetCtx.fillStyle = object.fill || "#fef08a";
+    targetCtx.beginPath();
+    targetCtx.roundRect(object.x, object.y, object.width, object.height, 8);
+    targetCtx.fill();
+    targetCtx.shadowColor = "transparent";
+    if (object.stroke && object.strokeSize) {
+      targetCtx.strokeStyle = object.stroke;
+      targetCtx.lineWidth = object.strokeSize;
+      targetCtx.stroke();
+    }
+    drawWrappedTextToContext(targetCtx, object);
+    targetCtx.restore();
+  }
+
+  function drawTextBoxToContext(targetCtx, object) {
+    targetCtx.save();
+    if (object.fill) {
+      targetCtx.fillStyle = object.fill;
+      targetCtx.fillRect(object.x, object.y, object.width, object.height);
+    }
+    if (object.stroke && object.strokeSize) {
+      targetCtx.strokeStyle = object.stroke;
+      targetCtx.lineWidth = object.strokeSize;
+      targetCtx.strokeRect(object.x, object.y, object.width, object.height);
+    }
+    drawWrappedTextToContext(targetCtx, object);
+    targetCtx.restore();
+  }
+
+  function drawPictureToContext(targetCtx, object) {
+    const asset = imageAssets.get(object.assetId);
+    if (!asset || !asset.complete) return;
+    targetCtx.save();
+    if (object.opacity != null && object.opacity < 1) targetCtx.globalAlpha = object.opacity;
+    if (object.shadow) {
+      targetCtx.shadowColor = "rgba(0,0,0,0.25)";
+      targetCtx.shadowBlur = 10;
+      targetCtx.shadowOffsetY = 4;
+    }
+    const sx = object.cropX != null ? object.cropX * asset.naturalWidth : 0;
+    const sy = object.cropY != null ? object.cropY * asset.naturalHeight : 0;
+    const sw = object.cropW != null ? object.cropW * asset.naturalWidth : asset.naturalWidth;
+    const sh = object.cropH != null ? object.cropH * asset.naturalHeight : asset.naturalHeight;
+    const r = object.radius || 0;
+    if (r > 0) {
+      targetCtx.beginPath();
+      targetCtx.roundRect(object.x, object.y, object.width, object.height, r);
+      targetCtx.clip();
+    }
+    targetCtx.drawImage(asset, sx, sy, sw, sh, object.x, object.y, object.width, object.height);
+    if (object.stroke && object.strokeSize) {
+      targetCtx.strokeStyle = object.stroke;
+      targetCtx.lineWidth = object.strokeSize;
+      targetCtx.strokeRect(object.x, object.y, object.width, object.height);
+    }
+    targetCtx.restore();
+  }
+
+  function drawLinkToContext(targetCtx, object) {
+    targetCtx.save();
+    targetCtx.fillStyle = object.fill || "rgba(15, 118, 110, 0.08)";
+    targetCtx.strokeStyle = object.stroke || "#0f766e";
+    targetCtx.lineWidth = 1;
+    targetCtx.beginPath();
+    targetCtx.roundRect(object.x, object.y, object.width, object.height, 6);
+    targetCtx.fill();
+    targetCtx.stroke();
+    targetCtx.fillStyle = "#0f766e";
+    targetCtx.font = `600 ${object.fontSize || 14}px sans-serif`;
+    const label = object.text || object.href || "Link";
+    targetCtx.fillText(label, object.x + 10, object.y + (object.height / 2) + 5, object.width - 20);
+    targetCtx.restore();
+  }
+
+  function drawTableToContext(targetCtx, object) {
+    targetCtx.save();
+    targetCtx.strokeStyle = object.stroke || "#0f172a";
+    targetCtx.lineWidth = Math.max(object.strokeSize || 1, 1);
+    targetCtx.fillStyle = object.fill || "#ffffff";
+    targetCtx.fillRect(object.x, object.y, object.width, object.height);
+    targetCtx.strokeRect(object.x, object.y, object.width, object.height);
+
+    const layout = tableLayout(object);
+    for (let r = 0; r < object.cells.length; r++) {
+      for (let c = 0; c < (object.cells[r] || []).length; c++) {
+        const cell = object.cells[r][c];
+        if (!cell) continue;
+        const rect = tableCellRect(object, r, c, layout);
+        if (!rect) continue;
+        if (cell.fill) {
+          targetCtx.fillStyle = cell.fill;
+          targetCtx.fillRect(rect.x, rect.y, rect.width, rect.height);
+        }
+        targetCtx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+        if (cell.text) {
+          targetCtx.save();
+          targetCtx.beginPath();
+          targetCtx.rect(rect.x, rect.y, rect.width, rect.height);
+          targetCtx.clip();
+          targetCtx.fillStyle = cell.color || "#0f172a";
+          const weight = cell.bold ? "bold " : "";
+          const style = cell.italic ? "italic " : "";
+          targetCtx.font = `${style}${weight}${cell.fontSize || 14}px sans-serif`;
+          targetCtx.fillText(cell.text, rect.x + TABLE_PAD, rect.y + 16, rect.width - TABLE_PAD * 2);
+          targetCtx.restore();
+        }
+      }
+    }
+    targetCtx.restore();
+  }
+
+  function drawFileCardToContext(targetCtx, object) {
+    targetCtx.save();
+    targetCtx.fillStyle = object.fill || "#ffffff";
+    targetCtx.strokeStyle = object.stroke || "#d6d3d1";
+    targetCtx.lineWidth = 1;
+    targetCtx.beginPath();
+    targetCtx.roundRect(object.x, object.y, object.width, object.height, 8);
+    targetCtx.fill();
+    targetCtx.stroke();
+    targetCtx.fillStyle = "#0f172a";
+    targetCtx.font = `600 13px sans-serif`;
+    targetCtx.fillText(object.fileName || "File", object.x + 40, object.y + 24, object.width - 50);
+    targetCtx.restore();
+  }
+
+  function drawShapeToContext(targetCtx, object) {
+    targetCtx.save();
+    targetCtx.fillStyle = object.fill || "transparent";
+    targetCtx.strokeStyle = object.stroke || "#0f172a";
+    targetCtx.lineWidth = Math.max(object.strokeSize || 2, 1);
+    if (object.type === "line" || object.type === "arrow") {
+      targetCtx.beginPath();
+      targetCtx.moveTo(object.x1, object.y1);
+      targetCtx.lineTo(object.x2, object.y2);
+      targetCtx.stroke();
+      if (object.type === "arrow") {
+        const headlen = 12;
+        const dx = object.x2 - object.x1;
+        const dy = object.y2 - object.y1;
+        const angle = Math.atan2(dy, dx);
+        targetCtx.fillStyle = object.stroke || "#0f172a";
+        targetCtx.beginPath();
+        targetCtx.moveTo(object.x2, object.y2);
+        targetCtx.lineTo(object.x2 - headlen * Math.cos(angle - Math.PI / 6), object.y2 - headlen * Math.sin(angle - Math.PI / 6));
+        targetCtx.lineTo(object.x2 - headlen * Math.cos(angle + Math.PI / 6), object.y2 - headlen * Math.sin(angle + Math.PI / 6));
+        targetCtx.closePath();
+        targetCtx.fill();
+      }
+      targetCtx.restore();
       return;
     }
 
-    if (state.active || state.past.length === 0) {
-      return;
+    if (object.type === "rect") {
+      if (object.fill) targetCtx.fillRect(object.x, object.y, object.width, object.height);
+      targetCtx.strokeRect(object.x, object.y, object.width, object.height);
+    } else if (object.type === "roundrect") {
+      targetCtx.beginPath();
+      targetCtx.roundRect(object.x, object.y, object.width, object.height, 12);
+      if (object.fill) targetCtx.fill();
+      targetCtx.stroke();
+    } else if (object.type === "ellipse") {
+      targetCtx.beginPath();
+      targetCtx.ellipse(
+        object.x + object.width / 2,
+        object.y + object.height / 2,
+        Math.abs(object.width / 2),
+        Math.abs(object.height / 2),
+        0,
+        0,
+        Math.PI * 2
+      );
+      if (object.fill) targetCtx.fill();
+      targetCtx.stroke();
+    } else if (object.type === "triangle") {
+      targetCtx.beginPath();
+      targetCtx.moveTo(object.x + object.width / 2, object.y);
+      targetCtx.lineTo(object.x + object.width, object.y + object.height);
+      targetCtx.lineTo(object.x, object.y + object.height);
+      targetCtx.closePath();
+      if (object.fill) targetCtx.fill();
+      targetCtx.stroke();
+    } else if (object.type === "diamond") {
+      targetCtx.beginPath();
+      targetCtx.moveTo(object.x + object.width / 2, object.y);
+      targetCtx.lineTo(object.x + object.width, object.y + object.height / 2);
+      targetCtx.lineTo(object.x + object.width / 2, object.y + object.height);
+      targetCtx.lineTo(object.x, object.y + object.height / 2);
+      targetCtx.closePath();
+      if (object.fill) targetCtx.fill();
+      targetCtx.stroke();
+    } else if (object.type === "star") {
+      const cx = object.x + object.width / 2;
+      const cy = object.y + object.height / 2;
+      const rx = Math.abs(object.width / 2);
+      const ry = Math.abs(object.height / 2);
+      targetCtx.beginPath();
+      for (let i = 0; i < 10; i++) {
+        const r = i % 2 === 0 ? 1 : 0.45;
+        const angle = (i * Math.PI) / 5 - Math.PI / 2;
+        const px = cx + rx * r * Math.cos(angle);
+        const py = cy + ry * r * Math.sin(angle);
+        if (i === 0) targetCtx.moveTo(px, py); else targetCtx.lineTo(px, py);
+      }
+      targetCtx.closePath();
+      if (object.fill) targetCtx.fill();
+      targetCtx.stroke();
+    } else {
+      targetCtx.beginPath();
+      targetCtx.rect(object.x, object.y, object.width, object.height);
+      if (object.fill) targetCtx.fill();
+      targetCtx.stroke();
+    }
+    targetCtx.restore();
+  }
+
+  function drawWrappedTextToContext(targetCtx, object) {
+    if (!object.text) return;
+    targetCtx.save();
+    targetCtx.fillStyle = object.color || "#0f172a";
+    const weight = object.bold ? "bold " : "";
+    const style = object.italic ? "italic " : "";
+    targetCtx.font = `${style}${weight}${object.fontSize || 16}px sans-serif`;
+    const lines = String(object.text).split("\n");
+    const pad = 10;
+    const lineHeight = (object.fontSize || 16) * (object.lineHeight || 1.35);
+    let currY = object.y + pad + (object.fontSize || 16) * 0.85;
+    for (const line of lines) {
+      let x = object.x + pad;
+      if (object.align === "center") x = object.x + object.width / 2 - targetCtx.measureText(line).width / 2;
+      else if (object.align === "right") x = object.x + object.width - pad - targetCtx.measureText(line).width;
+      targetCtx.fillText(line, x, currY, object.width - pad * 2);
+      currY += lineHeight;
+    }
+    targetCtx.restore();
+  }
+
+  function generateSvgForPage(page, options = {}) {
+    const transparent = Boolean(options.transparent);
+    const objects = options.objects || (page.id === state.currentPageId ? state.objects : page.objects || []);
+    let minX = 0;
+    let minY = 0;
+    let width = page.width;
+    let height = page.height;
+
+    if (options.scope === "selection" && options.bounds) {
+      minX = Math.round(options.bounds.x);
+      minY = Math.round(options.bounds.y);
+      width = Math.round(Math.max(options.bounds.width, 20));
+      height = Math.round(Math.max(options.bounds.height, 20));
     }
 
-    state.future.push(cloneBoard());
-    restoreBoard(state.past.pop());
+    const surface = pageSurface(page);
+    let svg = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+    svg += `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${minX} ${minY} ${width} ${height}" width="${width}" height="${height}">\n`;
+
+    if (!transparent) {
+      svg += `  <rect x="${minX}" y="${minY}" width="${width}" height="${height}" fill="${surface.paperColor || "#ffffff"}"/>\n`;
+    }
+
+    for (const object of objects) {
+      if (!object || object.hidden) continue;
+      svg += objectToSvg(object);
+    }
+
+    svg += `</svg>\n`;
+    return svg;
+  }
+
+  function escapeXml(str) {
+    return String(str || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&apos;");
+  }
+
+  function objectToSvg(object) {
+    const rot = object.rotation ? ` transform="rotate(${(object.rotation * 180 / Math.PI).toFixed(2)} ${getCenter(object).x} ${getCenter(object).y})"` : "";
+    if (object.type === "stroke") {
+      if (object.tool === "eraser" || !object.points || object.points.length === 0) return "";
+      const color = object.color || "#0f172a";
+      const size = object.size || 2;
+      const opacity = object.tool === "highlighter" ? 0.35 : object.tool === "marker" ? 0.75 : 1;
+      const d = object.points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
+      return `  <path d="${d}" fill="none" stroke="${color}" stroke-width="${size}" stroke-linecap="round" stroke-linejoin="round" opacity="${opacity}"${rot}/>\n`;
+    }
+    if (object.type === "rect") {
+      const fill = object.fill || "none";
+      const stroke = object.stroke || "#0f172a";
+      const sw = object.strokeSize || 1;
+      return `  <rect x="${object.x}" y="${object.y}" width="${object.width}" height="${object.height}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"${rot}/>\n`;
+    }
+    if (object.type === "roundrect") {
+      const fill = object.fill || "none";
+      const stroke = object.stroke || "#0f172a";
+      const sw = object.strokeSize || 1;
+      return `  <rect x="${object.x}" y="${object.y}" width="${object.width}" height="${object.height}" rx="12" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"${rot}/>\n`;
+    }
+    if (object.type === "ellipse") {
+      const fill = object.fill || "none";
+      const stroke = object.stroke || "#0f172a";
+      const sw = object.strokeSize || 1;
+      const cx = object.x + object.width / 2;
+      const cy = object.y + object.height / 2;
+      return `  <ellipse cx="${cx}" cy="${cy}" rx="${Math.abs(object.width / 2)}" ry="${Math.abs(object.height / 2)}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"${rot}/>\n`;
+    }
+    if (object.type === "text" || object.type === "sticky") {
+      let out = `  <g${rot}>\n`;
+      if (object.type === "sticky") {
+        out += `    <rect x="${object.x}" y="${object.y}" width="${object.width}" height="${object.height}" rx="8" fill="${object.fill || "#fef08a"}"/>\n`;
+      }
+      const lines = String(object.text || "").split("\n");
+      const pad = 10;
+      const fontSize = object.fontSize || 16;
+      const lineHeight = fontSize * (object.lineHeight || 1.35);
+      let currY = object.y + pad + fontSize * 0.85;
+      for (const line of lines) {
+        let x = object.x + pad;
+        let anchor = "start";
+        if (object.align === "center") {
+          x = object.x + object.width / 2;
+          anchor = "middle";
+        } else if (object.align === "right") {
+          x = object.x + object.width - pad;
+          anchor = "end";
+        }
+        out += `    <text x="${x}" y="${currY}" font-family="sans-serif" font-size="${fontSize}" font-weight="${object.bold ? "bold" : "normal"}" font-style="${object.italic ? "italic" : "normal"}" fill="${object.color || "#0f172a"}" text-anchor="${anchor}">${escapeXml(line)}</text>\n`;
+        currY += lineHeight;
+      }
+      out += `  </g>\n`;
+      return out;
+    }
+    if (object.type === "line" || object.type === "arrow") {
+      const stroke = object.stroke || "#0f172a";
+      const sw = object.strokeSize || 2;
+      return `  <line x1="${object.x1}" y1="${object.y1}" x2="${object.x2}" y2="${object.y2}" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round"${rot}/>\n`;
+    }
+    return `  <rect x="${object.x}" y="${object.y}" width="${object.width}" height="${object.height}" fill="${object.fill || "none"}" stroke="${object.stroke || "#0f172a"}" stroke-width="1"${rot}/>\n`;
+  }
+
+  function downloadFile(blobOrUrl, filename) {
+    const a = document.createElement("a");
+    if (typeof blobOrUrl === "string") {
+      a.href = blobOrUrl;
+    } else {
+      a.href = URL.createObjectURL(blobOrUrl);
+    }
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      if (typeof blobOrUrl !== "string") URL.revokeObjectURL(a.href);
+    }, 200);
+  }
+
+  function buildMinimalPdf(pagesDataUrls) {
+    let pdf = "%PDF-1.4\n";
+    const xrefs = [];
+    let objCount = 0;
+
+    function addObj(content) {
+      objCount++;
+      xrefs.push(pdf.length);
+      pdf += `${objCount} 0 obj\n${content}\nendobj\n`;
+      return objCount;
+    }
+
+    const pageObjIds = [];
+
+    for (const pageData of pagesDataUrls) {
+      const imgWidth = pageData.width;
+      const imgHeight = pageData.height;
+      const rawBase64 = pageData.dataUrl.split(",")[1];
+      const binaryImg = atob(rawBase64);
+      const imgStreamLen = binaryImg.length;
+
+      const imgObjId = objCount + 1;
+      addObj(`<< /Type /XObject /Subtype /Image /Width ${imgWidth} /Height ${imgHeight} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${imgStreamLen} >>\nstream\n${binaryImg}\nendstream`);
+
+      const contentStream = `q\n${imgWidth} 0 0 ${imgHeight} 0 0 cm\n/Im1 Do\nQ\n`;
+      const contentStreamId = addObj(`<< /Length ${contentStream.length} >>\nstream\n${contentStream}endstream`);
+
+      const pageObjId = addObj(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${imgWidth} ${imgHeight}] /Resources << /XObject << /Im1 ${imgObjId} 0 R >> >> /Contents ${contentStreamId} 0 R >>`);
+      pageObjIds.push(pageObjId);
+    }
+
+    const catalogObjId = addObj(`<< /Type /Catalog /Pages 2 0 R >>`);
+    const pagesObjId = addObj(`<< /Type /Pages /Kids [${pageObjIds.map((id) => `${id} 0 R`).join(" ")}] /Count ${pageObjIds.length} >>`);
+
+    const startxref = pdf.length;
+    pdf += "xref\n";
+    pdf += `0 ${objCount + 1}\n`;
+    pdf += "0000000000 65535 f \n";
+    for (const offset of xrefs) {
+      pdf += `${String(offset).padStart(10, "0")} 00000 n \n`;
+    }
+    pdf += `trailer\n<< /Size ${objCount + 1} /Root ${catalogObjId} 0 R >>\nstartxref\n${startxref}\n%%EOF`;
+
+    const bytes = new Uint8Array(pdf.length);
+    for (let i = 0; i < pdf.length; i++) {
+      bytes[i] = pdf.charCodeAt(i) & 0xff;
+    }
+    return new Blob([bytes], { type: "application/pdf" });
+  }
+
+  async function generateExportPreview() {
+    const format = exportFormatSelect.value;
+    const scope = exportScopeSelect.value;
+    const scale = Number(exportScaleSelect.value) || 1;
+    const transparent = exportTransparentBg.checked;
+
+    exportPreviewBadge.textContent = `${format.toUpperCase()} · ${scope === "selection" ? "Selection" : scope === "all" ? `${state.pages.length} Pages` : "Current Page"}`;
+    exportPreviewPlaceholder.hidden = false;
+    exportPreviewImg.hidden = true;
+
+    try {
+      const page = currentPage();
+      if (!page) return;
+
+      let bounds = null;
+      let objects = page.id === state.currentPageId ? state.objects : page.objects || [];
+      if (scope === "selection") {
+        const sel = selectedObjects();
+        if (sel.length > 0) {
+          objects = sel;
+          bounds = unionBounds(sel.map((o) => objectWorldBounds(o)));
+        } else {
+          bounds = { x: 0, y: 0, width: page.width, height: page.height };
+        }
+      }
+
+      if (format === "project" || format === "json") {
+        exportPreviewPlaceholder.textContent = `${format === "project" ? "Drawora Project" : "Raw JSON"} (${state.pages.length} pages, ${state.objects.length} objects)`;
+        exportPreviewImg.hidden = true;
+        exportPreviewPlaceholder.hidden = false;
+        exportInfo.textContent = `Ready to download ${state.boardName}.${format === "project" ? "drawora" : "json"}`;
+        return;
+      }
+
+      const prevCanvas = renderPageToCanvas(page, {
+        scale: Math.min(scale, 1.5),
+        transparent: transparent && (format === "png" || format === "svg"),
+        scope,
+        bounds,
+        objects,
+      });
+
+      exportPreviewImg.src = prevCanvas.toDataURL("image/png");
+      exportPreviewImg.hidden = false;
+      exportPreviewPlaceholder.hidden = true;
+
+      const fullW = bounds ? Math.round(bounds.width * scale) : Math.round(page.width * scale);
+      const fullH = bounds ? Math.round(bounds.height * scale) : Math.round(page.height * scale);
+      exportInfo.textContent = `Export dimensions: ${fullW} × ${fullH} px (${scale}× scale)`;
+    } catch (e) {
+      exportPreviewPlaceholder.textContent = "Preview unavailable";
+      exportPreviewPlaceholder.hidden = false;
+    }
+  }
+
+  function syncExportOptionsUI() {
+    const format = exportFormatSelect.value;
+    exportQualityWrap.hidden = format !== "jpg";
+    exportBgWrap.hidden = format !== "png" && format !== "svg";
+    exportScaleWrap.hidden = format === "project" || format === "json";
+    exportScopeWrap.hidden = format === "project" || format === "json";
+    generateExportPreview();
+  }
+
+  function openExportDialog(defaultType = "png") {
+    exportDialog.hidden = false;
+    if (defaultType) {
+      exportFormatSelect.value = defaultType;
+    }
+    const selCount = state.selectedIds.length;
+    exportScopeSelect.querySelector('option[value="selection"]').disabled = selCount === 0;
+    if (selCount === 0 && exportScopeSelect.value === "selection") {
+      exportScopeSelect.value = "current";
+    }
+    const cleanName = (state.boardName || "Drawora-Board").replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "_") || "Drawora-Board";
+    exportFilenameInput.value = cleanName;
+    syncExportOptionsUI();
+  }
+
+  function closeExportDialog() {
+    exportDialog.hidden = true;
+  }
+
+  async function executeExportDownload() {
+    const format = exportFormatSelect.value;
+    const scope = exportScopeSelect.value;
+    const scale = Number(exportScaleSelect.value) || 2;
+    const transparent = exportTransparentBg.checked;
+    const quality = (Number(exportQualityRange.value) || 90) / 100;
+    const baseName = (exportFilenameInput.value || "Drawora-Export").trim() || "Drawora-Export";
+
+    exportDownloadBtn.disabled = true;
+    exportInfo.textContent = "Generating export...";
+
+    try {
+      if (format === "project" || format === "json") {
+        const projectData = {
+          app: "Drawora",
+          version: 1,
+          createdAt: state.boardCreatedAt || Date.now(),
+          exportedAt: Date.now(),
+          boardId: state.boardId,
+          boardName: state.boardName,
+          pages: snapshotPages(),
+          currentPageId: state.currentPageId,
+        };
+        const jsonStr = JSON.stringify(projectData, null, 2);
+        const blob = new Blob([jsonStr], { type: "application/json" });
+        const ext = format === "project" ? "drawora" : "json";
+        downloadFile(blob, `${baseName}.${ext}`);
+        closeExportDialog();
+        return;
+      }
+
+      if (format === "svg") {
+        if (scope === "all" && state.pages.length > 1) {
+          for (let i = 0; i < state.pages.length; i++) {
+            const page = state.pages[i];
+            const svgStr = generateSvgForPage(page, { transparent, scope: "current" });
+            const blob = new Blob([svgStr], { type: "image/svg+xml;charset=utf-8" });
+            downloadFile(blob, `${baseName}_Page_${i + 1}_${page.name.replace(/\s+/g, "_")}.svg`);
+          }
+        } else {
+          const page = currentPage();
+          let bounds = null;
+          let objects = page.id === state.currentPageId ? state.objects : page.objects || [];
+          if (scope === "selection") {
+            const sel = selectedObjects();
+            if (sel.length > 0) {
+              objects = sel;
+              bounds = unionBounds(sel.map((o) => objectWorldBounds(o)));
+            }
+          }
+          const svgStr = generateSvgForPage(page, { transparent, scope, bounds, objects });
+          const blob = new Blob([svgStr], { type: "image/svg+xml;charset=utf-8" });
+          downloadFile(blob, `${baseName}.svg`);
+        }
+        closeExportDialog();
+        return;
+      }
+
+      if (format === "pdf") {
+        const targetPages = scope === "all" ? state.pages : [currentPage()];
+        const pdfPages = [];
+        for (const page of targetPages) {
+          const pCanvas = renderPageToCanvas(page, { scale, transparent: false, scope: "current" });
+          pdfPages.push({
+            dataUrl: pCanvas.toDataURL("image/jpeg", quality),
+            width: page.width,
+            height: page.height,
+          });
+        }
+        const pdfBlob = buildMinimalPdf(pdfPages);
+        downloadFile(pdfBlob, `${baseName}.pdf`);
+        closeExportDialog();
+        return;
+      }
+
+      if (format === "png" || format === "jpg") {
+        const mime = format === "png" ? "image/png" : "image/jpeg";
+        const ext = format === "png" ? "png" : "jpg";
+
+        if (scope === "all" && state.pages.length > 1) {
+          for (let i = 0; i < state.pages.length; i++) {
+            const page = state.pages[i];
+            const pCanvas = renderPageToCanvas(page, {
+              scale,
+              transparent: transparent && format === "png",
+              scope: "current",
+            });
+            const dataUrl = pCanvas.toDataURL(mime, quality);
+            downloadFile(dataUrl, `${baseName}_Page_${i + 1}_${page.name.replace(/\s+/g, "_")}.${ext}`);
+          }
+        } else {
+          const page = currentPage();
+          let bounds = null;
+          let objects = page.id === state.currentPageId ? state.objects : page.objects || [];
+          if (scope === "selection") {
+            const sel = selectedObjects();
+            if (sel.length > 0) {
+              objects = sel;
+              bounds = unionBounds(sel.map((o) => objectWorldBounds(o)));
+            }
+          }
+          const pCanvas = renderPageToCanvas(page, {
+            scale,
+            transparent: transparent && format === "png",
+            scope,
+            bounds,
+            objects,
+          });
+          const dataUrl = pCanvas.toDataURL(mime, quality);
+          downloadFile(dataUrl, `${baseName}.${ext}`);
+        }
+        closeExportDialog();
+      }
+    } catch (err) {
+      console.error("Drawora: Export failed", err);
+      exportInfo.textContent = "Export failed. Please try again.";
+    } finally {
+      exportDownloadBtn.disabled = false;
+    }
+  }
+
+  async function handleImportProjectFile(file) {
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if (!data || !Array.isArray(data.pages)) {
+        alert("Invalid Drawora project file format.");
+        return;
+      }
+      const newId = createId();
+      const newName = data.boardName || file.name.replace(/\.(drawora|json)$/i, "") || "Imported Board";
+      const record = {
+        id: newId,
+        name: newName,
+        createdAt: data.createdAt || Date.now(),
+        updatedAt: Date.now(),
+        pageCount: data.pages.length,
+        thumbnail: generateBoardThumbnail(data.pages, data.currentPageId),
+        snapshot: {
+          pages: data.pages,
+          currentPageId: data.currentPageId || (data.pages[0] && data.pages[0].id),
+          nextId: 1000,
+          nextPageId: 100,
+          selectedIds: [],
+        },
+      };
+      await dbSaveBoard(record);
+      await openBoard(newId);
+    } catch (err) {
+      console.error("Drawora: Project import error", err);
+      alert("Failed to read project file: " + err.message);
+    }
   }
 
   function redo() {
@@ -8784,6 +9569,10 @@
         closeProjectsDialog();
       } else if (action === "board-duplicate") {
         duplicateBoard();
+      } else if (action === "export-dialog") {
+        openExportDialog(actionButton.dataset.exportType || "png");
+      } else if (action === "import-project") {
+        projectFileInput.click();
       } else if (action.startsWith("table-")) {
         runTableAction(action);
       }
@@ -8895,6 +9684,14 @@
   }
 
   function onKeyDown(event) {
+    if (!exportDialog.hidden) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeExportDialog();
+      }
+      return;
+    }
+
     if (!projectsDialog.hidden) {
       if (event.key === "Escape") {
         event.preventDefault();
@@ -9024,6 +9821,12 @@
     if (ctrl && event.key.toLowerCase() === "s") {
       event.preventDefault();
       scheduleAutosave(true);
+      return;
+    }
+
+    if (ctrl && event.key.toLowerCase() === "e") {
+      event.preventDefault();
+      openExportDialog("png");
       return;
     }
 
@@ -9757,6 +10560,39 @@
 
   projectsSearch.addEventListener("input", () => {
     renderProjectsList();
+  });
+
+  exportFormatSelect.addEventListener("change", syncExportOptionsUI);
+  exportScopeSelect.addEventListener("change", syncExportOptionsUI);
+  exportScaleSelect.addEventListener("change", syncExportOptionsUI);
+  exportTransparentBg.addEventListener("change", syncExportOptionsUI);
+  exportQualityRange.addEventListener("input", () => {
+    exportQualityVal.textContent = `${exportQualityRange.value}%`;
+  });
+
+  exportDialog.addEventListener("click", (event) => {
+    const actionBtn = event.target.closest("[data-action]");
+    if (actionBtn && actionBtn.dataset.action === "close-export") {
+      closeExportDialog();
+      return;
+    }
+    if (event.target === exportDialog) {
+      closeExportDialog();
+    }
+  });
+
+  exportDownloadBtn.addEventListener("click", executeExportDownload);
+
+  projectFileInput.addEventListener("change", (event) => {
+    const file = event.target.files && event.target.files[0];
+    if (file) {
+      handleImportProjectFile(file);
+    }
+    projectFileInput.value = "";
+  });
+
+  importProjectBtn.addEventListener("click", () => {
+    projectFileInput.click();
   });
 
   async function initProjectManager() {

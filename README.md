@@ -68,6 +68,7 @@ Formatting (font, size, bold, italic, underline, strikethrough, alignment, line 
 | Send to back  | `Ctrl+Shift+[`        |
 | Open boards   | `Ctrl+O`              |
 | New board     | `Ctrl+Alt+N`          |
+| Export board  | `Ctrl+E`              |
 | Quick save    | `Ctrl+S`              |
 | Delete        | `Delete` / `Backspace` |
 | Deselect      | `Esc`                 |
@@ -77,5 +78,11 @@ Select an object to move, resize, or rotate it. Click empty canvas and drag to s
 **View → Objects** (or the Objects button on the Home ribbon) opens the **Objects panel**. Reorder objects in the z-stack by dragging rows or using Front/Up/Down/Back, toggle visibility (hide/show), lock/unlock, or double-click a layer name to rename it.
 
 **Boards & Projects** (`Ctrl+O` or the top bar **Boards** button) opens the local project manager. Boards are stored offline in browser IndexedDB with automatic background saving, rendered preview thumbnails, search filtering, and actions to create, open, duplicate, rename, or delete boards.
+
+**Export** (`Ctrl+E` or the **Export** ribbon tab) offers high-resolution output formats:
+- **PNG / JPG**: Scalable resolution from 1× to 4×, custom background transparency, and JPEG quality compression.
+- **SVG**: Clean vector graphic output preserving text, paths, strokes, and shapes.
+- **PDF**: Multi-page or single-page PDF generation matching page dimensions and orientation.
+- **Project (.drawora / .json)**: Fully editable project format exporting all pages, layers, positions, and styles, with project re-import support.
 
 Use **Stroke** and **Fill** to set outline and fill colors. With an object selected, color and size changes apply to that object.

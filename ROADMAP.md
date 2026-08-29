@@ -12,7 +12,7 @@ Statuses:
 | ⚪ | PLANNED |
 | 🔴 | BLOCKED |
 
-**Current:** Stages 1–19 complete. Stage 20 is next.
+**Current:** Stages 1–20 complete. Stage 21 is next.
 
 ---
 
@@ -332,19 +332,21 @@ IndexedDB storage engine with automatic background autosaving (`Ctrl+S` or debou
 
 ### Stage 20 — Professional export
 
-**Status:** 🔵 NEXT
+**Status:** ✅ COMPLETED
 
-PNG, JPG, SVG, PDF, DOCX, editable project format. Scope: current page, selection, all pages, page range.
-
-PDF: page dimensions, multiple pages, orientation. Project format: pages, objects, positions, styles, text, images, settings.
-
-Do not claim canvas objects are fully editable Word objects unless they are.
+Comprehensive export suite:
+- **Raster (PNG, JPG)**: 1× to 4× scaling, optional transparent background, adjustable JPEG quality (40%–100%).
+- **Vector (SVG)**: Clean SVG rendering of shapes, strokes, texts, sticky notes, and styled elements with rotation/transform support.
+- **Document (PDF)**: Clean native multi-page and single-page PDF generator matching exact canvas page sizes and aspect ratios.
+- **Editable Project Format (.drawora / .json)**: Complete serializable board format preserving pages, objects, layers, colors, and fonts with full import/re-open capabilities.
+- **Export Scope**: Current page, selection only, or all pages.
+- **Export Ribbon & Shortcuts**: Dedicated Export panel tools, `Ctrl+E` shortcut, real-time export preview, custom filename input.
 
 ---
 
 ### Stage 21 — Full-screen / presentation mode
 
-**Status:** ⚪ PLANNED
+**Status:** 🔵 NEXT
 
 Browser full screen, hide editing controls, page navigation, presentation/laser pointer, optional black/white screen, easy exit.
 

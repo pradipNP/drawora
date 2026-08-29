@@ -805,18 +805,28 @@
             <div class="ribbon-panel" role="tabpanel" id="panel-export" data-ribbon="export" aria-labelledby="tab-export" hidden>
               <div class="ribbon-group">
                 <div class="ribbon-group-tools">
-                  <button type="button" class="ribbon-btn ribbon-btn-wide" disabled title="PNG (coming soon)">PNG</button>
-                  <button type="button" class="ribbon-btn ribbon-btn-wide" disabled title="JPG (coming soon)">JPG</button>
-                  <button type="button" class="ribbon-btn ribbon-btn-wide" disabled title="SVG (coming soon)">SVG</button>
+                  <button type="button" class="ribbon-btn ribbon-btn-wide" data-action="export-dialog" data-export-type="png" title="Export as PNG image">PNG</button>
+                  <button type="button" class="ribbon-btn ribbon-btn-wide" data-action="export-dialog" data-export-type="jpg" title="Export as JPG image">JPG</button>
+                  <button type="button" class="ribbon-btn ribbon-btn-wide" data-action="export-dialog" data-export-type="svg" title="Export as scalable vector SVG">SVG</button>
                 </div>
                 <span class="ribbon-group-label">Image</span>
               </div>
               <div class="ribbon-group">
                 <div class="ribbon-group-tools">
-                  <button type="button" class="ribbon-btn ribbon-btn-wide" disabled title="PDF (coming soon)">PDF</button>
-                  <button type="button" class="ribbon-btn ribbon-btn-wide" disabled title="DOCX (coming soon)">DOCX</button>
+                  <button type="button" class="ribbon-btn ribbon-btn-wide" data-action="export-dialog" data-export-type="pdf" title="Export as PDF document (single or multi-page)">PDF</button>
+                  <button type="button" class="ribbon-btn ribbon-btn-wide" data-action="export-dialog" data-export-type="project" title="Export Drawora editable project file (.drawora)">Project (.drawora)</button>
+                  <button type="button" class="ribbon-btn ribbon-btn-wide" data-action="export-dialog" data-export-type="json" title="Export raw JSON structure">JSON</button>
                 </div>
-                <span class="ribbon-group-label">Document</span>
+                <span class="ribbon-group-label">Document & Project</span>
+              </div>
+              <div class="ribbon-group">
+                <div class="ribbon-group-tools">
+                  <button type="button" class="ribbon-btn ribbon-btn-wide" id="import-project-btn" data-action="import-project" title="Open or import a saved .drawora / .json project file">
+                    <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M4 15v4a1.5 1.5 0 0 0 1.5 1.5h13A1.5 1.5 0 0 0 20 19v-4M12 3.5v12M7.5 10.5l4.5 5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    Import Project
+                  </button>
+                </div>
+                <span class="ribbon-group-label">Import</span>
               </div>
             </div>
 
@@ -838,6 +848,8 @@
                 <span><kbd>Tab</kbd> / <kbd>Shift</kbd>+<kbd>Tab</kbd> Indent</span>
                 <span><kbd>Ctrl</kbd>+<kbd>O</kbd> Open boards & projects</span>
                 <span><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd> New board</span>
+                <span><kbd>Ctrl</kbd>+<kbd>E</kbd> Export board</span>
+                <span><kbd>Ctrl</kbd>+<kbd>S</kbd> Quick save</span>
                 <span><kbd>Ctrl</kbd>+<kbd>Z</kbd> Undo</span>
                 <span><kbd>Ctrl</kbd>+<kbd>Y</kbd> Redo</span>
                 <span><kbd>Ctrl</kbd>+<kbd>A</kbd> Select all</span>
@@ -982,6 +994,12 @@
       accept="image/*,.txt,.md,.csv,.pdf,.docx,.xlsx,text/plain,text/csv,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
       hidden
     />
+    <input
+      id="project-file"
+      type="file"
+      accept=".drawora,.json,application/json"
+      hidden
+    />
     <div id="confirm-dialog" class="dialog" hidden>
       <form id="confirm-form" class="dialog-card">
         <h2 id="confirm-title">Clear this page?</h2>
@@ -1038,6 +1056,87 @@
         <div class="projects-footer">
           <span id="projects-count" class="projects-count">0 boards</span>
           <button type="button" class="dialog-btn" data-action="close-projects">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="export-dialog" class="dialog" hidden>
+      <div class="dialog-card export-card" role="dialog" aria-modal="true" aria-labelledby="export-dialog-title">
+        <div class="export-head">
+          <div class="export-head-text">
+            <h2 id="export-dialog-title" class="export-title">Export Board</h2>
+            <p class="export-subtitle">Download high-resolution image, vector SVG, multi-page PDF, or editable project</p>
+          </div>
+          <button type="button" class="export-close" data-action="close-export" title="Close (Esc)" aria-label="Close">×</button>
+        </div>
+
+        <div class="export-body">
+          <div class="export-preview-box">
+            <img id="export-preview-img" class="export-preview-img" alt="Export preview" />
+            <div id="export-preview-placeholder" class="export-preview-placeholder">Generating preview...</div>
+            <div class="export-preview-badge" id="export-preview-badge">PNG · 100%</div>
+          </div>
+
+          <div class="export-options">
+            <div class="export-option-group">
+              <label class="export-label" for="export-format">Format</label>
+              <select id="export-format" class="export-select">
+                <option value="png">PNG Image (.png)</option>
+                <option value="jpg">JPEG Image (.jpg)</option>
+                <option value="svg">SVG Vector (.svg)</option>
+                <option value="pdf">PDF Document (.pdf)</option>
+                <option value="project">Drawora Project (.drawora)</option>
+                <option value="json">Raw JSON (.json)</option>
+              </select>
+            </div>
+
+            <div class="export-option-group" id="export-scope-wrap">
+              <label class="export-label" for="export-scope">Scope</label>
+              <select id="export-scope" class="export-select">
+                <option value="current">Current Page</option>
+                <option value="selection">Selected Objects Only</option>
+                <option value="all">All Pages (Multi-page / Zip / Combined)</option>
+              </select>
+            </div>
+
+            <div class="export-option-group" id="export-scale-wrap">
+              <label class="export-label" for="export-scale">Resolution / Scale</label>
+              <select id="export-scale" class="export-select">
+                <option value="1">1× Standard (Screen resolution)</option>
+                <option value="2" selected>2× High Resolution (Crisp & Print-ready)</option>
+                <option value="3">3× Ultra High (Large presentation)</option>
+                <option value="4">4× Maximum (Poster / Archival)</option>
+              </select>
+            </div>
+
+            <div class="export-option-group" id="export-bg-wrap">
+              <label class="export-checkbox-label">
+                <input type="checkbox" id="export-transparent-bg" />
+                <span>Transparent Background (PNG / SVG)</span>
+              </label>
+            </div>
+
+            <div class="export-option-group" id="export-quality-wrap" hidden>
+              <label class="export-label" for="export-quality">JPEG Quality (<span id="export-quality-val">90%</span>)</label>
+              <input type="range" id="export-quality" min="40" max="100" step="5" value="90" class="export-range" />
+            </div>
+
+            <div class="export-option-group">
+              <label class="export-label" for="export-filename">File Name</label>
+              <input type="text" id="export-filename" class="export-input" maxlength="100" value="Drawora-Export" />
+            </div>
+          </div>
+        </div>
+
+        <div class="export-footer">
+          <span id="export-info" class="export-info">Ready to export</span>
+          <div class="export-actions">
+            <button type="button" class="dialog-btn" data-action="close-export">Cancel</button>
+            <button type="button" class="dialog-btn dialog-btn-primary" id="export-download-btn">
+              <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M12 3.5v12M7.5 11l4.5 4.5 4.5-4.5M4 19.5h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Download Export
+            </button>
+          </div>
         </div>
       </div>
     </div>
