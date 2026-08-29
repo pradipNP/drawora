@@ -12,7 +12,7 @@ Statuses:
 | ⚪ | PLANNED |
 | 🔴 | BLOCKED |
 
-**Current:** Stages 1–16 complete. Stage 17 is next.
+**Current:** Stages 1–17 complete. Stage 18 is next.
 
 ---
 
@@ -268,7 +268,7 @@ Do not rebuild unless fixing an actual defect.
 
 Professional Insert tab. Click an Insert item to place a default object at the viewport center, then select it. Home and Draw still draw by dragging.
 
-Objects: image, text, shape, line, arrow, sticky note, link, page, diagram. File stays visible but disabled for a later stage.
+Objects: image, text, shape, line, arrow, sticky note, link, page, diagram.
 
 Links: double-click to edit, Ctrl+click or Open to visit (http, https, mailto). Diagrams are grouped shapes plus labels. Add a `data-insert` button and a `runInsert` case to extend.
 
@@ -308,17 +308,15 @@ Do not recreate Excel.
 
 ### Stage 17 — Document / file insertion
 
-**Status:** 🔵 NEXT
+**Status:** ✅ COMPLETED
 
-Import where practical: images, PDF, text, CSV, DOCX, XLSX. Sensible fallbacks (preview, rendered page, image) for complex formats.
-
-Do not claim full Word/Excel compatibility unless implemented.
+Insert → File, or drop a file on the board. Images stay pictures. `.txt` / `.md` become text. CSV (and a first Excel sheet when readable) become a table. PDF, Word, and other files become a placeholder card when a live preview is not available. Word `.docx` text is extracted when the file can be read in the browser. No extra libraries. Not a Word/Excel clone.
 
 ---
 
 ### Stage 18 — Layers / object organization
 
-**Status:** ⚪ PLANNED
+**Status:** 🔵 NEXT
 
 Layers panel, object list, z-order, lock/unlock, hide/show, rename, group/ungroup.
 

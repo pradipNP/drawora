@@ -69,6 +69,10 @@
   const MIN_IMAGE = 16;
   const MAX_IMAGE_PIXELS = 16_000_000;
   const IMAGE_TYPES = /^image\/(png|jpe?g|gif|webp|bmp|svg\+xml)$/i;
+  const MAX_IMPORT_BYTES = 20_000_000;
+  const MAX_IMPORT_TEXT = 20_000;
+  const MAX_IMPORT_ROWS = 40;
+  const MAX_IMPORT_COLS = 20;
   const TABLE_DEFAULT_COLS = 3;
   const TABLE_DEFAULT_ROWS = 3;
   const TABLE_CELL_MIN = 28;
@@ -209,6 +213,7 @@
   const gridSizeInput = document.getElementById("grid-size");
   const pageMarginInput = document.getElementById("page-margin");
   const imageFileInput = document.getElementById("image-file");
+  const documentFileInput = document.getElementById("document-file");
   const imageCropBtn = document.getElementById("image-crop-btn");
   const imageFlipHBtn = document.getElementById("image-flip-h-btn");
   const imageFlipVBtn = document.getElementById("image-flip-v-btn");
@@ -281,6 +286,7 @@
     !gridSizeInput ||
     !pageMarginInput ||
     !imageFileInput ||
+    !documentFileInput ||
     !imageCropBtn ||
     !imageFlipHBtn ||
     !imageFlipVBtn ||
@@ -368,6 +374,10 @@
 
   function isTable(object) {
     return object && object.type === "table";
+  }
+
+  function isFileCard(object) {
+    return object && object.type === "file";
   }
 
   function selectedTable() {
@@ -710,11 +720,11 @@
     }
   }
 
-  function createTableObject(x, y) {
-    const cols = TABLE_DEFAULT_COLS;
-    const rows = TABLE_DEFAULT_ROWS;
-    const width = cols * 110;
-    const height = rows * 36;
+  function createTableObject(x, y, cols, rows) {
+    const columnCount = Math.max(1, cols || TABLE_DEFAULT_COLS);
+    const rowCount = Math.max(1, rows || TABLE_DEFAULT_ROWS);
+    const width = columnCount * 110;
+    const height = rowCount * 36;
     return {
       id: createId(),
       type: "table",
@@ -722,9 +732,9 @@
       y,
       width,
       height,
-      colW: Array.from({ length: cols }, () => 1 / cols),
-      rowH: Array.from({ length: rows }, () => 1 / rows),
-      cells: Array.from({ length: rows }, () => Array.from({ length: cols }, createTableCell)),
+      colW: Array.from({ length: columnCount }, () => 1 / columnCount),
+      rowH: Array.from({ length: rowCount }, () => 1 / rowCount),
+      cells: Array.from({ length: rowCount }, () => Array.from({ length: columnCount }, createTableCell)),
       stroke: state.stroke,
       size: Math.max(1, Math.min(state.size, 4)),
       rotation: 0,
@@ -899,6 +909,33 @@
     return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(file.name || "");
   }
 
+  function detectFileKind(file) {
+    if (!file) {
+      return "other";
+    }
+    if (isImageFile(file)) {
+      return "image";
+    }
+    const name = file.name || "";
+    const type = (file.type || "").toLowerCase();
+    if (type === "text/csv" || type === "application/vnd.ms-excel" || /\.csv$/i.test(name)) {
+      return "csv";
+    }
+    if (type === "application/pdf" || /\.pdf$/i.test(name)) {
+      return "pdf";
+    }
+    if (type.includes("wordprocessingml") || /\.docx$/i.test(name)) {
+      return "docx";
+    }
+    if (type.includes("spreadsheetml") || /\.xlsx$/i.test(name)) {
+      return "xlsx";
+    }
+    if (type.startsWith("text/") || /\.(txt|md|markdown)$/i.test(name)) {
+      return "text";
+    }
+    return "other";
+  }
+
   function blobFromFile(file) {
     return isImageFile(file) ? file : null;
   }
@@ -907,7 +944,7 @@
     if (!data) {
       return [];
     }
-    return [...(data.files || [])].filter(isImageFile);
+    return [...(data.files || [])].filter((file) => file && file.size > 0);
   }
 
   function clipboardImageBlob(event) {
@@ -930,6 +967,386 @@
       }
     }
     return null;
+  }
+
+  function decodeXml(text) {
+    return String(text)
+      .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
+      .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+      .replace(/&#(\d+);/g, (_, num) => String.fromCodePoint(Number(num)))
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&apos;/g, "'");
+  }
+
+  function clipImportText(text) {
+    const value = String(text || "").replace(/\u0000/g, "");
+    if (value.length <= MAX_IMPORT_TEXT) {
+      return value;
+    }
+    return `${value.slice(0, MAX_IMPORT_TEXT)}\n…`;
+  }
+
+  function parseCsvText(text) {
+    const rows = [];
+    let row = [];
+    let cell = "";
+    let quoted = false;
+    const source = String(text || "").replace(/^\uFEFF/, "");
+    for (let i = 0; i < source.length; i += 1) {
+      const ch = source[i];
+      if (quoted) {
+        if (ch === '"') {
+          if (source[i + 1] === '"') {
+            cell += '"';
+            i += 1;
+          } else {
+            quoted = false;
+          }
+        } else {
+          cell += ch;
+        }
+      } else if (ch === '"') {
+        quoted = true;
+      } else if (ch === "," || ch === "\t") {
+        row.push(cell);
+        cell = "";
+      } else if (ch === "\n" || ch === "\r") {
+        if (ch === "\r" && source[i + 1] === "\n") {
+          i += 1;
+        }
+        row.push(cell);
+        cell = "";
+        if (row.some((part) => part.length) || rows.length) {
+          rows.push(row);
+        }
+        row = [];
+      } else {
+        cell += ch;
+      }
+    }
+    if (cell.length || row.length) {
+      row.push(cell);
+      rows.push(row);
+    }
+    return rows.filter((line) => line.some((part) => String(part).trim().length));
+  }
+
+  async function inflateRaw(bytes) {
+    if (typeof DecompressionStream !== "function") {
+      throw new Error("deflate unsupported");
+    }
+    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+    return new Uint8Array(await new Response(stream).arrayBuffer());
+  }
+
+  function zipEocdOffset(bytes) {
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const start = Math.max(0, bytes.length - 65557);
+    for (let i = bytes.length - 22; i >= start; i -= 1) {
+      if (view.getUint32(i, true) === 0x06054b50) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  async function zipReadTexts(buffer, names) {
+    const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const eocd = zipEocdOffset(bytes);
+    if (eocd < 0) {
+      throw new Error("not a zip");
+    }
+    const count = view.getUint16(eocd + 10, true);
+    let offset = view.getUint32(eocd + 16, true);
+    const wanted = new Set(names);
+    const out = {};
+    const decoder = new TextDecoder("utf-8");
+    for (let i = 0; i < count && Object.keys(out).length < wanted.size; i += 1) {
+      if (view.getUint32(offset, true) !== 0x02014b50) {
+        break;
+      }
+      const method = view.getUint16(offset + 10, true);
+      const compSize = view.getUint32(offset + 20, true);
+      const nameLen = view.getUint16(offset + 28, true);
+      const extraLen = view.getUint16(offset + 30, true);
+      const commentLen = view.getUint16(offset + 32, true);
+      const localOff = view.getUint32(offset + 42, true);
+      const name = decoder.decode(bytes.subarray(offset + 46, offset + 46 + nameLen)).replace(/\\/g, "/");
+      offset += 46 + nameLen + extraLen + commentLen;
+      if (!wanted.has(name)) {
+        continue;
+      }
+      if (view.getUint32(localOff, true) !== 0x04034b50) {
+        continue;
+      }
+      const localNameLen = view.getUint16(localOff + 26, true);
+      const localExtra = view.getUint16(localOff + 28, true);
+      const dataStart = localOff + 30 + localNameLen + localExtra;
+      const compressed = bytes.subarray(dataStart, dataStart + compSize);
+      let raw = compressed;
+      if (method === 8) {
+        raw = await inflateRaw(compressed);
+      } else if (method !== 0) {
+        continue;
+      }
+      out[name] = decoder.decode(raw);
+    }
+    return out;
+  }
+
+  function parseDocxText(xml) {
+    return String(xml || "")
+      .split(/<\/w:p>/i)
+      .map((block) =>
+        [...block.matchAll(/<w:t\b[^>]*>([\s\S]*?)<\/w:t>/gi)].map((match) => decodeXml(match[1])).join("")
+      )
+      .join("\n")
+      .replace(/[ \t]+\n/g, "\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+  }
+
+  function parseSharedStrings(xml) {
+    return [...String(xml || "").matchAll(/<si\b[^>]*>([\s\S]*?)<\/si>/gi)].map((match) =>
+      [...match[1].matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/gi)].map((part) => decodeXml(part[1])).join("")
+    );
+  }
+
+  function xlsxCellRef(ref) {
+    const match = /^([A-Z]+)(\d+)$/i.exec(ref || "");
+    if (!match) {
+      return null;
+    }
+    let col = 0;
+    for (const ch of match[1].toUpperCase()) {
+      col = col * 26 + (ch.charCodeAt(0) - 64);
+    }
+    return { r: Number(match[2]) - 1, c: col - 1 };
+  }
+
+  function parseXlsxSheet(sheetXml, shared) {
+    const grid = [];
+    const cells = String(sheetXml || "").matchAll(/<c\b([^>]*)>([\s\S]*?)<\/c>/gi);
+    for (const match of cells) {
+      const attrs = match[1];
+      const body = match[2];
+      const ref = /r="([^"]+)"/.exec(attrs);
+      const pos = xlsxCellRef(ref && ref[1]);
+      if (!pos || pos.r >= MAX_IMPORT_ROWS || pos.c >= MAX_IMPORT_COLS) {
+        continue;
+      }
+      const type = (/t="([^"]+)"/.exec(attrs) || [])[1];
+      const value = (/<v\b[^>]*>([\s\S]*?)<\/v>/i.exec(body) || [])[1];
+      const inline = [...body.matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/gi)].map((part) => decodeXml(part[1])).join("");
+      let text = "";
+      if (type === "s" && value != null) {
+        text = shared[Number(value)] || "";
+      } else if (type === "inlineStr" || inline) {
+        text = inline;
+      } else if (value != null) {
+        text = decodeXml(value);
+      }
+      if (!grid[pos.r]) {
+        grid[pos.r] = [];
+      }
+      grid[pos.r][pos.c] = text;
+    }
+    const rows = [];
+    for (let r = 0; r < grid.length; r += 1) {
+      rows.push(grid[r] ? [...grid[r]] : []);
+    }
+    return rows.filter((row) => row.some((cell) => String(cell || "").length));
+  }
+
+  function importAnchor(at, width, height) {
+    const center = at || viewportWorldCenter();
+    return {
+      x: center.x - width / 2,
+      y: center.y - height / 2,
+      width,
+      height,
+    };
+  }
+
+  function createTableFromGrid(grid, x, y) {
+    const rows = Math.min(MAX_IMPORT_ROWS, Math.max(1, grid.length));
+    const cols = Math.min(
+      MAX_IMPORT_COLS,
+      Math.max(1, ...grid.map((row) => (row ? row.length : 0)), 1)
+    );
+    const object = createTableObject(x, y, cols, rows);
+    for (let r = 0; r < rows; r += 1) {
+      for (let c = 0; c < cols; c += 1) {
+        object.cells[r][c].text = String(grid[r] && grid[r][c] != null ? grid[r][c] : "");
+        object.cells[r][c].fontSize = 12;
+      }
+    }
+    object.width = Math.min(720, Math.max(240, cols * 88));
+    object.height = Math.min(520, Math.max(72, rows * 30));
+    return object;
+  }
+
+  function fileKindLabel(kind) {
+    if (kind === "pdf") {
+      return "PDF document";
+    }
+    if (kind === "docx") {
+      return "Word document";
+    }
+    if (kind === "xlsx") {
+      return "Excel workbook";
+    }
+    if (kind === "csv") {
+      return "CSV table";
+    }
+    if (kind === "text") {
+      return "Text file";
+    }
+    return "File";
+  }
+
+  function createFileCard(file, kind, note, at) {
+    const box = importAnchor(at, 300, 88);
+    return {
+      id: createId(),
+      type: "file",
+      x: box.x,
+      y: box.y,
+      width: box.width,
+      height: box.height,
+      fileName: file && file.name ? file.name : "File",
+      kind,
+      label: fileKindLabel(kind),
+      note: note || "",
+      fill: "#f8fafc",
+      stroke: state.stroke,
+      size: 1,
+      color: "#0f172a",
+      rotation: 0,
+    };
+  }
+
+  function placeImportedObject(object) {
+    state.objects.push(object);
+    if (isTable(object)) {
+      state.tableCell = { id: object.id, r: 0, c: 0 };
+      state.tableRange = null;
+    }
+    finishInsert([object.id]);
+  }
+
+  async function insertImportedFile(file, at) {
+    if (!file || state.frozen) {
+      return null;
+    }
+    if (file.size > MAX_IMPORT_BYTES) {
+      beginInsert();
+      placeImportedObject(createFileCard(file, detectFileKind(file), "File is too large to import.", at));
+      return null;
+    }
+    const kind = detectFileKind(file);
+    if (kind === "image") {
+      return insertImageFromBlob(file, at);
+    }
+    if (kind === "text") {
+      const text = clipImportText(await file.text());
+      const box = importAnchor(at, 440, 48);
+      beginInsert();
+      const object = createTextLike("text", box);
+      object.text = text || file.name || "";
+      object.fontSize = 16;
+      reflowTextHeight(object);
+      object.height = Math.min(720, object.height);
+      placeImportedObject(object);
+      return object;
+    }
+    if (kind === "csv") {
+      const grid = parseCsvText(await file.text());
+      if (!grid.length) {
+        beginInsert();
+        placeImportedObject(createFileCard(file, "csv", "CSV had no cells to place.", at));
+        return null;
+      }
+      const box = importAnchor(at, 360, 120);
+      beginInsert();
+      const object = createTableFromGrid(grid, box.x, box.y);
+      placeImportedObject(object);
+      return object;
+    }
+    if (kind === "docx") {
+      try {
+        const files = await zipReadTexts(await file.arrayBuffer(), ["word/document.xml"]);
+        const text = clipImportText(parseDocxText(files["word/document.xml"]));
+        if (!text) {
+          throw new Error("empty");
+        }
+        const box = importAnchor(at, 440, 48);
+        beginInsert();
+        const object = createTextLike("text", box);
+        object.text = text;
+        object.fontSize = 16;
+        reflowTextHeight(object);
+        object.height = Math.min(720, object.height);
+        placeImportedObject(object);
+        return object;
+      } catch (error) {
+        beginInsert();
+        placeImportedObject(
+          createFileCard(file, "docx", "Word preview is not available. Inserted as a placeholder.", at)
+        );
+        return null;
+      }
+    }
+    if (kind === "xlsx") {
+      try {
+        const files = await zipReadTexts(await file.arrayBuffer(), [
+          "xl/sharedStrings.xml",
+          "xl/worksheets/sheet1.xml",
+        ]);
+        const grid = parseXlsxSheet(files["xl/worksheets/sheet1.xml"], parseSharedStrings(files["xl/sharedStrings.xml"]));
+        if (!grid.length) {
+          throw new Error("empty");
+        }
+        const box = importAnchor(at, 360, 120);
+        beginInsert();
+        const object = createTableFromGrid(grid, box.x, box.y);
+        placeImportedObject(object);
+        return object;
+      } catch (error) {
+        beginInsert();
+        placeImportedObject(
+          createFileCard(file, "xlsx", "Excel preview is not available. Inserted as a placeholder.", at)
+        );
+        return null;
+      }
+    }
+    const note =
+      kind === "pdf"
+        ? "PDF pages are not rendered. Inserted as a placeholder."
+        : "This file type is inserted as a placeholder.";
+    beginInsert();
+    const object = createFileCard(file, kind, note, at);
+    placeImportedObject(object);
+    return object;
+  }
+
+  async function insertImportedFiles(files, at) {
+    const list = [...files].slice(0, 8);
+    for (let i = 0; i < list.length; i += 1) {
+      const offset = i
+        ? { x: (at ? at.x : viewportWorldCenter().x) + i * DUPLICATE_OFFSET, y: (at ? at.y : viewportWorldCenter().y) + i * DUPLICATE_OFFSET }
+        : at;
+      await insertImportedFile(list[i], offset);
+    }
+  }
+
+  function openFilePicker() {
+    documentFileInput.value = "";
+    documentFileInput.click();
   }
 
   function normalizeHex(color) {
@@ -2311,6 +2728,48 @@
     ctx.restore();
   }
 
+  function truncateCanvasText(text, maxWidth) {
+    const value = String(text || "");
+    if (ctx.measureText(value).width <= maxWidth) {
+      return value;
+    }
+    let cut = value;
+    while (cut.length > 1 && ctx.measureText(`${cut}…`).width > maxWidth) {
+      cut = cut.slice(0, -1);
+    }
+    return `${cut}…`;
+  }
+
+  function drawFileCard(object) {
+    ctx.save();
+    ctx.globalCompositeOperation = "source-over";
+    ctx.fillStyle = object.fill || "#f8fafc";
+    ctx.strokeStyle = object.stroke || "#1c1917";
+    ctx.lineWidth = Math.max(1, object.size || 1);
+    pathRoundRect(object.x, object.y, object.width, object.height, 8);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "rgb(15 118 110 / 0.14)";
+    ctx.fillRect(object.x, object.y, Math.min(44, object.width * 0.18), object.height);
+    ctx.beginPath();
+    ctx.rect(object.x, object.y, object.width, object.height);
+    ctx.clip();
+    ctx.fillStyle = object.color || "#0f172a";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.font = `600 13px ${FONT_FAMILY}`;
+    const textX = object.x + 52;
+    const maxW = Math.max(40, object.width - 64);
+    ctx.fillText(truncateCanvasText(object.fileName || "File", maxW), textX, object.y + 14);
+    ctx.font = `400 11px ${FONT_FAMILY}`;
+    ctx.fillStyle = "#57534e";
+    ctx.fillText(truncateCanvasText(object.label || fileKindLabel(object.kind), maxW), textX, object.y + 34);
+    if (object.note) {
+      ctx.fillText(truncateCanvasText(object.note, maxW), textX, object.y + 52);
+    }
+    ctx.restore();
+  }
+
   function drawObjectUnrotated(object) {
     if (object.type === "stroke") {
       drawStroke(object);
@@ -2339,6 +2798,11 @@
 
     if (object.type === "table") {
       drawTable(object);
+      return;
+    }
+
+    if (object.type === "file") {
+      drawFileCard(object);
       return;
     }
 
@@ -3967,6 +4431,12 @@
       insertImageFromBlob(blob);
       return;
     }
+    const pasted = event.clipboardData && event.clipboardData.files;
+    if (pasted && pasted.length) {
+      event.preventDefault();
+      insertImportedFiles(pasted);
+      return;
+    }
     if (state.clipboard.length) {
       event.preventDefault();
       pasteClipboard();
@@ -4016,7 +4486,7 @@
     const at = inside
       ? screenToWorld({ x: event.clientX - rect.left, y: event.clientY - rect.top })
       : undefined;
-    insertImageFromBlob(files[0], at);
+    insertImportedFiles(files, at);
   }
 
   function cutSelected() {
@@ -5758,6 +6228,10 @@
     }
     if (name === "table") {
       insertTable();
+      return;
+    }
+    if (name === "file") {
+      openFilePicker();
     }
   }
 
@@ -7849,6 +8323,13 @@
     imageFileInput.value = "";
     if (file) {
       insertImageFromBlob(file);
+    }
+  });
+  documentFileInput.addEventListener("change", () => {
+    const file = documentFileInput.files && documentFileInput.files[0];
+    documentFileInput.value = "";
+    if (file) {
+      insertImportedFile(file);
     }
   });
   linkForm.addEventListener("submit", (event) => {

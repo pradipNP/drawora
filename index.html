@@ -483,9 +483,9 @@
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5.5h4.5V10M18.5 5.5 11 13" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 13.5v5A1.5 1.5 0 0 1 14.5 20h-8A1.5 1.5 0 0 1 5 18.5v-8A1.5 1.5 0 0 1 6.5 9H11" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
                     <span class="visually-hidden">Open link</span>
                   </button>
-                  <button type="button" class="ribbon-btn" disabled data-insert="file" title="File (coming soon)">
+                  <button type="button" class="ribbon-btn" data-insert="file" title="Insert a file (image, text, CSV, PDF, Word, Excel)">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5h7.2L19 9.3V19a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 6 19V6A1.5 1.5 0 0 1 7 4.5Z" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M14 4.5V9h4.8" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>
-                    <span class="visually-hidden">File (coming soon)</span>
+                    <span class="visually-hidden">Insert file</span>
                   </button>
                 </div>
                 <span class="ribbon-group-label">Links</span>
@@ -802,6 +802,7 @@
                 <span>Insert places objects on the page</span>
                 <span>Insert a table, then double-click a cell to type · Tab moves cells</span>
                 <span>Insert, drop, or paste an image</span>
+                <span>Insert or drop a file: text and CSV become objects · PDF, Word, Excel use a placeholder</span>
                 <span>Double-click a link to edit · Ctrl+click to open</span>
                 <span>Fill paints the object you click</span>
                 <span>Draw tab: pencil, brush, marker, highlighter, spray</span>
@@ -901,6 +902,12 @@
       </footer>
     </div>
     <input id="image-file" type="file" accept="image/*" hidden />
+    <input
+      id="document-file"
+      type="file"
+      accept="image/*,.txt,.md,.csv,.pdf,.docx,.xlsx,text/plain,text/csv,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      hidden
+    />
     <div id="confirm-dialog" class="dialog" hidden>
       <form id="confirm-form" class="dialog-card">
         <h2 id="confirm-title">Clear this page?</h2>

@@ -10,7 +10,9 @@ Open `index.html` in a modern browser.
 
 The top bar is a ribbon. **Home** has the everyday tools. **Draw**, **Insert**, **View**, **Page**, **Export**, and **Help** group related actions. Scroll the tool strip sideways (or use the bar under it) to reach every group. Color, size, undo, redo, and delete stay on the right of every tab. Items marked coming soon are visible for later stages and do not do anything yet.
 
-**Insert** places a default object at the center of the view (text, sticky, shapes, image, diagram, page, link, or table), then selects it. **Home** and **Draw** still draw by dragging. File stays disabled until a later stage. Double-click a link to edit it; Ctrl+click or **Open** visits http, https, and mailto addresses. **Insert → Diagram** adds a grouped Start → Process → End flow.
+**Insert** places a default object at the center of the view (text, sticky, shapes, image, diagram, page, link, table, or file), then selects it. **Home** and **Draw** still draw by dragging. Double-click a link to edit it; Ctrl+click or **Open** visits http, https, and mailto addresses. **Insert → Diagram** adds a grouped Start → Process → End flow.
+
+**Insert → File** (or drop a file on the board) imports what the browser can turn into objects: images as pictures, text as a text box, CSV as a table. A first Excel sheet is placed as a table when the file can be read. Word `.docx` text is extracted when possible. PDF and other files become a labeled placeholder — Drawora does not render Word or Excel as in those apps.
 
 **Insert → Table** places a 3×3 table. Double-click a cell to type; Tab moves to the next cell, Enter moves down, and arrow keys move the selected cell. Shift-click a second cell, then **Merge**. **+ Row / − Row / + Col / − Col** change the grid. Drag a grid line to resize a column or row. Stroke color and size are the borders; fill and text format apply to the selected cells. Copy/paste copies cell text when a cell is selected. There are no formulas.
 
