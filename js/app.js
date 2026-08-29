@@ -14,7 +14,7 @@
   ];
   const POLYGON_SHAPES = ["triangle", "diamond", "pentagon", "hexagon", "star"];
   const TEXT_TOOLS = ["text", "sticky"];
-  const EXTRA_TOOLS = ["fill", "eyedropper", "lasso"];
+  const EXTRA_TOOLS = ["fill", "eyedropper", "lasso", "laser", "measure", "protractor", "compass"];
   const TOOLS = ["select", "pan", ...DRAW_TOOLS, ...SHAPE_TOOLS, ...TEXT_TOOLS, ...EXTRA_TOOLS];
   const SHORTCUTS = {
     v: "select",
@@ -27,6 +27,8 @@
     f: "fill",
     i: "eyedropper",
     l: "lasso",
+    r: "laser",
+    m: "measure",
   };
   const SIZE_STOPS = [2, 4, 8, 12, 20];
   const PRESET_COLORS = [
@@ -44,6 +46,8 @@
   const HANDLE_HIT = 10;
   const ROTATE_OFFSET = 26;
   const HIT_PADDING = 8;
+  const RULER_SIZE = 22;
+  const SPOTLIGHT_RADIUS = 92;
   const DUPLICATE_OFFSET = 16;
   const MAX_HISTORY = 50;
   const SELECT_COLOR = "#0f766e";
@@ -142,6 +146,13 @@
     pageThumbKey: "",
     cropping: false,
     eyedropperReturn: "pen",
+    showGrid: false,
+    showRulers: false,
+    showGuides: true,
+    spotlight: false,
+    frozen: false,
+    pointerWorld: null,
+    laserTrail: [],
   };
 
   const RIBBON_TABS = ["home", "draw", "insert", "view", "page", "export", "help"];
@@ -208,6 +219,14 @@
   const linkError = document.getElementById("link-error");
   const linkCancel = document.getElementById("link-cancel");
   const linkOpenBtn = document.getElementById("link-open-btn");
+  const confirmDialog = document.getElementById("confirm-dialog");
+  const confirmForm = document.getElementById("confirm-form");
+  const confirmTitle = document.getElementById("confirm-title");
+  const confirmMessage = document.getElementById("confirm-message");
+  const confirmCancel = document.getElementById("confirm-cancel");
+  const confirmOk = document.getElementById("confirm-ok");
+  const teachStatus = document.getElementById("teach-status");
+  const appEl = document.querySelector(".app");
 
   if (
     !canvas ||
@@ -271,7 +290,15 @@
     !linkHrefInput ||
     !linkError ||
     !linkCancel ||
-    !linkOpenBtn
+    !linkOpenBtn ||
+    !confirmDialog ||
+    !confirmForm ||
+    !confirmTitle ||
+    !confirmMessage ||
+    !confirmCancel ||
+    !confirmOk ||
+    !teachStatus ||
+    !appEl
   ) {
     console.error("Drawora: missing canvas or toolbar controls.");
     return;
@@ -286,6 +313,7 @@
   const imageAssets = new Map();
   let nextImageAssetId = 1;
   let linkDialogTargetId = null;
+  let confirmCallback = null;
 
   function isTypingTarget(element) {
     if (!element || !(element instanceof HTMLElement)) {
@@ -672,6 +700,7 @@
       height: size.height,
       surface: normalizeSurface(options.surface || (source && source.surface) || defaultSurface("white")),
       objects: options.objects || [],
+      guides: options.guides || (source && source.guides ? cloneData(source.guides) : []),
       zoom: options.zoom ?? 1,
       panX: options.panX ?? 0,
       panY: options.panY ?? 0,
@@ -744,8 +773,62 @@
     };
   }
 
+  function worldToScreen(point) {
+    return {
+      x: point.x * state.zoom + state.panX,
+      y: point.y * state.zoom + state.panY,
+    };
+  }
+
   function getPoint(event) {
     return screenToWorld(getScreenPoint(event));
+  }
+
+  function gridStep() {
+    const page = currentPage();
+    return pageSurface(page).gridSize;
+  }
+
+  function snapPoint(point) {
+    if (!state.showGrid || !point) {
+      return point;
+    }
+    const step = gridStep();
+    return {
+      x: Math.round(point.x / step) * step,
+      y: Math.round(point.y / step) * step,
+    };
+  }
+
+  function pageGuides() {
+    const page = currentPage();
+    if (!page) {
+      return [];
+    }
+    if (!page.guides) {
+      page.guides = [];
+    }
+    return page.guides;
+  }
+
+  function isOverlayTool(tool) {
+    return tool === "laser" || tool === "measure" || tool === "protractor";
+  }
+
+  function isFrozenBlockedTool(tool) {
+    return state.frozen && tool !== "pan" && tool !== "laser" && tool !== "select";
+  }
+
+  function actionAllowedWhenFrozen(action) {
+    return (
+      String(action).startsWith("zoom-") ||
+      action === "toggle-grid" ||
+      action === "toggle-rulers" ||
+      action === "toggle-guides" ||
+      action === "toggle-spotlight" ||
+      action === "toggle-freeze" ||
+      action === "fullscreen"
+    );
   }
 
   function viewLen(pixels) {
@@ -760,6 +843,19 @@
     const percent = state.zoom * 100;
     const rounded = percent >= 20 ? Math.round(percent) : Math.round(percent * 10) / 10;
     return `${rounded}%`;
+  }
+
+  function formatLength(px) {
+    const cm = (px / 96) * 2.54;
+    return `${cm.toFixed(1)} cm · ${Math.round(px)} px`;
+  }
+
+  function formatAngle(start, end) {
+    let deg = (Math.atan2(start.y - end.y, end.x - start.x) * 180) / Math.PI;
+    if (deg < 0) {
+      deg += 360;
+    }
+    return `${Math.round(deg)}°`;
   }
 
   function syncViewUI() {
@@ -2118,6 +2214,7 @@
     );
 
     drawPageSheet();
+    drawGridOverlay();
 
     for (const object of state.objects) {
       drawObject(object);
@@ -2135,7 +2232,10 @@
       drawLasso(state.active.points);
     }
 
+    drawGuides();
+    drawMeasureOverlay();
     drawSelectionOverlay();
+    drawScreenTeaching();
     paintCurrentPageThumb();
   }
 
@@ -2175,6 +2275,198 @@
     ctx.fill();
     ctx.stroke();
     ctx.restore();
+  }
+
+  function drawGridOverlay() {
+    if (!state.showGrid) {
+      return;
+    }
+    const page = currentPage();
+    if (!page) {
+      return;
+    }
+    const step = gridStep();
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, page.width, page.height);
+    ctx.clip();
+    ctx.strokeStyle = "rgb(15 118 110 / 0.28)";
+    ctx.lineWidth = viewLen(1);
+    ctx.beginPath();
+    for (let x = 0; x <= page.width + 0.5; x += step) {
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, page.height);
+    }
+    for (let y = 0; y <= page.height + 0.5; y += step) {
+      ctx.moveTo(0, y);
+      ctx.lineTo(page.width, y);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawGuides() {
+    if (!state.showGuides) {
+      return;
+    }
+    const page = currentPage();
+    const guides = pageGuides();
+    if (!page || !guides.length) {
+      return;
+    }
+    ctx.save();
+    ctx.strokeStyle = "rgb(220 38 38 / 0.7)";
+    ctx.lineWidth = viewLen(1);
+    ctx.setLineDash([viewLen(6), viewLen(4)]);
+    ctx.beginPath();
+    for (const guide of guides) {
+      if (guide.axis === "x") {
+        ctx.moveTo(guide.pos, 0);
+        ctx.lineTo(guide.pos, page.height);
+      } else {
+        ctx.moveTo(0, guide.pos);
+        ctx.lineTo(page.width, guide.pos);
+      }
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawMeasureOverlay() {
+    const drag = state.active;
+    if (!drag || (drag.kind !== "measure" && drag.kind !== "protractor")) {
+      return;
+    }
+    const start = drag.start;
+    const end = drag.point;
+    ctx.save();
+    ctx.strokeStyle = SELECT_COLOR;
+    ctx.fillStyle = SELECT_COLOR;
+    ctx.lineWidth = viewLen(1.5);
+    ctx.setLineDash([viewLen(4), viewLen(3)]);
+    ctx.beginPath();
+    ctx.moveTo(start.x, start.y);
+    ctx.lineTo(end.x, end.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.arc(start.x, start.y, viewLen(3), 0, Math.PI * 2);
+    ctx.arc(end.x, end.y, viewLen(3), 0, Math.PI * 2);
+    ctx.fill();
+
+    if (drag.kind === "protractor") {
+      const radius = Math.max(distance(start, end), viewLen(24));
+      ctx.beginPath();
+      ctx.arc(start.x, start.y, radius, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgb(15 118 110 / 0.45)";
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(start.x + radius, start.y);
+      ctx.lineTo(start.x, start.y);
+      ctx.stroke();
+    }
+
+    const label = drag.kind === "measure" ? formatLength(distance(start, end)) : formatAngle(start, end);
+    ctx.font = `${viewLen(13)}px ${FONT_FAMILY}`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "bottom";
+    ctx.fillStyle = "#0f766e";
+    ctx.fillText(label, (start.x + end.x) / 2, (start.y + end.y) / 2 - viewLen(8));
+    ctx.restore();
+  }
+
+  function drawScreenTeaching() {
+    ctx.save();
+    ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
+    const width = canvas.clientWidth;
+    const height = canvas.clientHeight;
+
+    if (state.spotlight && state.pointerWorld) {
+      const hole = worldToScreen(state.pointerWorld);
+      ctx.fillStyle = "rgb(15 18 22 / 0.58)";
+      ctx.beginPath();
+      ctx.rect(0, 0, width, height);
+      ctx.arc(hole.x, hole.y, SPOTLIGHT_RADIUS, 0, Math.PI * 2);
+      ctx.fill("evenodd");
+    }
+
+    if (state.tool === "laser" && state.pointerWorld) {
+      for (let i = 0; i < state.laserTrail.length; i += 1) {
+        const item = worldToScreen(state.laserTrail[i]);
+        const t = (i + 1) / state.laserTrail.length;
+        ctx.beginPath();
+        ctx.fillStyle = `rgb(220 38 38 / ${0.12 + t * 0.35})`;
+        ctx.arc(item.x, item.y, 5 + t * 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      const tip = worldToScreen(state.pointerWorld);
+      ctx.beginPath();
+      ctx.fillStyle = "rgb(220 38 38 / 0.95)";
+      ctx.arc(tip.x, tip.y, 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgb(255 255 255 / 0.9)";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+
+    if (state.showRulers) {
+      drawRulers(width, height);
+    }
+
+    ctx.restore();
+  }
+
+  function drawRulers(width, height) {
+    ctx.fillStyle = "rgb(250 248 245 / 0.94)";
+    ctx.fillRect(0, 0, width, RULER_SIZE);
+    ctx.fillRect(0, 0, RULER_SIZE, height);
+    ctx.strokeStyle = "rgb(28 25 23 / 0.16)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, RULER_SIZE);
+    ctx.lineTo(width, RULER_SIZE);
+    ctx.moveTo(RULER_SIZE, 0);
+    ctx.lineTo(RULER_SIZE, height);
+    ctx.stroke();
+    ctx.fillStyle = "rgb(120 113 108)";
+    ctx.font = "10px " + FONT_FAMILY;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    const step = Math.max(gridStep(), 20);
+    const page = currentPage();
+    if (!page) {
+      return;
+    }
+    for (let x = 0; x <= page.width; x += step) {
+      const screen = worldToScreen({ x, y: 0 });
+      if (screen.x < RULER_SIZE || screen.x > width) {
+        continue;
+      }
+      ctx.beginPath();
+      ctx.moveTo(screen.x, RULER_SIZE);
+      ctx.lineTo(screen.x, RULER_SIZE - (x % (step * 5) === 0 ? 10 : 6));
+      ctx.stroke();
+      if (x % (step * 5) === 0) {
+        ctx.fillText(String(Math.round(x)), screen.x, 3);
+      }
+    }
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+    for (let y = 0; y <= page.height; y += step) {
+      const screen = worldToScreen({ x: 0, y });
+      if (screen.y < RULER_SIZE || screen.y > height) {
+        continue;
+      }
+      ctx.beginPath();
+      ctx.moveTo(RULER_SIZE, screen.y);
+      ctx.lineTo(RULER_SIZE - (y % (step * 5) === 0 ? 10 : 6), screen.y);
+      ctx.stroke();
+      if (y % (step * 5) === 0) {
+        ctx.fillText(String(Math.round(y)), RULER_SIZE - 4, screen.y);
+      }
+    }
+    ctx.fillStyle = "rgb(250 248 245 / 0.94)";
+    ctx.fillRect(0, 0, RULER_SIZE, RULER_SIZE);
   }
 
   function resizeCanvas() {
@@ -2366,6 +2658,7 @@
       state.pages.map((page) => [page.id, { zoom: page.zoom, panX: page.panX, panY: page.panY }])
     );
     cameras.set(state.currentPageId, { zoom: state.zoom, panX: state.panX, panY: state.panY });
+    const guidesByPage = new Map(state.pages.map((page) => [page.id, cloneData(page.guides || [])]));
 
     state.pages = snapshot.pages.map((page) => {
       const camera = cameras.get(page.id) || { zoom: 1, panX: 0, panY: 0 };
@@ -2374,6 +2667,7 @@
         zoom: camera.zoom,
         panX: camera.panX,
         panY: camera.panY,
+        guides: guidesByPage.get(page.id) || cloneData(page.guides) || [],
       };
     });
     state.nextId = snapshot.nextId;
@@ -3159,7 +3453,7 @@
   }
 
   function onPaste(event) {
-    if (isTypingTarget(event.target) || state.editingId) {
+    if (isTypingTarget(event.target) || state.editingId || state.frozen) {
       return;
     }
     const blob = clipboardImageBlob(event);
@@ -3205,6 +3499,9 @@
       return;
     }
     event.preventDefault();
+    if (state.frozen) {
+      return;
+    }
     const rect = canvas.getBoundingClientRect();
     const inside =
       event.clientX >= rect.left &&
@@ -3384,8 +3681,12 @@
 
   function applyMove(point) {
     const drag = state.active;
-    const dx = point.x - drag.startPoint.x;
-    const dy = point.y - drag.startPoint.y;
+    const dx = state.showGrid
+      ? Math.round((point.x - drag.startPoint.x) / gridStep()) * gridStep()
+      : point.x - drag.startPoint.x;
+    const dy = state.showGrid
+      ? Math.round((point.y - drag.startPoint.y) / gridStep()) * gridStep()
+      : point.y - drag.startPoint.y;
     drag.targets.forEach((object, index) => {
       replaceObjectFromClone(object, drag.startObjects[index]);
       translateObject(object, dx, dy);
@@ -4039,6 +4340,269 @@
     imageFileInput.click();
   }
 
+  function syncTeachUI() {
+    const pressed = (selector, on) => {
+      for (const button of toolbar.querySelectorAll(selector)) {
+        button.setAttribute("aria-pressed", String(Boolean(on)));
+      }
+    };
+    pressed('[data-action="toggle-grid"]', state.showGrid);
+    pressed('[data-action="toggle-rulers"]', state.showRulers);
+    pressed('[data-action="toggle-guides"]', state.showGuides);
+    pressed('[data-action="toggle-spotlight"]', state.spotlight);
+    pressed('[data-action="toggle-freeze"]', state.frozen);
+    pressed('[data-action="fullscreen"]', Boolean(document.fullscreenElement));
+    appEl.classList.toggle("is-frozen", state.frozen);
+    const parts = [];
+    if (state.frozen) {
+      parts.push("Frozen");
+    }
+    if (state.spotlight) {
+      parts.push("Spotlight");
+    }
+    if (state.active && state.active.kind === "measure") {
+      parts.push(formatLength(distance(state.active.start, state.active.point)));
+    } else if (state.active && state.active.kind === "protractor") {
+      parts.push(formatAngle(state.active.start, state.active.point));
+    }
+    if (parts.length) {
+      teachStatus.hidden = false;
+      teachStatus.textContent = parts.join(" · ");
+    } else {
+      teachStatus.hidden = true;
+      teachStatus.textContent = "";
+    }
+  }
+
+  function toggleFlag(name) {
+    state[name] = !state[name];
+    if (name === "showRulers" && state.showRulers) {
+      state.showGuides = true;
+    }
+    if (name === "spotlight" && state.spotlight && !state.pointerWorld) {
+      state.pointerWorld = screenToWorld(viewportCenter());
+    }
+    if (name === "frozen" && state.frozen) {
+      finishOpenWork();
+      if (state.tool !== "pan" && state.tool !== "laser") {
+        setTool("laser");
+      }
+    }
+    syncTeachUI();
+    redraw();
+  }
+
+  function toggleFullscreen() {
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+      return;
+    }
+    appEl.requestFullscreen().catch(() => {});
+  }
+
+  function closeConfirmDialog() {
+    confirmDialog.hidden = true;
+    confirmCallback = null;
+  }
+
+  function openConfirmDialog(title, message, okLabel, onConfirm) {
+    finishOpenWork();
+    confirmTitle.textContent = title;
+    confirmMessage.textContent = message;
+    confirmOk.textContent = okLabel;
+    confirmCallback = onConfirm;
+    confirmDialog.hidden = false;
+    confirmOk.focus();
+  }
+
+  function requestClearBoard() {
+    if (state.frozen) {
+      return;
+    }
+    openConfirmDialog(
+      "Clear this page?",
+      "Drawings on this page will be removed. The page template stays.",
+      "Clear",
+      () => {
+        if (!state.objects.length) {
+          return;
+        }
+        captureBefore();
+        state.objects.splice(0, state.objects.length);
+        clearSelection();
+        commitIfChanged();
+        redraw();
+      }
+    );
+  }
+
+  function insertMathSymbol(symbol) {
+    if (!symbol || state.frozen) {
+      return;
+    }
+    const center = snapPoint(viewportWorldCenter());
+    beginInsert();
+    const object = createTextLike("text", {
+      x: center.x - 28,
+      y: center.y - 28,
+      width: 56,
+      height: 56,
+    });
+    object.text = symbol;
+    object.align = "center";
+    object.fontSize = 32;
+    object.textBack = null;
+    reflowTextHeight(object);
+    state.objects.push(object);
+    finishInsert([object.id]);
+  }
+
+  function pushLaserTrail(point) {
+    state.pointerWorld = point;
+    const last = state.laserTrail[state.laserTrail.length - 1];
+    if (last && distance(last, point) < viewLen(2)) {
+      return;
+    }
+    state.laserTrail.push(point);
+    if (state.laserTrail.length > 18) {
+      state.laserTrail.shift();
+    }
+  }
+
+  function hitRulerEdge(screen) {
+    if (!state.showRulers) {
+      return null;
+    }
+    if (screen.x <= RULER_SIZE && screen.y <= RULER_SIZE) {
+      return null;
+    }
+    if (screen.x <= RULER_SIZE) {
+      return "x";
+    }
+    if (screen.y <= RULER_SIZE) {
+      return "y";
+    }
+    return null;
+  }
+
+  function hitGuide(point) {
+    if (!state.showGuides) {
+      return -1;
+    }
+    const threshold = viewLen(5);
+    const guides = pageGuides();
+    for (let i = guides.length - 1; i >= 0; i -= 1) {
+      const guide = guides[i];
+      if (guide.axis === "x" && Math.abs(point.x - guide.pos) <= threshold) {
+        return i;
+      }
+      if (guide.axis === "y" && Math.abs(point.y - guide.pos) <= threshold) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  function startGuideDrag(pointerId, axis, pos, index) {
+    state.active = {
+      kind: "guide",
+      pointerId,
+      axis,
+      index,
+      pos,
+    };
+    if (index < 0) {
+      pageGuides().push({ axis, pos });
+      state.active.index = pageGuides().length - 1;
+      state.showGuides = true;
+    }
+    canvas.style.cursor = axis === "x" ? "ew-resize" : "ns-resize";
+    syncTeachUI();
+    redraw();
+  }
+
+  function moveGuide(point) {
+    const drag = state.active;
+    if (!drag || drag.kind !== "guide") {
+      return;
+    }
+    const page = currentPage();
+    const guides = pageGuides();
+    const guide = guides[drag.index];
+    if (!guide || !page) {
+      return;
+    }
+    if (guide.axis === "x") {
+      guide.pos = Math.max(0, Math.min(page.width, snapPoint(point).x));
+    } else {
+      guide.pos = Math.max(0, Math.min(page.height, snapPoint(point).y));
+    }
+    if (!state.raf) {
+      state.raf = requestAnimationFrame(() => {
+        state.raf = 0;
+        redraw();
+      });
+    }
+  }
+
+  function finishGuide(pointerId) {
+    if (!state.active || state.active.kind !== "guide" || state.active.pointerId !== pointerId) {
+      return;
+    }
+    const page = currentPage();
+    const guides = pageGuides();
+    const guide = guides[state.active.index];
+    if (guide && page) {
+      const off =
+        guide.axis === "x"
+          ? guide.pos <= 0 || guide.pos >= page.width
+          : guide.pos <= 0 || guide.pos >= page.height;
+      if (off) {
+        guides.splice(state.active.index, 1);
+      }
+    }
+    state.active = null;
+    releasePointer(pointerId);
+    canvas.style.cursor = "";
+    redraw();
+  }
+
+  function startMeasure(kind, pointerId, point) {
+    const start = snapPoint(point);
+    state.active = { kind, pointerId, start, point: start };
+    canvas.style.cursor = "crosshair";
+    syncTeachUI();
+    redraw();
+  }
+
+  function moveMeasure(point) {
+    if (!state.active || (state.active.kind !== "measure" && state.active.kind !== "protractor")) {
+      return;
+    }
+    state.active.point = snapPoint(point);
+    if (!state.raf) {
+      state.raf = requestAnimationFrame(() => {
+        state.raf = 0;
+        syncTeachUI();
+        redraw();
+      });
+    }
+  }
+
+  function finishMeasure(pointerId) {
+    if (
+      !state.active ||
+      (state.active.kind !== "measure" && state.active.kind !== "protractor") ||
+      state.active.pointerId !== pointerId
+    ) {
+      return;
+    }
+    state.active = null;
+    releasePointer(pointerId);
+    syncTeachUI();
+    redraw();
+  }
+
   function viewportWorldCenter() {
     return screenToWorld(viewportCenter());
   }
@@ -4201,7 +4765,7 @@
   }
 
   function insertDefaultShape(type) {
-    const center = viewportWorldCenter();
+    const center = snapPoint(viewportWorldCenter());
     let start;
     let end;
     if (type === "line" || type === "arrow") {
@@ -4772,8 +5336,8 @@
       return;
     }
 
-    state.active.point = point;
-    state.active.shift = shift;
+    state.active.point = snapPoint(point);
+    state.active.shift = state.tool === "compass" ? true : shift;
     if (!state.raf) {
       state.raf = requestAnimationFrame(flushShapePreview);
     }
@@ -4855,6 +5419,16 @@
 
     if (state.active.kind === "lasso") {
       finishLasso(pointerId);
+      return;
+    }
+
+    if (state.active.kind === "guide") {
+      finishGuide(pointerId);
+      return;
+    }
+
+    if (state.active.kind === "measure" || state.active.kind === "protractor") {
+      finishMeasure(pointerId);
       return;
     }
 
@@ -4993,19 +5567,24 @@
 
   function startShape(pointerId, point, shift) {
     clearSelection();
+    const start = snapPoint(point);
     state.active = {
       kind: "shape",
       pointerId,
-      shapeType: state.tool,
-      start: point,
-      point,
-      shift,
+      shapeType: state.tool === "compass" ? "ellipse" : state.tool,
+      start,
+      point: start,
+      shift: state.tool === "compass" ? true : shift,
     };
-    queueShapePreview(point, shift);
+    queueShapePreview(start, state.active.shift);
   }
 
   function setTool(tool) {
     if (!TOOLS.includes(tool) || tool === state.tool) {
+      return;
+    }
+
+    if (state.frozen && isFrozenBlockedTool(tool)) {
       return;
     }
 
@@ -5025,11 +5604,18 @@
       state.cropping = false;
     }
 
+    if (state.tool === "laser" && tool !== "laser") {
+      state.laserTrail = [];
+      if (!state.spotlight) {
+        state.pointerWorld = null;
+      }
+    }
+
     state.tool = tool;
     canvas.dataset.cursor = tool;
     canvas.style.cursor = "";
 
-    if (tool !== "select" && tool !== "pan" && tool !== "lasso") {
+    if (tool !== "select" && tool !== "pan" && tool !== "lasso" && !isOverlayTool(tool)) {
       clearSelection();
       redraw();
     }
@@ -5038,6 +5624,7 @@
       button.setAttribute("aria-pressed", String(button.dataset.tool === tool));
     }
     syncImageUI();
+    syncTeachUI();
   }
 
   function syncColorUI() {
@@ -5157,7 +5744,40 @@
     }
 
     event.preventDefault();
+    const screen = getScreenPoint(event);
     const point = getPoint(event);
+    state.pointerWorld = point;
+
+    if (state.frozen && state.tool !== "laser") {
+      return;
+    }
+
+    const rulerAxis = hitRulerEdge(screen);
+    if (rulerAxis) {
+      startGuideDrag(event.pointerId, rulerAxis, rulerAxis === "x" ? point.x : point.y, -1);
+      capturePointer(event.pointerId);
+      return;
+    }
+
+    const guideIndex = hitGuide(point);
+    if (guideIndex >= 0 && (state.tool === "select" || isOverlayTool(state.tool))) {
+      const guide = pageGuides()[guideIndex];
+      startGuideDrag(event.pointerId, guide.axis, guide.pos, guideIndex);
+      capturePointer(event.pointerId);
+      return;
+    }
+
+    if (state.tool === "laser") {
+      pushLaserTrail(point);
+      redraw();
+      return;
+    }
+
+    if (state.tool === "measure" || state.tool === "protractor") {
+      startMeasure(state.tool, event.pointerId, point);
+      capturePointer(event.pointerId);
+      return;
+    }
 
     if (state.tool === "select") {
       onSelectPointerDown(event, point);
@@ -5193,7 +5813,7 @@
 
     capturePointer(event.pointerId);
 
-    if (isShapeTool(state.tool)) {
+    if (isShapeTool(state.tool) || state.tool === "compass") {
       startShape(event.pointerId, point, event.shiftKey);
       return;
     }
@@ -5205,8 +5825,17 @@
 
   function onPointerMove(event) {
     const point = getPoint(event);
+    state.pointerWorld = point;
 
     if (!state.active) {
+      if (state.tool === "laser") {
+        pushLaserTrail(point);
+        redraw();
+        return;
+      }
+      if (state.spotlight) {
+        redraw();
+      }
       updateSelectCursor(point);
       return;
     }
@@ -5219,6 +5848,16 @@
 
     if (state.active.kind === "pan") {
       movePan(getScreenPoint(event));
+      return;
+    }
+
+    if (state.active.kind === "guide") {
+      moveGuide(point);
+      return;
+    }
+
+    if (state.active.kind === "measure" || state.active.kind === "protractor") {
+      moveMeasure(point);
       return;
     }
 
@@ -5585,12 +6224,22 @@
 
     const formatButton = event.target.closest("[data-format]");
     if (formatButton && toolbar.contains(formatButton) && !formatButton.disabled) {
+      if (state.frozen) {
+        return;
+      }
       applyFormatCommand(formatButton.dataset.format);
       return;
     }
 
     const insertButton = event.target.closest("[data-insert]");
     if (insertButton && toolbar.contains(insertButton) && !insertButton.disabled) {
+      if (state.frozen) {
+        return;
+      }
+      if (insertButton.dataset.insert === "math") {
+        insertMathSymbol(insertButton.dataset.math);
+        return;
+      }
       runInsert(insertButton.dataset.insert);
       return;
     }
@@ -5604,6 +6253,9 @@
     const actionButton = event.target.closest("[data-action]");
     if (actionButton && toolbar.contains(actionButton) && !actionButton.disabled) {
       const action = actionButton.dataset.action;
+      if (state.frozen && !actionAllowedWhenFrozen(action)) {
+        return;
+      }
       if (action === "copy") {
         copySelected();
       } else if (action === "paste") {
@@ -5654,6 +6306,20 @@
         flipSelected("h");
       } else if (action === "flip-v") {
         flipSelected("v");
+      } else if (action === "toggle-grid") {
+        toggleFlag("showGrid");
+      } else if (action === "toggle-rulers") {
+        toggleFlag("showRulers");
+      } else if (action === "toggle-guides") {
+        toggleFlag("showGuides");
+      } else if (action === "toggle-spotlight") {
+        toggleFlag("spotlight");
+      } else if (action === "toggle-freeze") {
+        toggleFlag("frozen");
+      } else if (action === "fullscreen") {
+        toggleFullscreen();
+      } else if (action === "clear-board") {
+        requestClearBoard();
       }
       return;
     }
@@ -5748,6 +6414,14 @@
   }
 
   function onKeyDown(event) {
+    if (!confirmDialog.hidden) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeConfirmDialog();
+      }
+      return;
+    }
+
     if (!linkDialog.hidden) {
       if (event.key === "Escape") {
         event.preventDefault();
@@ -5781,8 +6455,29 @@
         redraw();
         return;
       }
+      if (state.tool === "laser") {
+        setTool("select");
+        return;
+      }
       cancelActive();
       return;
+    }
+
+    if (state.frozen && ctrl) {
+      const zoomKey =
+        event.key === "=" ||
+        event.key === "+" ||
+        event.key === "-" ||
+        event.key === "0" ||
+        event.code === "NumpadAdd" ||
+        event.code === "NumpadSubtract" ||
+        event.code === "Numpad0" ||
+        event.key === "PageDown" ||
+        event.key === "PageUp";
+      if (!zoomKey) {
+        event.preventDefault();
+        return;
+      }
     }
 
     if (ctrl && event.key.toLowerCase() === "b") {
@@ -5808,6 +6503,9 @@
 
     if (ctrl && event.key.toLowerCase() === "z") {
       event.preventDefault();
+      if (state.frozen) {
+        return;
+      }
       if (event.shiftKey) {
         redo();
       } else {
@@ -5858,6 +6556,9 @@
 
     if (event.key === "Delete" || event.key === "Backspace") {
       event.preventDefault();
+      if (state.frozen) {
+        return;
+      }
       deleteSelected();
       return;
     }
@@ -5905,6 +6606,11 @@
       return;
     }
 
+    if (state.frozen && ctrl) {
+      event.preventDefault();
+      return;
+    }
+
     if (ctrl || event.altKey) {
       return;
     }
@@ -5939,9 +6645,20 @@
     }
   });
   ribbonTabs.addEventListener("keydown", onRibbonTabKey);
-  undoBtn.addEventListener("click", () => undo());
-  redoBtn.addEventListener("click", () => redo());
+  undoBtn.addEventListener("click", () => {
+    if (!state.frozen) {
+      undo();
+    }
+  });
+  redoBtn.addEventListener("click", () => {
+    if (!state.frozen) {
+      redo();
+    }
+  });
   deleteBtn.addEventListener("click", () => {
+    if (state.frozen) {
+      return;
+    }
     if (state.editingId) {
       finishEditing();
     }
@@ -5983,7 +6700,7 @@
     redraw();
   });
   canvas.addEventListener("dblclick", (event) => {
-    if (event.button !== 0 || state.spacePan || state.tool === "pan") {
+    if (event.button !== 0 || state.spacePan || state.tool === "pan" || state.frozen) {
       return;
     }
 
@@ -6076,6 +6793,25 @@
     if (event.target === linkDialog) {
       closeLinkDialog();
     }
+  });
+  confirmForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const action = confirmCallback;
+    closeConfirmDialog();
+    if (action) {
+      action();
+    }
+  });
+  confirmCancel.addEventListener("click", () => {
+    closeConfirmDialog();
+  });
+  confirmDialog.addEventListener("pointerdown", (event) => {
+    if (event.target === confirmDialog) {
+      closeConfirmDialog();
+    }
+  });
+  document.addEventListener("fullscreenchange", () => {
+    syncTeachUI();
   });
   const imageFieldInputs = [
     imageOpacityInput,
@@ -6241,4 +6977,5 @@
   syncPageUI();
   syncImageUI();
   syncLinkUI();
+  syncTeachUI();
 })();

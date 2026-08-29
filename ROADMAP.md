@@ -12,7 +12,7 @@ Statuses:
 | ⚪ | PLANNED |
 | 🔴 | BLOCKED |
 
-**Current:** Stages 1–14 complete. Stage 15 is next.
+**Current:** Stages 1–15 complete. Stage 16 is next.
 
 ---
 
@@ -288,17 +288,17 @@ Do not treat this as a bitmap Paint clone.
 
 ### Stage 15 — Teaching tools
 
-**Status:** 🔵 NEXT
+**Status:** ✅ COMPLETED
 
-Prioritize tools teachers actually use: laser pointer (non-permanent), spotlight, ruler, protractor, compass, grid, guides, measurement, math symbols where practical, presentation pointer, board clear with confirmation, freeze/unfreeze if practical.
+View: overlay grid (also snaps shapes and moves), rulers (drag off a ruler to add a guide), guides, full screen. Present: laser pointer (non-permanent, `R`), spotlight, freeze, clear page with confirmation. Measure (`M`) and protractor are overlays; compass draws a circle. Insert → Math places π, roots, and common operators as text.
 
-No gimmicks.
+Freeze locks drawing and edits; pan, laser, zoom, and view toggles still work. Laser and measure do not create objects.
 
 ---
 
 ### Stage 16 — Tables / spreadsheet-like tools
 
-**Status:** ⚪ PLANNED
+**Status:** 🔵 NEXT
 
 Insert table; rows, columns, merge, resize, borders, background, alignment; cell editing, keyboard navigation, copy/paste. Formulas only if later justified.
 

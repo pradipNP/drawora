@@ -756,6 +756,33 @@ kbd {
   box-shadow: var(--shadow);
 }
 
+.dialog-copy {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.ribbon-btn-symbol {
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.app.is-frozen #board {
+  cursor: default;
+}
+
+#board[data-cursor="laser"] {
+  cursor: none;
+}
+
+#board[data-cursor="measure"],
+#board[data-cursor="protractor"],
+#board[data-cursor="compass"] {
+  cursor: crosshair;
+}
+
 .dialog-card h2 {
   margin: 0;
   font-size: 0.95rem;

@@ -12,7 +12,9 @@ The top bar is a ribbon. **Home** has the everyday tools. **Draw**, **Insert**, 
 
 **Insert** places a default object at the center of the view (text, sticky, shapes, image, diagram, page, or link), then selects it. **Home** and **Draw** still draw by dragging. Table and file stay disabled until later stages. Double-click a link to edit it; Ctrl+click or **Open** visits http, https, and mailto addresses. **Insert → Diagram** adds a grouped Start → Process → End flow.
 
-Scroll the canvas to zoom around the cursor. Hold **Space** or use the **Pan** tool (`H`) to move the view. Middle-mouse drag also pans. `Ctrl`+`+` / `Ctrl`+`-` zoom; `Ctrl`+`0` resets to 100%. **View** has fit-page and fit-selection.
+**View** has an overlay grid (shapes snap to it), rulers (drag from a ruler to place a guide), guides, and full screen. **Present** tools: laser pointer (`R`, not saved on the page), spotlight, freeze, and clear page (asks first). Measure (`M`) and protractor show length or angle while you drag; compass draws a circle. **Insert → Math** places π, √, and other common symbols as text.
+
+Scroll the canvas to zoom around the cursor. Hold **Space** or use the **Pan** tool (`H`) to move the view. Middle-mouse drag also pans. `Ctrl`+`+` / `Ctrl`+`-` zoom; `Ctrl`+`0` resets to 100%. **View** also has fit-page and fit-selection.
 
 **Page** adds, duplicates, deletes, and renames pages. Choose A4, A3, A5, A2, Letter, Legal, or a custom size, in portrait or landscape. The status bar shows page thumbnails; click to switch, drag to reorder, or press `Ctrl`+`PageDown` / `Ctrl`+`PageUp`. Insert → Page also adds a page.
 
@@ -30,6 +32,8 @@ On the **Page** tab, pick **Teacher**, **Student**, or **Custom** and a template
 | Fill   | `F`      |
 | Eyedropper | `I`  |
 | Lasso  | `L`      |
+| Laser  | `R`      |
+| Measure | `M`     |
 
 Shape tools: line, rectangle, rounded rectangle, ellipse, triangle, arrow, diamond, pentagon, hexagon, and star.
 
