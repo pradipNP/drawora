@@ -877,6 +877,12 @@ kbd {
   box-shadow: none;
 }
 
+.text-editor.is-table-cell {
+  padding: 4px 6px;
+  border-radius: 0;
+  box-shadow: none;
+}
+
 #board[data-cursor="text"] {
   cursor: text;
 }

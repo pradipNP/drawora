@@ -69,6 +69,11 @@
   const MIN_IMAGE = 16;
   const MAX_IMAGE_PIXELS = 16_000_000;
   const IMAGE_TYPES = /^image\/(png|jpe?g|gif|webp|bmp|svg\+xml)$/i;
+  const TABLE_DEFAULT_COLS = 3;
+  const TABLE_DEFAULT_ROWS = 3;
+  const TABLE_CELL_MIN = 28;
+  const TABLE_PAD = 6;
+  const TABLE_SPLIT_HIT = 5;
   const MIN_ZOOM = 0.1;
   const MAX_ZOOM = 8;
   const ZOOM_STEP = 1.2;
@@ -146,6 +151,11 @@
     pageThumbKey: "",
     cropping: false,
     eyedropperReturn: "pen",
+    tableCell: null,
+    tableRange: null,
+    editingCell: null,
+    cellClipboard: "",
+    clipboardKind: "objects",
     showGrid: false,
     showRulers: false,
     showGuides: true,
@@ -356,6 +366,15 @@
     return object && object.type === "link";
   }
 
+  function isTable(object) {
+    return object && object.type === "table";
+  }
+
+  function selectedTable() {
+    const selected = selectedObjects();
+    return selected.length === 1 && isTable(selected[0]) ? selected[0] : null;
+  }
+
   function selectedLink() {
     const selected = selectedObjects();
     return selected.length === 1 && isLink(selected[0]) ? selected[0] : null;
@@ -368,6 +387,348 @@
 
   function isSelectable(object) {
     return !(object.type === "stroke" && object.tool === "eraser");
+  }
+
+  function createTableCell() {
+    return {
+      text: "",
+      align: "left",
+      bold: false,
+      italic: false,
+      underline: false,
+      strike: false,
+      color: "#0f172a",
+      fontSize: 14,
+      fontKey: "sans",
+      fill: null,
+      colspan: 1,
+      rowspan: 1,
+      covered: false,
+      origin: null,
+    };
+  }
+
+  function normalizeFractions(values) {
+    const next = values.map((value) => Math.max(0.0001, Number(value) || 0));
+    const sum = next.reduce((total, value) => total + value, 0) || 1;
+    return next.map((value) => value / sum);
+  }
+
+  function tableColCount(object) {
+    return object.colW && object.colW.length ? object.colW.length : object.cells[0] ? object.cells[0].length : 0;
+  }
+
+  function tableRowCount(object) {
+    return object.rowH && object.rowH.length ? object.rowH.length : object.cells ? object.cells.length : 0;
+  }
+
+  function tableLayout(object) {
+    const colW = normalizeFractions(object.colW || []);
+    const rowH = normalizeFractions(object.rowH || []);
+    const cols = [];
+    const rows = [];
+    let x = 0;
+    for (let i = 0; i < colW.length; i += 1) {
+      const w = colW[i] * object.width;
+      cols.push({ x, w });
+      x += w;
+    }
+    let y = 0;
+    for (let i = 0; i < rowH.length; i += 1) {
+      const h = rowH[i] * object.height;
+      rows.push({ y, h });
+      y += h;
+    }
+    return { cols, rows, colW, rowH };
+  }
+
+  function tableCellAt(object, r, c) {
+    return object.cells && object.cells[r] ? object.cells[r][c] || null : null;
+  }
+
+  function tableOrigin(object, r, c) {
+    const cell = tableCellAt(object, r, c);
+    if (!cell) {
+      return null;
+    }
+    if (cell.covered && cell.origin) {
+      return { r: cell.origin.r, c: cell.origin.c };
+    }
+    return { r, c };
+  }
+
+  function tableCellRect(object, r, c) {
+    const origin = tableOrigin(object, r, c);
+    if (!origin) {
+      return null;
+    }
+    const cell = tableCellAt(object, origin.r, origin.c);
+    const layout = tableLayout(object);
+    if (!layout.cols[origin.c] || !layout.rows[origin.r]) {
+      return null;
+    }
+    const colspan = Math.max(1, cell.colspan || 1);
+    const rowspan = Math.max(1, cell.rowspan || 1);
+    let width = 0;
+    let height = 0;
+    for (let i = 0; i < colspan && origin.c + i < layout.cols.length; i += 1) {
+      width += layout.cols[origin.c + i].w;
+    }
+    for (let i = 0; i < rowspan && origin.r + i < layout.rows.length; i += 1) {
+      height += layout.rows[origin.r + i].h;
+    }
+    return {
+      x: object.x + layout.cols[origin.c].x,
+      y: object.y + layout.rows[origin.r].y,
+      width,
+      height,
+      r: origin.r,
+      c: origin.c,
+    };
+  }
+
+  function hitTableCell(object, localPoint) {
+    const layout = tableLayout(object);
+    const lx = localPoint.x - object.x;
+    const ly = localPoint.y - object.y;
+    if (lx < -0.5 || ly < -0.5 || lx > object.width + 0.5 || ly > object.height + 0.5) {
+      return null;
+    }
+    let col = layout.cols.length - 1;
+    let row = layout.rows.length - 1;
+    let x = 0;
+    for (let i = 0; i < layout.cols.length; i += 1) {
+      if (lx < x + layout.cols[i].w) {
+        col = i;
+        break;
+      }
+      x += layout.cols[i].w;
+    }
+    let y = 0;
+    for (let i = 0; i < layout.rows.length; i += 1) {
+      if (ly < y + layout.rows[i].h) {
+        row = i;
+        break;
+      }
+      y += layout.rows[i].h;
+    }
+    return tableOrigin(object, row, col);
+  }
+
+  function hitTableSplit(point) {
+    const object = selectedTable();
+    if (!object || state.editingId) {
+      return null;
+    }
+    const local = objectLocalPoint(object, point);
+    const layout = tableLayout(object);
+    const lx = local.x - object.x;
+    const ly = local.y - object.y;
+    const tol = viewLen(TABLE_SPLIT_HIT);
+    if (ly >= -tol && ly <= object.height + tol) {
+      for (let i = 1; i < layout.cols.length; i += 1) {
+        if (Math.abs(lx - layout.cols[i].x) <= tol) {
+          return { kind: "col", index: i };
+        }
+      }
+    }
+    if (lx >= -tol && lx <= object.width + tol) {
+      for (let i = 1; i < layout.rows.length; i += 1) {
+        if (Math.abs(ly - layout.rows[i].y) <= tol) {
+          return { kind: "row", index: i };
+        }
+      }
+    }
+    return null;
+  }
+
+  function getTableSelection() {
+    const object = selectedTable();
+    if (!object) {
+      return null;
+    }
+    const rows = tableRowCount(object);
+    const cols = tableColCount(object);
+    let r1 = 0;
+    let c1 = 0;
+    let r2 = 0;
+    let c2 = 0;
+    if (state.tableRange && state.tableCell && state.tableCell.id === object.id) {
+      r1 = Math.min(state.tableRange.r1, state.tableRange.r2);
+      c1 = Math.min(state.tableRange.c1, state.tableRange.c2);
+      r2 = Math.max(state.tableRange.r1, state.tableRange.r2);
+      c2 = Math.max(state.tableRange.c1, state.tableRange.c2);
+    } else if (state.tableCell && state.tableCell.id === object.id) {
+      const origin = tableOrigin(object, state.tableCell.r, state.tableCell.c) || { r: 0, c: 0 };
+      const cell = tableCellAt(object, origin.r, origin.c);
+      r1 = origin.r;
+      c1 = origin.c;
+      r2 = origin.r + Math.max(1, (cell && cell.rowspan) || 1) - 1;
+      c2 = origin.c + Math.max(1, (cell && cell.colspan) || 1) - 1;
+    }
+    return {
+      object,
+      r1: Math.max(0, Math.min(r1, rows - 1)),
+      c1: Math.max(0, Math.min(c1, cols - 1)),
+      r2: Math.max(0, Math.min(r2, rows - 1)),
+      c2: Math.max(0, Math.min(c2, cols - 1)),
+    };
+  }
+
+  function tableGhost(cell, rect) {
+    return {
+      type: "text",
+      text: cell.text || "",
+      color: cell.color,
+      fontSize: cell.fontSize || 14,
+      fontKey: cell.fontKey || "sans",
+      bold: cell.bold,
+      italic: cell.italic,
+      underline: cell.underline,
+      strike: cell.strike,
+      align: cell.align || "left",
+      lineHeight: 1.3,
+      letterSpacing: 0,
+      paragraphSpacing: 0,
+      list: "none",
+      indent: 0,
+      pad: TABLE_PAD,
+      x: rect.x,
+      y: rect.y,
+      width: rect.width,
+      height: rect.height,
+    };
+  }
+
+  function applyStyleToTableCell(cell) {
+    cell.color = state.stroke;
+    cell.fontSize = state.fontSize;
+    cell.fontKey = state.fontKey;
+    cell.bold = state.bold;
+    cell.italic = state.italic;
+    cell.underline = state.underline;
+    cell.strike = state.strike;
+    cell.align = state.align;
+    if (state.fill) {
+      cell.fill = state.fill;
+    }
+  }
+
+  function loadStyleFromTableCell(cell) {
+    state.fontSize = cell.fontSize || 14;
+    state.fontKey = cell.fontKey || "sans";
+    state.bold = Boolean(cell.bold);
+    state.italic = Boolean(cell.italic);
+    state.underline = Boolean(cell.underline);
+    state.strike = Boolean(cell.strike);
+    state.align = cell.align || "left";
+    if (cell.color) {
+      state.stroke = cell.color;
+    }
+    if (cell.fill) {
+      state.fill = cell.fill;
+    }
+  }
+
+  function unmergeTableCell(object, r, c) {
+    const origin = tableOrigin(object, r, c);
+    if (!origin) {
+      return false;
+    }
+    const cell = tableCellAt(object, origin.r, origin.c);
+    if (!cell) {
+      return false;
+    }
+    const colspan = Math.max(1, cell.colspan || 1);
+    const rowspan = Math.max(1, cell.rowspan || 1);
+    if (colspan === 1 && rowspan === 1) {
+      return false;
+    }
+    cell.colspan = 1;
+    cell.rowspan = 1;
+    for (let row = origin.r; row < origin.r + rowspan; row += 1) {
+      for (let col = origin.c; col < origin.c + colspan; col += 1) {
+        if (row === origin.r && col === origin.c) {
+          continue;
+        }
+        object.cells[row][col] = createTableCell();
+      }
+    }
+    return true;
+  }
+
+  function unmergeTableIntersects(object, r1, c1, r2, c2) {
+    const seen = new Set();
+    for (let r = r1; r <= r2; r += 1) {
+      for (let c = c1; c <= c2; c += 1) {
+        const origin = tableOrigin(object, r, c);
+        if (!origin) {
+          continue;
+        }
+        const key = `${origin.r},${origin.c}`;
+        if (seen.has(key)) {
+          continue;
+        }
+        seen.add(key);
+        unmergeTableCell(object, origin.r, origin.c);
+      }
+    }
+  }
+
+  function tableRangeToTsv(sel) {
+    const lines = [];
+    for (let r = sel.r1; r <= sel.r2; r += 1) {
+      const row = [];
+      for (let c = sel.c1; c <= sel.c2; c += 1) {
+        const origin = tableOrigin(sel.object, r, c);
+        const cell = origin ? tableCellAt(sel.object, origin.r, origin.c) : null;
+        row.push(origin && origin.r === r && origin.c === c ? String(cell && cell.text ? cell.text : "") : "");
+      }
+      lines.push(row.join("\t"));
+    }
+    return lines.join("\n");
+  }
+
+  function pasteTsvIntoTable(object, startR, startC, tsv) {
+    const rows = String(tsv).replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+    const maxR = tableRowCount(object);
+    const maxC = tableColCount(object);
+    for (let i = 0; i < rows.length; i += 1) {
+      const parts = rows[i].split("\t");
+      for (let j = 0; j < parts.length; j += 1) {
+        const r = startR + i;
+        const c = startC + j;
+        if (r >= maxR || c >= maxC) {
+          continue;
+        }
+        const origin = tableOrigin(object, r, c);
+        const cell = origin ? tableCellAt(object, origin.r, origin.c) : null;
+        if (cell && !cell.covered) {
+          cell.text = parts[j];
+        }
+      }
+    }
+  }
+
+  function createTableObject(x, y) {
+    const cols = TABLE_DEFAULT_COLS;
+    const rows = TABLE_DEFAULT_ROWS;
+    const width = cols * 110;
+    const height = rows * 36;
+    return {
+      id: createId(),
+      type: "table",
+      x,
+      y,
+      width,
+      height,
+      colW: Array.from({ length: cols }, () => 1 / cols),
+      rowH: Array.from({ length: rows }, () => 1 / rows),
+      cells: Array.from({ length: rows }, () => Array.from({ length: cols }, createTableCell)),
+      stroke: state.stroke,
+      size: Math.max(1, Math.min(state.size, 4)),
+      rotation: 0,
+    };
   }
 
   function assetSize(source) {
@@ -869,6 +1230,8 @@
       const object = findObject(state.editingId);
       if (isTextLike(object)) {
         positionEditor(object);
+      } else if (isTable(object)) {
+        positionEditor(object);
       }
     }
     syncViewUI();
@@ -1090,9 +1453,13 @@
       se: { x: frame.x + frame.width, y: frame.y + frame.height },
       rotate: { x: center.x, y: frame.y - viewLen(ROTATE_OFFSET) },
     };
-    if (object && isTextLike(object)) {
+    if (object && (isTextLike(object) || isTable(object))) {
       handles.e = { x: frame.x + frame.width, y: center.y };
       handles.w = { x: frame.x, y: center.y };
+    }
+    if (object && isTable(object)) {
+      handles.n = { x: center.x, y: frame.y };
+      handles.s = { x: center.x, y: frame.y + frame.height };
     }
     if (object && isImage(object) && state.cropping) {
       handles.n = { x: center.x, y: frame.y };
@@ -1464,8 +1831,12 @@
     return indent + list;
   }
 
+  function textPad(object) {
+    return object && object.pad != null ? object.pad : TEXT_PAD;
+  }
+
   function textMaxWidth(object) {
-    return Math.max(12, object.width - TEXT_PAD * 2 - textIndentWidth(object));
+    return Math.max(12, object.width - textPad(object) * 2 - textIndentWidth(object));
   }
 
   function wrapTextLayout(object) {
@@ -1546,7 +1917,7 @@
     const lines = wrapTextLayout(object);
     const lineHeight = textLineHeight(object);
     const paraGap = object.paragraphSpacing || 0;
-    let height = TEXT_PAD * 2;
+    let height = textPad(object) * 2;
     let lastPara = -1;
     for (const line of lines) {
       if (lastPara !== -1 && line.paraIndex !== lastPara) {
@@ -1567,12 +1938,13 @@
   }
 
   function textLineX(object) {
-    const left = object.x + TEXT_PAD + textIndentWidth(object);
+    const pad = textPad(object);
+    const left = object.x + pad + textIndentWidth(object);
     if (object.align === "center") {
       return object.x + (object.width + textIndentWidth(object)) / 2;
     }
     if (object.align === "right") {
-      return object.x + object.width - TEXT_PAD;
+      return object.x + object.width - pad;
     }
     return left;
   }
@@ -1621,8 +1993,8 @@
     ctx.textAlign = align;
     ctx.textBaseline = "top";
 
-    const markerX = object.x + TEXT_PAD + (object.indent || 0) * INDENT_STEP;
-    let y = object.y + TEXT_PAD;
+    const markerX = object.x + textPad(object) + (object.indent || 0) * INDENT_STEP;
+    let y = object.y + textPad(object);
     let lastPara = -1;
     for (const line of lines) {
       if (lastPara !== -1 && line.paraIndex !== lastPara) {
@@ -1852,6 +2224,93 @@
     }
   }
 
+  function drawTable(object) {
+    const layout = tableLayout(object);
+    const editing =
+      state.editingId === object.id && state.editingCell
+        ? state.editingCell
+        : null;
+    const sel = selectedTable() === object && !editing ? getTableSelection() : null;
+
+    ctx.save();
+    ctx.globalCompositeOperation = "source-over";
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(object.x, object.y, object.width, object.height);
+
+    for (let r = 0; r < object.cells.length; r += 1) {
+      for (let c = 0; c < object.cells[r].length; c += 1) {
+        const cell = object.cells[r][c];
+        if (!cell || cell.covered) {
+          continue;
+        }
+        const rect = tableCellRect(object, r, c);
+        if (!rect) {
+          continue;
+        }
+        if (cell.fill) {
+          ctx.fillStyle = cell.fill;
+          ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+        }
+        if (sel && r <= sel.r2 && r + Math.max(1, cell.rowspan || 1) - 1 >= sel.r1 && c <= sel.c2 && c + Math.max(1, cell.colspan || 1) - 1 >= sel.c1) {
+          ctx.fillStyle = "rgb(15 118 110 / 0.14)";
+          ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+        }
+      }
+    }
+
+    ctx.strokeStyle = object.stroke || "#1c1917";
+    ctx.lineWidth = Math.max(0.75, object.size || 1);
+    ctx.beginPath();
+    ctx.rect(object.x, object.y, object.width, object.height);
+    for (let i = 1; i < layout.cols.length; i += 1) {
+      const x = object.x + layout.cols[i].x;
+      let y = object.y;
+      for (let r = 0; r < layout.rows.length; r += 1) {
+        const origin = tableOrigin(object, r, i);
+        const skip = origin && origin.c < i;
+        const nextY = object.y + layout.rows[r].y + layout.rows[r].h;
+        if (!skip) {
+          ctx.moveTo(x, y);
+          ctx.lineTo(x, nextY);
+        }
+        y = nextY;
+      }
+    }
+    for (let i = 1; i < layout.rows.length; i += 1) {
+      const y = object.y + layout.rows[i].y;
+      let x = object.x;
+      for (let c = 0; c < layout.cols.length; c += 1) {
+        const origin = tableOrigin(object, i, c);
+        const skip = origin && origin.r < i;
+        const nextX = object.x + layout.cols[c].x + layout.cols[c].w;
+        if (!skip) {
+          ctx.moveTo(x, y);
+          ctx.lineTo(nextX, y);
+        }
+        x = nextX;
+      }
+    }
+    ctx.stroke();
+
+    for (let r = 0; r < object.cells.length; r += 1) {
+      for (let c = 0; c < object.cells[r].length; c += 1) {
+        const cell = object.cells[r][c];
+        if (!cell || cell.covered) {
+          continue;
+        }
+        if (editing && editing.r === r && editing.c === c) {
+          continue;
+        }
+        const rect = tableCellRect(object, r, c);
+        if (!rect || !(cell.text || "").length) {
+          continue;
+        }
+        drawWrappedText(tableGhost(cell, rect));
+      }
+    }
+    ctx.restore();
+  }
+
   function drawObjectUnrotated(object) {
     if (object.type === "stroke") {
       drawStroke(object);
@@ -1875,6 +2334,11 @@
 
     if (object.type === "link") {
       drawLink(object);
+      return;
+    }
+
+    if (object.type === "table") {
+      drawTable(object);
       return;
     }
 
@@ -2616,9 +3080,11 @@
     const order =
       isImage(object) && state.cropping
         ? ["nw", "ne", "sw", "se", "n", "s", "e", "w"]
-        : isTextLike(object)
-          ? ["rotate", "nw", "ne", "sw", "se", "e", "w"]
-          : ["rotate", "nw", "ne", "sw", "se"];
+        : isTable(object)
+          ? ["rotate", "nw", "ne", "sw", "se", "n", "s", "e", "w"]
+          : isTextLike(object)
+            ? ["rotate", "nw", "ne", "sw", "se", "e", "w"]
+            : ["rotate", "nw", "ne", "sw", "se"];
 
     for (const name of order) {
       if (handles[name] && distance(local, handles[name]) <= viewLen(HANDLE_HIT)) {
@@ -3224,10 +3690,19 @@
     if (state.cropping && !selectedImage()) {
       state.cropping = false;
     }
+    const table = ids.length === 1 ? findObject(ids[0]) : null;
+    if (!isTable(table)) {
+      state.tableCell = null;
+      state.tableRange = null;
+    } else if (!state.tableCell || state.tableCell.id !== table.id) {
+      state.tableCell = { id: table.id, r: 0, c: 0 };
+      state.tableRange = null;
+    }
     syncEditUI();
     syncFormatFromSelection();
     syncImageUI();
     syncLinkUI();
+    syncTableUI();
   }
 
   function clearSelection() {
@@ -3285,6 +3760,10 @@
     object.height = newBounds.height;
     if (isTextLike(object)) {
       reflowTextHeight(object);
+    }
+    if (isTable(object)) {
+      object.width = Math.max(object.width, tableColCount(object) * TABLE_CELL_MIN);
+      object.height = Math.max(object.height, tableRowCount(object) * TABLE_CELL_MIN);
     }
   }
 
@@ -3411,12 +3890,38 @@
       return;
     }
 
+    const sel = getTableSelection();
+    if (sel && selected.length === 1 && state.tableCell) {
+      state.cellClipboard = tableRangeToTsv(sel);
+      state.clipboardKind = "cells";
+      state.clipboard = cloneData(selected);
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(state.cellClipboard).catch(() => {});
+      }
+      syncEditUI();
+      return;
+    }
+
+    state.clipboardKind = "objects";
     state.clipboard = cloneData(selected);
     syncEditUI();
   }
 
   function pasteClipboard() {
-    if (state.clipboard.length === 0 || state.active) {
+    if (state.active) {
+      return;
+    }
+
+    const table = selectedTable();
+    if (table && state.tableCell && state.clipboardKind === "cells" && state.cellClipboard) {
+      captureBefore();
+      pasteTsvIntoTable(table, state.tableCell.r, state.tableCell.c, state.cellClipboard);
+      commitIfChanged();
+      redraw();
+      return;
+    }
+
+    if (state.clipboard.length === 0) {
       return;
     }
 
@@ -3663,6 +4168,24 @@
         continue;
       }
 
+      if (isTable(object)) {
+        object.stroke = state.stroke;
+        object.size = state.size;
+        const sel = getTableSelection();
+        if (sel && sel.object === object) {
+          for (let r = sel.r1; r <= sel.r2; r += 1) {
+            for (let c = sel.c1; c <= sel.c2; c += 1) {
+              const origin = tableOrigin(object, r, c);
+              const cell = origin ? tableCellAt(object, origin.r, origin.c) : null;
+              if (cell && !cell.covered && origin.r === r && origin.c === c) {
+                applyStyleToTableCell(cell);
+              }
+            }
+          }
+        }
+        continue;
+      }
+
       object.stroke = state.stroke;
       object.size = state.size;
       if (object.type !== "line" && object.type !== "arrow") {
@@ -3744,6 +4267,24 @@
         left = right - MIN_TEXT_WIDTH;
       } else {
         right = left + MIN_TEXT_WIDTH;
+      }
+    }
+    if (isTable(object)) {
+      const minW = tableColCount(object) * TABLE_CELL_MIN;
+      const minH = tableRowCount(object) * TABLE_CELL_MIN;
+      if (right - left < minW) {
+        if (drag.handle.includes("w")) {
+          left = right - minW;
+        } else {
+          right = left + minW;
+        }
+      }
+      if (bottom - top < minH) {
+        if (drag.handle.includes("n")) {
+          top = bottom - minH;
+        } else {
+          bottom = top + minH;
+        }
       }
     }
     if (bottom - top < MIN_FRAME) {
@@ -3908,7 +4449,48 @@
       return;
     }
 
+    if (state.active.mode === "table-split") {
+      applyTableSplit(point);
+      return;
+    }
+
     applyResize(point);
+  }
+
+  function applyTableSplit(point) {
+    const drag = state.active;
+    const object = drag.targets[0];
+    const start = drag.startObjects[0];
+    const split = drag.split;
+    if (!isTable(object) || !split) {
+      return;
+    }
+    replaceObjectFromClone(object, start);
+    const local = objectLocalPoint(object, point);
+    const layout = tableLayout(start);
+    if (split.kind === "col") {
+      const left = layout.cols[split.index - 1];
+      const right = layout.cols[split.index];
+      const pair = left.w + right.w;
+      const min = TABLE_CELL_MIN;
+      const x = Math.min(left.x + pair - min, Math.max(left.x + min, local.x - object.x));
+      const leftW = x - left.x;
+      object.colW = start.colW.slice();
+      object.colW[split.index - 1] = leftW / start.width;
+      object.colW[split.index] = (pair - leftW) / start.width;
+      object.colW = normalizeFractions(object.colW);
+      return;
+    }
+    const top = layout.rows[split.index - 1];
+    const bottom = layout.rows[split.index];
+    const pair = top.h + bottom.h;
+    const min = TABLE_CELL_MIN;
+    const y = Math.min(top.y + pair - min, Math.max(top.y + min, local.y - object.y));
+    const topH = y - top.y;
+    object.rowH = start.rowH.slice();
+    object.rowH[split.index - 1] = topH / start.height;
+    object.rowH[split.index] = (pair - topH) / start.height;
+    object.rowH = normalizeFractions(object.rowH);
   }
 
   function flushSelectDrag() {
@@ -4083,6 +4665,16 @@
         state.fill = object.fill;
       }
       syncColorUI();
+    } else if (selected.length === 1 && isTable(selected[0]) && state.tableCell) {
+      const origin = tableOrigin(selected[0], state.tableCell.r, state.tableCell.c);
+      const cell = origin ? tableCellAt(selected[0], origin.r, origin.c) : null;
+      if (cell) {
+        loadStyleFromTableCell(cell);
+        if (selected[0].stroke) {
+          state.stroke = cell.color || selected[0].stroke;
+        }
+        syncColorUI();
+      }
     }
 
     syncFormatUI();
@@ -4158,6 +4750,35 @@
     }
   }
 
+  function syncTableUI() {
+    const table = selectedTable();
+    const on = Boolean(table);
+    const sel = on ? getTableSelection() : null;
+    const rows = on ? tableRowCount(table) : 0;
+    const cols = on ? tableColCount(table) : 0;
+    const mergeable = Boolean(sel && (sel.r2 > sel.r1 || sel.c2 > sel.c1));
+    let canUnmerge = false;
+    if (on && state.tableCell) {
+      const origin = tableOrigin(table, state.tableCell.r, state.tableCell.c);
+      const cell = origin ? tableCellAt(table, origin.r, origin.c) : null;
+      canUnmerge = Boolean(cell && ((cell.colspan || 1) > 1 || (cell.rowspan || 1) > 1));
+    }
+    for (const button of toolbar.querySelectorAll("[data-action^='table-']")) {
+      const action = button.dataset.action;
+      if (action === "table-row-del") {
+        button.disabled = !on || rows < 2;
+      } else if (action === "table-col-del") {
+        button.disabled = !on || cols < 2;
+      } else if (action === "table-merge") {
+        button.disabled = !mergeable;
+      } else if (action === "table-unmerge") {
+        button.disabled = !canUnmerge;
+      } else {
+        button.disabled = !on;
+      }
+    }
+  }
+
   function toggleImageCrop() {
     const image = selectedImage();
     if (!image) {
@@ -4209,6 +4830,13 @@
         object.fill = color;
       } else {
         object.textBack = color;
+      }
+    } else if (isTable(object)) {
+      const local = objectLocalPoint(object, point);
+      const cellHit = hitTableCell(object, local);
+      const cell = cellHit ? tableCellAt(object, cellHit.r, cellHit.c) : null;
+      if (cell && !cell.covered) {
+        cell.fill = color;
       }
     } else {
       object.fill = color;
@@ -4840,6 +5468,268 @@
     finishInsert(objects.map((item) => item.id));
   }
 
+  function insertTable() {
+    const center = viewportWorldCenter();
+    const width = TABLE_DEFAULT_COLS * 110;
+    const height = TABLE_DEFAULT_ROWS * 36;
+    beginInsert();
+    const object = createTableObject(center.x - width / 2, center.y - height / 2);
+    state.objects.push(object);
+    state.tableCell = { id: object.id, r: 0, c: 0 };
+    state.tableRange = null;
+    finishInsert([object.id]);
+  }
+
+  function tableSelectCell(object, r, c, range) {
+    const origin = tableOrigin(object, r, c) || { r, c };
+    state.tableCell = { id: object.id, r: origin.r, c: origin.c };
+    state.tableRange = range || null;
+    syncFormatFromSelection();
+    syncTableUI();
+  }
+
+  function runTableAction(action) {
+    const sel = getTableSelection();
+    if (!sel) {
+      return;
+    }
+    if (action === "table-row-add") {
+      tableInsertRow(sel);
+    } else if (action === "table-row-del") {
+      tableDeleteRow(sel);
+    } else if (action === "table-col-add") {
+      tableInsertCol(sel);
+    } else if (action === "table-col-del") {
+      tableDeleteCol(sel);
+    } else if (action === "table-merge") {
+      tableMerge(sel);
+    } else if (action === "table-unmerge") {
+      tableSplitMerge(sel);
+    }
+  }
+
+  function tableInsertRow(sel) {
+    const object = sel.object;
+    const at = sel.r2 + 1;
+    const cols = tableColCount(object);
+    captureBefore();
+    for (let r = 0; r < object.cells.length; r += 1) {
+      for (let c = 0; c < cols; c += 1) {
+        const cell = object.cells[r][c];
+        if (cell && !cell.covered && (cell.rowspan || 1) > 1 && r < at && r + cell.rowspan > at) {
+          cell.rowspan += 1;
+        }
+      }
+    }
+    const newRow = [];
+    for (let c = 0; c < cols; c += 1) {
+      let covered = false;
+      let origin = null;
+      for (let r = 0; r < at; r += 1) {
+        const cell = object.cells[r][c];
+        if (cell && !cell.covered && (cell.rowspan || 1) > 1 && r + cell.rowspan > at) {
+          covered = true;
+          origin = tableOrigin(object, r, c);
+          break;
+        }
+      }
+      newRow.push(covered && origin ? { covered: true, origin: { r: origin.r, c: origin.c } } : createTableCell());
+    }
+    object.cells.splice(at, 0, newRow);
+    for (let r = at + 1; r < object.cells.length; r += 1) {
+      for (const cell of object.cells[r]) {
+        if (cell && cell.covered && cell.origin && cell.origin.r >= at) {
+          cell.origin.r += 1;
+        }
+      }
+    }
+    object.rowH.splice(at, 0, 1 / (object.rowH.length + 1));
+    object.rowH = normalizeFractions(object.rowH);
+    object.height += Math.max(TABLE_CELL_MIN, object.height / Math.max(1, object.cells.length - 1));
+    tableSelectCell(object, at, sel.c1);
+    commitIfChanged();
+    redraw();
+  }
+
+  function tableInsertCol(sel) {
+    const object = sel.object;
+    const at = sel.c2 + 1;
+    captureBefore();
+    for (let r = 0; r < object.cells.length; r += 1) {
+      for (let c = 0; c < object.cells[r].length; c += 1) {
+        const cell = object.cells[r][c];
+        if (cell && !cell.covered && (cell.colspan || 1) > 1 && c < at && c + cell.colspan > at) {
+          cell.colspan += 1;
+        }
+      }
+    }
+    for (let r = 0; r < object.cells.length; r += 1) {
+      let covered = false;
+      let origin = null;
+      for (let c = 0; c < at; c += 1) {
+        const cell = object.cells[r][c];
+        if (cell && !cell.covered && (cell.colspan || 1) > 1 && c + cell.colspan > at) {
+          covered = true;
+          origin = tableOrigin(object, r, c);
+          break;
+        }
+      }
+      object.cells[r].splice(
+        at,
+        0,
+        covered && origin ? { covered: true, origin: { r: origin.r, c: origin.c } } : createTableCell()
+      );
+      for (let c = at + 1; c < object.cells[r].length; c += 1) {
+        const cell = object.cells[r][c];
+        if (cell && cell.covered && cell.origin && cell.origin.c >= at) {
+          cell.origin.c += 1;
+        }
+      }
+    }
+    object.colW.splice(at, 0, 1 / (object.colW.length + 1));
+    object.colW = normalizeFractions(object.colW);
+    object.width += Math.max(TABLE_CELL_MIN, object.width / Math.max(1, object.colW.length - 1));
+    tableSelectCell(object, sel.r1, at);
+    commitIfChanged();
+    redraw();
+  }
+
+  function tableDeleteRow(sel) {
+    const object = sel.object;
+    if (tableRowCount(object) < 2) {
+      return;
+    }
+    const at = sel.r1;
+    captureBefore();
+    unmergeTableIntersects(object, at, 0, at, tableColCount(object) - 1);
+    object.cells.splice(at, 1);
+    for (const row of object.cells) {
+      for (const cell of row) {
+        if (cell && cell.covered && cell.origin && cell.origin.r > at) {
+          cell.origin.r -= 1;
+        }
+      }
+    }
+    object.rowH.splice(at, 1);
+    object.rowH = normalizeFractions(object.rowH);
+    object.height = Math.max(TABLE_CELL_MIN * object.cells.length, object.height - TABLE_CELL_MIN);
+    const r = Math.min(at, object.cells.length - 1);
+    tableSelectCell(object, r, sel.c1);
+    commitIfChanged();
+    redraw();
+  }
+
+  function tableDeleteCol(sel) {
+    const object = sel.object;
+    if (tableColCount(object) < 2) {
+      return;
+    }
+    const at = sel.c1;
+    captureBefore();
+    unmergeTableIntersects(object, 0, at, tableRowCount(object) - 1, at);
+    for (const row of object.cells) {
+      row.splice(at, 1);
+      for (const cell of row) {
+        if (cell && cell.covered && cell.origin && cell.origin.c > at) {
+          cell.origin.c -= 1;
+        }
+      }
+    }
+    object.colW.splice(at, 1);
+    object.colW = normalizeFractions(object.colW);
+    object.width = Math.max(TABLE_CELL_MIN * object.colW.length, object.width - TABLE_CELL_MIN);
+    const c = Math.min(at, object.colW.length - 1);
+    tableSelectCell(object, sel.r1, c);
+    commitIfChanged();
+    redraw();
+  }
+
+  function tableMerge(sel) {
+    if (sel.r1 === sel.r2 && sel.c1 === sel.c2) {
+      return;
+    }
+    const object = sel.object;
+    for (let r = sel.r1; r <= sel.r2; r += 1) {
+      for (let c = sel.c1; c <= sel.c2; c += 1) {
+        const origin = tableOrigin(object, r, c);
+        if (!origin || origin.r < sel.r1 || origin.r > sel.r2 || origin.c < sel.c1 || origin.c > sel.c2) {
+          return;
+        }
+      }
+    }
+    captureBefore();
+    const texts = [];
+    for (let r = sel.r1; r <= sel.r2; r += 1) {
+      for (let c = sel.c1; c <= sel.c2; c += 1) {
+        const origin = tableOrigin(object, r, c);
+        const cell = origin ? tableCellAt(object, origin.r, origin.c) : null;
+        if (cell && !cell.covered && cell.text) {
+          texts.push(cell.text);
+        }
+      }
+    }
+    unmergeTableIntersects(object, sel.r1, sel.c1, sel.r2, sel.c2);
+    const origin = object.cells[sel.r1][sel.c1];
+    origin.colspan = sel.c2 - sel.c1 + 1;
+    origin.rowspan = sel.r2 - sel.r1 + 1;
+    origin.covered = false;
+    origin.origin = null;
+    origin.text = texts.join("\n");
+    for (let r = sel.r1; r <= sel.r2; r += 1) {
+      for (let c = sel.c1; c <= sel.c2; c += 1) {
+        if (r === sel.r1 && c === sel.c1) {
+          continue;
+        }
+        object.cells[r][c] = { covered: true, origin: { r: sel.r1, c: sel.c1 } };
+      }
+    }
+    tableSelectCell(object, sel.r1, sel.c1);
+    commitIfChanged();
+    redraw();
+  }
+
+  function tableSplitMerge(sel) {
+    const object = sel.object;
+    captureBefore();
+    if (!unmergeTableCell(object, sel.r1, sel.c1)) {
+      discardHistoryCapture();
+      return;
+    }
+    tableSelectCell(object, sel.r1, sel.c1);
+    commitIfChanged();
+    redraw();
+  }
+
+  function stepTableCell(object, r, c, dc, dr) {
+    const rows = tableRowCount(object);
+    const cols = tableColCount(object);
+    if (!rows || !cols) {
+      return { r, c };
+    }
+    if (dc !== 0) {
+      let index = r * cols + c + dc;
+      const total = rows * cols;
+      index = ((index % total) + total) % total;
+      const next = tableOrigin(object, Math.floor(index / cols), index % cols);
+      return next || { r, c };
+    }
+    const row = ((r + dr) % rows + rows) % rows;
+    const next = tableOrigin(object, row, c);
+    return next || { r, c };
+  }
+
+  function moveTableEdit(dc, dr) {
+    const object = findObject(state.editingId);
+    const cellRef = state.editingCell;
+    if (!isTable(object) || !cellRef) {
+      return;
+    }
+    const next = stepTableCell(object, cellRef.r, cellRef.c, dc, dr);
+    finishEditing();
+    tableSelectCell(object, next.r, next.c);
+    startTableCellEdit(object, next.r, next.c);
+  }
+
   // Add a data-insert button and a case here to extend the Insert tab.
   function runInsert(name) {
     if (name === "text" || name === "sticky") {
@@ -4866,18 +5756,22 @@
       insertDiagram();
       return;
     }
+    if (name === "table") {
+      insertTable();
+    }
   }
 
   function styleEditor(object) {
     const italic = object.italic ? "italic " : "";
     const weight = object.bold ? "700 " : "400 ";
     const size = (object.fontSize || 24) * state.zoom;
-    const padX = (TEXT_PAD + textIndentWidth(object)) * state.zoom;
-    const padY = TEXT_PAD * state.zoom;
+    const pad = textPad(object);
+    const padX = (pad + textIndentWidth(object)) * state.zoom;
+    const padY = pad * state.zoom;
     editor.style.font = `${italic}${weight}${size}px ${objectFontFamily(object)}`;
     editor.style.color = object.color || "#1c1917";
     editor.style.textAlign = object.align || "left";
-    editor.style.padding = `${padY}px ${TEXT_PAD * state.zoom}px ${padY}px ${padX}px`;
+    editor.style.padding = `${padY}px ${pad * state.zoom}px ${padY}px ${padX}px`;
     editor.style.lineHeight = String(object.lineHeight || 1.35);
     editor.style.letterSpacing = `${(object.letterSpacing || 0) * state.zoom}px`;
     editor.style.textDecoration = [object.underline ? "underline" : "", object.strike ? "line-through" : ""]
@@ -4889,9 +5783,25 @@
       editor.style.background = object.textBack || "rgb(255 255 255 / 0.94)";
     }
     editor.classList.toggle("is-sticky", object.type === "sticky");
+    editor.classList.toggle("is-table-cell", Boolean(object.pad === TABLE_PAD));
   }
 
   function positionEditor(object) {
+    if (isTable(object) && state.editingCell) {
+      const rect = tableCellRect(object, state.editingCell.r, state.editingCell.c);
+      const cell = tableCellAt(object, state.editingCell.r, state.editingCell.c);
+      if (!rect || !cell) {
+        return;
+      }
+      editor.style.left = `${rect.x * state.zoom + state.panX}px`;
+      editor.style.top = `${rect.y * state.zoom + state.panY}px`;
+      editor.style.width = `${rect.width * state.zoom}px`;
+      editor.style.height = `${rect.height * state.zoom}px`;
+      editor.style.transform = object.rotation ? `rotate(${object.rotation}rad)` : "none";
+      editor.style.transformOrigin = "center center";
+      styleEditor(tableGhost(cell, rect));
+      return;
+    }
     editor.style.left = `${object.x * state.zoom + state.panX}px`;
     editor.style.top = `${object.y * state.zoom + state.panY}px`;
     editor.style.width = `${object.width * state.zoom}px`;
@@ -4907,6 +5817,38 @@
     editor.hidden = true;
     editor.value = "";
     state.editingId = null;
+    state.editingCell = null;
+    editor.classList.remove("is-table-cell");
+  }
+
+  function startTableCellEdit(object, r, c) {
+    if (!isTable(object) || state.frozen) {
+      return;
+    }
+    const origin = tableOrigin(object, r, c);
+    const cell = origin ? tableCellAt(object, origin.r, origin.c) : null;
+    if (!cell || cell.covered) {
+      return;
+    }
+    if (state.editingId && state.editingId !== object.id) {
+      finishEditing();
+    }
+    if (!state.editingId) {
+      captureBefore();
+    }
+    state.editingId = object.id;
+    state.editingIsNew = false;
+    state.editingCell = { r: origin.r, c: origin.c };
+    tableSelectCell(object, origin.r, origin.c);
+    loadStyleFromTableCell(cell);
+    syncFormatUI();
+    syncColorUI();
+    editor.hidden = false;
+    editor.value = cell.text || "";
+    positionEditor(object);
+    redraw();
+    editor.focus();
+    editor.setSelectionRange(editor.value.length, editor.value.length);
   }
 
   function startEditing(object, isNew) {
@@ -4949,6 +5891,7 @@
     }
 
     const object = findObject(state.editingId);
+    const cellRef = state.editingCell;
     const text = editor.value;
     hideEditor();
 
@@ -4956,6 +5899,17 @@
       discardHistoryCapture();
       state.editingIsNew = false;
       redraw();
+      return;
+    }
+
+    if (isTable(object) && cellRef) {
+      const cell = tableCellAt(object, cellRef.r, cellRef.c);
+      if (cell) {
+        cell.text = text;
+      }
+      commitIfChanged();
+      redraw();
+      state.editingIsNew = false;
       return;
     }
 
@@ -5118,6 +6072,15 @@
     syncFormatUI();
     if (state.editingId) {
       const object = findObject(state.editingId);
+      if (isTable(object) && state.editingCell) {
+        const cell = tableCellAt(object, state.editingCell.r, state.editingCell.c);
+        if (cell) {
+          applyStyleToTableCell(cell);
+        }
+        positionEditor(object);
+        redraw();
+        return;
+      }
       if (isTextLike(object)) {
         object.color = state.stroke;
         object.fontSize = state.fontSize;
@@ -5190,6 +6153,12 @@
       return;
     }
 
+    const split = hitTableSplit(point);
+    if (split) {
+      canvas.style.cursor = split.kind === "col" ? "col-resize" : "row-resize";
+      return;
+    }
+
     const object = hitObject(point);
     canvas.style.cursor = isLink(object) ? "pointer" : object ? "move" : "default";
   }
@@ -5205,6 +6174,15 @@
       return;
     }
 
+    const split = hitTableSplit(point);
+    if (split) {
+      captureBefore();
+      startTransform("table-split", null, point, event.pointerId);
+      state.active.split = split;
+      canvas.style.cursor = split.kind === "col" ? "col-resize" : "row-resize";
+      return;
+    }
+
     const object = hitObject(point);
     if (object) {
       if (isLink(object) && (event.ctrlKey || event.metaKey) && !event.shiftKey) {
@@ -5215,6 +6193,18 @@
       }
 
       const groupIds = expandGroupIds([object.id]);
+      if (isTable(object) && event.shiftKey && state.selectedIds.length === 1 && state.selectedIds[0] === object.id) {
+        const cell = hitTableCell(object, objectLocalPoint(object, point));
+        if (cell) {
+          const from = state.tableCell && state.tableCell.id === object.id ? state.tableCell : cell;
+          state.tableRange = { r1: from.r, c1: from.c, r2: cell.r, c2: cell.c };
+          state.tableCell = { id: object.id, r: from.r, c: from.c };
+          syncFormatFromSelection();
+          syncTableUI();
+          redraw();
+          return;
+        }
+      }
       if (event.shiftKey) {
         const allSelected = groupIds.every((id) => state.selectedIds.includes(id));
         if (allSelected) {
@@ -5228,6 +6218,13 @@
 
       if (!state.selectedIds.includes(object.id)) {
         setSelection(groupIds);
+      }
+
+      if (isTable(object)) {
+        const cell = hitTableCell(object, objectLocalPoint(object, point));
+        if (cell) {
+          tableSelectCell(object, cell.r, cell.c);
+        }
       }
 
       captureBefore();
@@ -6320,6 +7317,8 @@
         toggleFullscreen();
       } else if (action === "clear-board") {
         requestClearBoard();
+      } else if (action.startsWith("table-")) {
+        runTableAction(action);
       }
       return;
     }
@@ -6405,9 +7404,24 @@
     }
 
     if (event.key === "Tab") {
+      const object = findObject(state.editingId);
+      if (isTable(object) && state.editingCell) {
+        event.preventDefault();
+        moveTableEdit(event.shiftKey ? -1 : 1, 0);
+        return true;
+      }
       event.preventDefault();
       changeIndent(event.shiftKey ? -1 : 1);
       return true;
+    }
+
+    if (event.key === "Enter" && !ctrl && !event.shiftKey) {
+      const object = findObject(state.editingId);
+      if (isTable(object) && state.editingCell) {
+        event.preventDefault();
+        moveTableEdit(0, 1);
+        return true;
+      }
     }
 
     return false;
@@ -6554,6 +7568,37 @@
       return;
     }
 
+    if (
+      !ctrl &&
+      selectedTable() &&
+      state.tableCell &&
+      !state.active &&
+      !state.frozen &&
+      !(event.target instanceof Node && toolbar.contains(event.target))
+    ) {
+      const table = selectedTable();
+      if (event.key === "Enter") {
+        event.preventDefault();
+        startTableCellEdit(table, state.tableCell.r, state.tableCell.c);
+        return;
+      }
+      if (event.key === "Tab") {
+        event.preventDefault();
+        const next = stepTableCell(table, state.tableCell.r, state.tableCell.c, event.shiftKey ? -1 : 1, 0);
+        tableSelectCell(table, next.r, next.c);
+        redraw();
+        return;
+      }
+      const step = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[event.key];
+      if (step) {
+        event.preventDefault();
+        const next = stepTableCell(table, state.tableCell.r, state.tableCell.c, step[0], step[1]);
+        tableSelectCell(table, next.r, next.c);
+        redraw();
+        return;
+      }
+    }
+
     if (event.key === "Delete" || event.key === "Backspace") {
       event.preventDefault();
       if (state.frozen) {
@@ -6688,6 +7733,13 @@
   });
   editor.addEventListener("input", () => {
     const object = findObject(state.editingId);
+    if (isTable(object) && state.editingCell) {
+      const cell = tableCellAt(object, state.editingCell.r, state.editingCell.c);
+      if (cell) {
+        cell.text = editor.value;
+      }
+      return;
+    }
     if (!isTextLike(object)) {
       return;
     }
@@ -6708,6 +7760,15 @@
     const object = hitObject(point);
     if (isLink(object)) {
       openLinkDialog(object);
+      return;
+    }
+    if (isTable(object)) {
+      const cell = hitTableCell(object, objectLocalPoint(object, point));
+      if (cell) {
+        setSelection([object.id]);
+        tableSelectCell(object, cell.r, cell.c);
+        startTableCellEdit(object, cell.r, cell.c);
+      }
       return;
     }
     if (isTextLike(object)) {

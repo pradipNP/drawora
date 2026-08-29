@@ -12,7 +12,7 @@ Statuses:
 | ⚪ | PLANNED |
 | 🔴 | BLOCKED |
 
-**Current:** Stages 1–15 complete. Stage 16 is next.
+**Current:** Stages 1–16 complete. Stage 17 is next.
 
 ---
 
@@ -268,7 +268,7 @@ Do not rebuild unless fixing an actual defect.
 
 Professional Insert tab. Click an Insert item to place a default object at the viewport center, then select it. Home and Draw still draw by dragging.
 
-Objects: image, text, shape, line, arrow, sticky note, link, page, diagram. Table and file stay visible but disabled for later stages.
+Objects: image, text, shape, line, arrow, sticky note, link, page, diagram. File stays visible but disabled for a later stage.
 
 Links: double-click to edit, Ctrl+click or Open to visit (http, https, mailto). Diagrams are grouped shapes plus labels. Add a `data-insert` button and a `runInsert` case to extend.
 
@@ -298,9 +298,9 @@ Freeze locks drawing and edits; pan, laser, zoom, and view toggles still work. L
 
 ### Stage 16 — Tables / spreadsheet-like tools
 
-**Status:** 🔵 NEXT
+**Status:** ✅ COMPLETED
 
-Insert table; rows, columns, merge, resize, borders, background, alignment; cell editing, keyboard navigation, copy/paste. Formulas only if later justified.
+Insert → Table places a 3×3 table at the viewport center, then selects it. Double-click a cell to type; Tab / Shift+Tab and arrow keys move between cells; Enter starts editing or moves down. Shift-click selects a cell range to merge. Insert → Table tools add or delete rows and columns, merge, and split. Drag inner grid lines to resize columns or rows; corner handles scale the whole table. Stroke/size are borders; fill and text format apply to the selected cells. Copy/paste copies cell text when a table cell is selected. No formulas.
 
 Do not recreate Excel.
 
@@ -308,7 +308,7 @@ Do not recreate Excel.
 
 ### Stage 17 — Document / file insertion
 
-**Status:** ⚪ PLANNED
+**Status:** 🔵 NEXT
 
 Import where practical: images, PDF, text, CSV, DOCX, XLSX. Sensible fallbacks (preview, rendered page, image) for complex formats.
 

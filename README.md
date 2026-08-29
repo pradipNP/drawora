@@ -10,7 +10,9 @@ Open `index.html` in a modern browser.
 
 The top bar is a ribbon. **Home** has the everyday tools. **Draw**, **Insert**, **View**, **Page**, **Export**, and **Help** group related actions. Color, size, undo, redo, and delete stay on the right of every tab. Items marked coming soon are visible for later stages and do not do anything yet.
 
-**Insert** places a default object at the center of the view (text, sticky, shapes, image, diagram, page, or link), then selects it. **Home** and **Draw** still draw by dragging. Table and file stay disabled until later stages. Double-click a link to edit it; Ctrl+click or **Open** visits http, https, and mailto addresses. **Insert → Diagram** adds a grouped Start → Process → End flow.
+**Insert** places a default object at the center of the view (text, sticky, shapes, image, diagram, page, link, or table), then selects it. **Home** and **Draw** still draw by dragging. File stays disabled until a later stage. Double-click a link to edit it; Ctrl+click or **Open** visits http, https, and mailto addresses. **Insert → Diagram** adds a grouped Start → Process → End flow.
+
+**Insert → Table** places a 3×3 table. Double-click a cell to type; Tab moves to the next cell, Enter moves down, and arrow keys move the selected cell. Shift-click a second cell, then **Merge**. **+ Row / − Row / + Col / − Col** change the grid. Drag a grid line to resize a column or row. Stroke color and size are the borders; fill and text format apply to the selected cells. Copy/paste copies cell text when a cell is selected. There are no formulas.
 
 **View** has an overlay grid (shapes snap to it), rulers (drag from a ruler to place a guide), guides, and full screen. **Present** tools: laser pointer (`R`, not saved on the page), spotlight, freeze, and clear page (asks first). Measure (`M`) and protractor show length or angle while you drag; compass draws a circle. **Insert → Math** places π, √, and other common symbols as text.
 
