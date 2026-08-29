@@ -182,6 +182,14 @@
   const imageSaturationInput = document.getElementById("image-saturation");
   const imageBlurInput = document.getElementById("image-blur");
   const canvasWrap = document.querySelector(".canvas-wrap");
+  const linkDialog = document.getElementById("link-dialog");
+  const linkForm = document.getElementById("link-form");
+  const linkTitle = document.getElementById("link-dialog-title");
+  const linkTextInput = document.getElementById("link-text");
+  const linkHrefInput = document.getElementById("link-href");
+  const linkError = document.getElementById("link-error");
+  const linkCancel = document.getElementById("link-cancel");
+  const linkOpenBtn = document.getElementById("link-open-btn");
 
   if (
     !canvas ||
@@ -237,7 +245,15 @@
     !imageContrastInput ||
     !imageSaturationInput ||
     !imageBlurInput ||
-    !canvasWrap
+    !canvasWrap ||
+    !linkDialog ||
+    !linkForm ||
+    !linkTitle ||
+    !linkTextInput ||
+    !linkHrefInput ||
+    !linkError ||
+    !linkCancel ||
+    !linkOpenBtn
   ) {
     console.error("Drawora: missing canvas or toolbar controls.");
     return;
@@ -251,6 +267,7 @@
 
   const imageAssets = new Map();
   let nextImageAssetId = 1;
+  let linkDialogTargetId = null;
 
   function isTypingTarget(element) {
     if (!element || !(element instanceof HTMLElement)) {
@@ -279,6 +296,15 @@
 
   function isImage(object) {
     return object && object.type === "image";
+  }
+
+  function isLink(object) {
+    return object && object.type === "link";
+  }
+
+  function selectedLink() {
+    const selected = selectedObjects();
+    return selected.length === 1 && isLink(selected[0]) ? selected[0] : null;
   }
 
   function selectedImage() {
@@ -1518,6 +1544,40 @@
     }
   }
 
+  function drawLink(object) {
+    const pad = 10;
+    const radius = Math.min(12, object.height / 2);
+    ctx.save();
+    ctx.globalCompositeOperation = "source-over";
+    ctx.fillStyle = object.textBack || "rgb(204 251 241 / 0.85)";
+    ctx.strokeStyle = object.color || SELECT_COLOR;
+    ctx.lineWidth = Math.max(1, object.size || 2);
+    pathRoundRect(object.x, object.y, object.width, object.height, radius);
+    ctx.fill();
+    ctx.stroke();
+
+    applyTextMeasure({ ...object, fontSize: object.fontSize || 16 });
+    ctx.fillStyle = object.color || SELECT_COLOR;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.beginPath();
+    ctx.rect(object.x + pad, object.y, object.width - pad * 2, object.height);
+    ctx.clip();
+    const label = object.text || object.href || "Link";
+    ctx.fillText(label, object.x + pad, object.y + object.height / 2);
+    const textWidth = Math.min(ctx.measureText(label).width, object.width - pad * 2);
+    ctx.beginPath();
+    ctx.moveTo(object.x + pad, object.y + object.height / 2 + (object.fontSize || 16) * 0.45);
+    ctx.lineTo(object.x + pad + textWidth, object.y + object.height / 2 + (object.fontSize || 16) * 0.45);
+    ctx.strokeStyle = object.color || SELECT_COLOR;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.restore();
+    if ("letterSpacing" in ctx) {
+      ctx.letterSpacing = "0px";
+    }
+  }
+
   function drawObjectUnrotated(object) {
     if (object.type === "stroke") {
       drawStroke(object);
@@ -1536,6 +1596,11 @@
 
     if (object.type === "image") {
       drawPicture(object);
+      return;
+    }
+
+    if (object.type === "link") {
+      drawLink(object);
       return;
     }
 
@@ -2102,6 +2167,7 @@
     syncEditUI();
     syncPageUI();
     syncImageUI();
+    syncLinkUI();
   }
 
   function captureBefore() {
@@ -2644,6 +2710,7 @@
     syncEditUI();
     syncFormatFromSelection();
     syncImageUI();
+    syncLinkUI();
   }
 
   function clearSelection() {
@@ -3060,6 +3127,19 @@
         if (fromSize) {
           object.size = state.size;
         }
+        continue;
+      }
+
+      if (isLink(object)) {
+        object.color = state.stroke;
+        object.fontSize = state.fontSize;
+        object.fontKey = state.fontKey;
+        object.bold = state.bold;
+        object.italic = state.italic;
+        object.textBack = state.textBack;
+        const size = measureLinkBox(object);
+        object.width = Math.max(object.width, size.width);
+        object.height = Math.max(object.height, size.height);
         continue;
       }
 
@@ -3582,6 +3662,271 @@
     imageFileInput.click();
   }
 
+  function viewportWorldCenter() {
+    return screenToWorld(viewportCenter());
+  }
+
+  function syncLinkUI() {
+    linkOpenBtn.disabled = !selectedLink();
+  }
+
+  function sanitizeHref(value) {
+    const trimmed = String(value || "").trim();
+    if (!trimmed) {
+      return "";
+    }
+    const withProtocol = /^[a-z][a-z0-9+.-]*:/i.test(trimmed) ? trimmed : `https://${trimmed}`;
+    try {
+      const url = new URL(withProtocol);
+      if (url.protocol === "http:" || url.protocol === "https:" || url.protocol === "mailto:") {
+        return url.href;
+      }
+    } catch (error) {
+      return "";
+    }
+    return "";
+  }
+
+  function linkLabelFromHref(href) {
+    try {
+      const url = new URL(href);
+      if (url.protocol === "mailto:") {
+        return url.pathname || href;
+      }
+      return url.hostname.replace(/^www\./, "") || href;
+    } catch (error) {
+      return href;
+    }
+  }
+
+  function measureLinkBox(object) {
+    applyTextMeasure({ ...object, fontSize: object.fontSize || 16 });
+    const label = object.text || object.href || "Link";
+    const width = Math.ceil(ctx.measureText(label).width) + 24;
+    const height = Math.max(32, Math.round((object.fontSize || 16) * 1.8));
+    if ("letterSpacing" in ctx) {
+      ctx.letterSpacing = "0px";
+    }
+    return { width: Math.max(96, width), height };
+  }
+
+  function closeLinkDialog() {
+    linkDialog.hidden = true;
+    linkError.hidden = true;
+    linkDialogTargetId = null;
+  }
+
+  function openLinkDialog(object) {
+    finishOpenWork();
+    linkDialogTargetId = object ? object.id : null;
+    linkTitle.textContent = object ? "Edit link" : "Insert link";
+    linkForm.querySelector("[type='submit']").textContent = object ? "Save" : "Insert";
+    linkTextInput.value = object ? object.text || "" : "";
+    linkHrefInput.value = object ? object.href || "" : "";
+    linkError.hidden = true;
+    linkDialog.hidden = false;
+    linkHrefInput.focus();
+    linkHrefInput.select();
+  }
+
+  function commitLinkDialog() {
+    const href = sanitizeHref(linkHrefInput.value);
+    if (!href) {
+      linkError.hidden = false;
+      linkHrefInput.focus();
+      return false;
+    }
+    const text = (linkTextInput.value || "").trim() || linkLabelFromHref(href);
+    const existing = linkDialogTargetId ? findObject(linkDialogTargetId) : null;
+    if (existing && isLink(existing)) {
+      captureBefore();
+      existing.href = href;
+      existing.text = text;
+      const size = measureLinkBox(existing);
+      existing.width = Math.max(existing.width, size.width);
+      existing.height = Math.max(32, size.height);
+      commitIfChanged();
+      closeLinkDialog();
+      redraw();
+      return true;
+    }
+
+    const size = measureLinkBox({ text, href, fontSize: 16, fontKey: state.fontKey });
+    const center = viewportWorldCenter();
+    captureBefore();
+    const object = {
+      id: createId(),
+      type: "link",
+      x: center.x - size.width / 2,
+      y: center.y - size.height / 2,
+      width: size.width,
+      height: size.height,
+      text,
+      href,
+      color: SELECT_COLOR,
+      fontSize: 16,
+      fontKey: state.fontKey,
+      bold: false,
+      italic: false,
+      textBack: "rgb(204 251 241 / 0.85)",
+      rotation: 0,
+    };
+    state.objects.push(object);
+    setTool("select");
+    setSelection([object.id]);
+    commitIfChanged();
+    closeLinkDialog();
+    redraw();
+    return true;
+  }
+
+  function openExternalLink(href) {
+    const safe = sanitizeHref(href);
+    if (!safe) {
+      return;
+    }
+    window.open(safe, "_blank", "noopener,noreferrer");
+  }
+
+  function openSelectedLink() {
+    const link = selectedLink();
+    if (link) {
+      openExternalLink(link.href);
+    }
+  }
+
+  function beginInsert() {
+    finishOpenWork();
+    captureBefore();
+  }
+
+  function finishInsert(ids) {
+    setTool("select");
+    setSelection(ids);
+    commitIfChanged();
+    redraw();
+  }
+
+  function insertTextLikeAtCenter(type) {
+    const size = type === "sticky" ? STICKY_DEFAULT : TEXT_DEFAULT;
+    const center = viewportWorldCenter();
+    beginInsert();
+    const object = createTextLike(type, {
+      x: center.x - size.width / 2,
+      y: center.y - size.height / 2,
+      width: size.width,
+      height: size.height,
+    });
+    state.objects.push(object);
+    setTool("select");
+    setSelection([object.id]);
+    startEditing(object, true);
+  }
+
+  function insertDefaultShape(type) {
+    const center = viewportWorldCenter();
+    let start;
+    let end;
+    if (type === "line" || type === "arrow") {
+      start = { x: center.x - 90, y: center.y };
+      end = { x: center.x + 90, y: center.y };
+    } else {
+      start = { x: center.x - 80, y: center.y - 50 };
+      end = { x: center.x + 80, y: center.y + 50 };
+    }
+    beginInsert();
+    const object = { id: createId(), ...makeShape(type, start, end, false) };
+    state.objects.push(object);
+    finishInsert([object.id]);
+  }
+
+  function insertDiagram() {
+    const center = viewportWorldCenter();
+    const boxW = 120;
+    const boxH = 56;
+    const gap = 44;
+    const total = boxW * 3 + gap * 2;
+    const x0 = center.x - total / 2;
+    const y = center.y - boxH / 2;
+    const labels = ["Start", "Process", "End"];
+    beginInsert();
+    const groupId = createId();
+    const boxes = labels.map((label, index) => ({
+      id: createId(),
+      type: "roundrect",
+      x: x0 + index * (boxW + gap),
+      y,
+      width: boxW,
+      height: boxH,
+      stroke: state.stroke,
+      fill: state.fill || "#ccfbf1",
+      size: state.size,
+      radius: ROUND_RECT_RADIUS,
+      rotation: 0,
+      groupId,
+    }));
+    const notes = labels.map((label, index) => {
+      const object = createTextLike("text", {
+        x: boxes[index].x + 8,
+        y: boxes[index].y + 10,
+        width: boxW - 16,
+        height: boxH - 16,
+      });
+      object.text = label;
+      object.align = "center";
+      object.fontSize = 16;
+      object.groupId = groupId;
+      object.textBack = null;
+      reflowTextHeight(object);
+      return object;
+    });
+    const arrows = [0, 1].map((index) => ({
+      id: createId(),
+      type: "arrow",
+      x1: boxes[index].x + boxes[index].width,
+      y1: boxes[index].y + boxes[index].height / 2,
+      x2: boxes[index + 1].x,
+      y2: boxes[index + 1].y + boxes[index + 1].height / 2,
+      stroke: state.stroke,
+      size: state.size,
+      rotation: 0,
+      groupId,
+    }));
+    const objects = [...boxes, ...notes, ...arrows];
+    for (const item of objects) {
+      state.objects.push(item);
+    }
+    finishInsert(objects.map((item) => item.id));
+  }
+
+  // Add a data-insert button and a case here to extend the Insert tab.
+  function runInsert(name) {
+    if (name === "text" || name === "sticky") {
+      insertTextLikeAtCenter(name);
+      return;
+    }
+    if (SHAPE_TOOLS.includes(name)) {
+      insertDefaultShape(name);
+      return;
+    }
+    if (name === "image") {
+      openImagePicker();
+      return;
+    }
+    if (name === "page") {
+      addPage();
+      return;
+    }
+    if (name === "link") {
+      openLinkDialog();
+      return;
+    }
+    if (name === "diagram") {
+      insertDiagram();
+      return;
+    }
+  }
+
   function styleEditor(object) {
     const italic = object.italic ? "italic " : "";
     const weight = object.bold ? "700 " : "400 ";
@@ -3904,7 +4249,8 @@
       return;
     }
 
-    canvas.style.cursor = hitObject(point) ? "move" : "default";
+    const object = hitObject(point);
+    canvas.style.cursor = isLink(object) ? "pointer" : object ? "move" : "default";
   }
 
   function onSelectPointerDown(event, point) {
@@ -3920,6 +4266,13 @@
 
     const object = hitObject(point);
     if (object) {
+      if (isLink(object) && (event.ctrlKey || event.metaKey) && !event.shiftKey) {
+        setSelection([object.id]);
+        openExternalLink(object.href);
+        redraw();
+        return;
+      }
+
       const groupIds = expandGroupIds([object.id]);
       if (event.shiftKey) {
         const allSelected = groupIds.every((id) => state.selectedIds.includes(id));
@@ -4793,6 +5146,12 @@
       return;
     }
 
+    const insertButton = event.target.closest("[data-insert]");
+    if (insertButton && toolbar.contains(insertButton) && !insertButton.disabled) {
+      runInsert(insertButton.dataset.insert);
+      return;
+    }
+
     const toolButton = event.target.closest("[data-tool]");
     if (toolButton && toolbar.contains(toolButton) && !toolButton.disabled) {
       setTool(toolButton.dataset.tool);
@@ -4836,6 +5195,8 @@
         deletePage();
       } else if (action === "image-insert") {
         openImagePicker();
+      } else if (action === "link-open") {
+        openSelectedLink();
       } else if (action === "image-crop") {
         toggleImageCrop();
       } else if (action === "image-flip-h") {
@@ -4940,6 +5301,14 @@
   }
 
   function onKeyDown(event) {
+    if (!linkDialog.hidden) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeLinkDialog();
+      }
+      return;
+    }
+
     if (isTypingTarget(event.target)) {
       if (event.target === editor) {
         handleEditorKeys(event);
@@ -5173,6 +5542,10 @@
 
     const point = getPoint(event);
     const object = hitObject(point);
+    if (isLink(object)) {
+      openLinkDialog(object);
+      return;
+    }
     if (isTextLike(object)) {
       startEditing(object, false);
       return;
@@ -5243,6 +5616,18 @@
     imageFileInput.value = "";
     if (file) {
       insertImageFromBlob(file);
+    }
+  });
+  linkForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    commitLinkDialog();
+  });
+  linkCancel.addEventListener("click", () => {
+    closeLinkDialog();
+  });
+  linkDialog.addEventListener("pointerdown", (event) => {
+    if (event.target === linkDialog) {
+      closeLinkDialog();
     }
   });
   const imageFieldInputs = [
@@ -5408,4 +5793,5 @@
   syncViewUI();
   syncPageUI();
   syncImageUI();
+  syncLinkUI();
 })();

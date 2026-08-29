@@ -12,7 +12,7 @@ Statuses:
 | ⚪ | PLANNED |
 | 🔴 | BLOCKED |
 
-**Current:** Stages 1–12 complete. Stage 13 is next.
+**Current:** Stages 1–13 complete. Stage 14 is next.
 
 ---
 
@@ -264,17 +264,19 @@ Do not rebuild unless fixing an actual defect.
 
 ### Stage 13 — Insert system
 
-**Status:** 🔵 NEXT
+**Status:** ✅ COMPLETED
 
-Professional Insert tab. Objects: image, text, shape, line, arrow, table, sticky note, file, link, page, diagram (audio later if justified).
+Professional Insert tab. Click an Insert item to place a default object at the viewport center, then select it. Home and Draw still draw by dragging.
 
-Design so future objects can be added without rewriting the UI.
+Objects: image, text, shape, line, arrow, sticky note, link, page, diagram. Table and file stay visible but disabled for later stages.
+
+Links: double-click to edit, Ctrl+click or Open to visit (http, https, mailto). Diagrams are grouped shapes plus labels. Add a `data-insert` button and a `runInsert` case to extend.
 
 ---
 
 ### Stage 14 — Paint-level tools
 
-**Status:** ⚪ PLANNED
+**Status:** 🔵 NEXT
 
 Useful painting tools that fit the object architecture: pencil, brush, marker, highlighter, spray where practical, fill/bucket, color picker, more shapes, freeform/rectangular selection, crop, flip, resize, image editing.
 

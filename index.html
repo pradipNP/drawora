@@ -305,70 +305,83 @@
             <div class="ribbon-panel" role="tabpanel" id="panel-insert" data-ribbon="insert" aria-labelledby="tab-insert" hidden>
               <div class="ribbon-group">
                 <div class="ribbon-group-tools">
-                  <button type="button" class="ribbon-btn" data-tool="text" aria-pressed="false" title="Text (T)">
+                  <button type="button" class="ribbon-btn" data-insert="text" title="Insert text box">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6.5h14M12 6.5V18.5M8.5 18.5h7" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
-                    <span class="visually-hidden">Text</span>
+                    <span class="visually-hidden">Insert text</span>
                   </button>
-                  <button type="button" class="ribbon-btn" data-tool="sticky" aria-pressed="false" title="Sticky note (N)">
+                  <button type="button" class="ribbon-btn" data-insert="sticky" title="Insert sticky note">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5.5h12v9.2L13.8 19H6V5.5Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/><path d="M18 14.7h-4.2V19" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>
-                    <span class="visually-hidden">Sticky note</span>
+                    <span class="visually-hidden">Insert sticky note</span>
                   </button>
                 </div>
                 <span class="ribbon-group-label">Notes</span>
               </div>
               <div class="ribbon-group">
                 <div class="ribbon-group-tools">
-                  <button type="button" class="ribbon-btn" data-tool="line" aria-pressed="false" title="Line">
+                  <button type="button" class="ribbon-btn" data-insert="line" title="Insert line">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19 19 5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
-                    <span class="visually-hidden">Line</span>
+                    <span class="visually-hidden">Insert line</span>
                   </button>
-                  <button type="button" class="ribbon-btn" data-tool="rect" aria-pressed="false" title="Rectangle">
+                  <button type="button" class="ribbon-btn" data-insert="rect" title="Insert rectangle">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="6" width="14" height="12" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>
-                    <span class="visually-hidden">Rectangle</span>
+                    <span class="visually-hidden">Insert rectangle</span>
                   </button>
-                  <button type="button" class="ribbon-btn" data-tool="roundrect" aria-pressed="false" title="Rounded rectangle">
+                  <button type="button" class="ribbon-btn" data-insert="roundrect" title="Insert rounded rectangle">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="6" width="14" height="12" rx="3.5" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>
-                    <span class="visually-hidden">Rounded rectangle</span>
+                    <span class="visually-hidden">Insert rounded rectangle</span>
                   </button>
-                  <button type="button" class="ribbon-btn" data-tool="ellipse" aria-pressed="false" title="Ellipse">
+                  <button type="button" class="ribbon-btn" data-insert="ellipse" title="Insert ellipse">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="12" rx="8" ry="6" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>
-                    <span class="visually-hidden">Ellipse</span>
+                    <span class="visually-hidden">Insert ellipse</span>
                   </button>
-                  <button type="button" class="ribbon-btn" data-tool="triangle" aria-pressed="false" title="Triangle">
+                  <button type="button" class="ribbon-btn" data-insert="triangle" title="Insert triangle">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5.5 19.5 18.5h-15Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>
-                    <span class="visually-hidden">Triangle</span>
+                    <span class="visually-hidden">Insert triangle</span>
                   </button>
-                  <button type="button" class="ribbon-btn" data-tool="arrow" aria-pressed="false" title="Arrow">
+                  <button type="button" class="ribbon-btn" data-insert="arrow" title="Insert arrow">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19 16.5 7.5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/><path d="M10.5 7.5h6v6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    <span class="visually-hidden">Arrow</span>
+                    <span class="visually-hidden">Insert arrow</span>
                   </button>
                 </div>
                 <span class="ribbon-group-label">Shapes</span>
               </div>
               <div class="ribbon-group">
                 <div class="ribbon-group-tools">
-                  <button type="button" class="ribbon-btn" data-action="image-insert" title="Insert image">
+                  <button type="button" class="ribbon-btn" data-insert="image" title="Insert image">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="5.5" width="15" height="13" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="m7 15 3.2-3.4 2.4 2.5 2.2-2.8L17 15" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/><circle cx="9" cy="9.2" r="1.1" fill="currentColor"/></svg>
                     <span class="visually-hidden">Insert image</span>
                   </button>
-                  <button type="button" class="ribbon-btn" disabled title="Table (coming soon)">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="5.5" width="15" height="13" rx="1" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M4.5 10h15M4.5 14.5h15M9.5 5.5v13M14.5 5.5v13" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>
-                    <span class="visually-hidden">Table (coming soon)</span>
+                  <button type="button" class="ribbon-btn" data-insert="diagram" title="Insert process diagram">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="8" width="5.5" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.75"/><rect x="15" y="8" width="5.5" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M9.5 12h5M13 10.5 15 12l-2 1.5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span class="visually-hidden">Insert diagram</span>
                   </button>
-                  <button type="button" class="ribbon-btn" disabled title="File (coming soon)">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5h7.2L19 9.3V19a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 6 19V6A1.5 1.5 0 0 1 7 4.5Z" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M14 4.5V9h4.8" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>
-                    <span class="visually-hidden">File (coming soon)</span>
-                  </button>
-                  <button type="button" class="ribbon-btn" data-action="page-add" title="Add page">
+                  <button type="button" class="ribbon-btn" data-insert="page" title="Add page">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3.5" width="12" height="17" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M9 8h6M9 12h6M9 16h4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
                     <span class="visually-hidden">Add page</span>
                   </button>
-                  <button type="button" class="ribbon-btn" disabled title="Link (coming soon)">
+                </div>
+                <span class="ribbon-group-label">Insert</span>
+              </div>
+              <div class="ribbon-group">
+                <div class="ribbon-group-tools">
+                  <button type="button" class="ribbon-btn" data-insert="link" title="Insert link">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.8 14.2 8.2 15.8a3.2 3.2 0 0 1-4.5-4.5l1.8-1.8M14.2 9.8 15.8 8.2a3.2 3.2 0 0 1 4.5 4.5l-1.8 1.8M9.2 14.8l5.6-5.6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
-                    <span class="visually-hidden">Link (coming soon)</span>
+                    <span class="visually-hidden">Insert link</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" id="link-open-btn" data-action="link-open" title="Open link (Ctrl+click)" disabled>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5.5h4.5V10M18.5 5.5 11 13" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 13.5v5A1.5 1.5 0 0 1 14.5 20h-8A1.5 1.5 0 0 1 5 18.5v-8A1.5 1.5 0 0 1 6.5 9H11" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+                    <span class="visually-hidden">Open link</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" disabled data-insert="table" title="Table (coming soon)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="5.5" width="15" height="13" rx="1" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M4.5 10h15M4.5 14.5h15M9.5 5.5v13M14.5 5.5v13" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>
+                    <span class="visually-hidden">Table (coming soon)</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" disabled data-insert="file" title="File (coming soon)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5h7.2L19 9.3V19a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 6 19V6A1.5 1.5 0 0 1 7 4.5Z" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M14 4.5V9h4.8" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>
+                    <span class="visually-hidden">File (coming soon)</span>
                   </button>
                 </div>
-                <span class="ribbon-group-label">Objects</span>
+                <span class="ribbon-group-label">Links</span>
               </div>
               <div class="ribbon-group">
                 <div class="ribbon-group-tools image-tools">
@@ -604,7 +617,9 @@
                 <span><kbd>Ctrl</kbd>+<kbd>PageDown</kbd> Next page</span>
                 <span><kbd>Ctrl</kbd>+<kbd>PageUp</kbd> Previous page</span>
                 <span>Scroll to zoom around the cursor</span>
+                <span>Insert places objects on the page</span>
                 <span>Insert, drop, or paste an image</span>
+                <span>Double-click a link to edit · Ctrl+click to open</span>
                 <span>Middle-mouse drag to pan</span>
               </div>
             </div>
@@ -696,6 +711,24 @@
       </footer>
     </div>
     <input id="image-file" type="file" accept="image/*" hidden />
+    <div id="link-dialog" class="dialog" hidden>
+      <form id="link-form" class="dialog-card" autocomplete="off" novalidate>
+        <h2 id="link-dialog-title">Insert link</h2>
+        <label class="dialog-field">
+          Text
+          <input id="link-text" type="text" maxlength="120" placeholder="Label" />
+        </label>
+        <label class="dialog-field">
+          Address
+          <input id="link-href" type="text" inputmode="url" placeholder="https://" />
+        </label>
+        <p id="link-error" class="dialog-error" hidden>Enter an http, https, or mailto address.</p>
+        <div class="dialog-actions">
+          <button type="button" id="link-cancel" class="dialog-btn">Cancel</button>
+          <button type="submit" class="dialog-btn dialog-btn-primary">Insert</button>
+        </div>
+      </form>
+    </div>
 
     <script src="js/app.js"></script>
   </body>
