@@ -165,6 +165,8 @@
     showGuides: true,
     spotlight: false,
     frozen: false,
+    showLayers: false,
+    layerDragId: null,
     pointerWorld: null,
     laserTrail: [],
   };
@@ -242,6 +244,9 @@
   const confirmOk = document.getElementById("confirm-ok");
   const teachStatus = document.getElementById("teach-status");
   const appEl = document.querySelector(".app");
+  const layersPanel = document.getElementById("layers-panel");
+  const layersList = document.getElementById("layers-list");
+  const layersEmpty = document.getElementById("layers-empty");
 
   if (
     !canvas ||
@@ -314,7 +319,10 @@
     !confirmCancel ||
     !confirmOk ||
     !teachStatus ||
-    !appEl
+    !appEl ||
+    !layersPanel ||
+    !layersList ||
+    !layersEmpty
   ) {
     console.error("Drawora: missing canvas or toolbar controls.");
     return;
@@ -396,7 +404,15 @@
   }
 
   function isSelectable(object) {
+    return !(object.type === "stroke" && object.tool === "eraser") && !object.hidden;
+  }
+
+  function isLayerItem(object) {
     return !(object.type === "stroke" && object.tool === "eraser");
+  }
+
+  function isLocked(object) {
+    return Boolean(object && object.locked);
   }
 
   function createTableCell() {
@@ -1605,6 +1621,7 @@
       action === "toggle-guides" ||
       action === "toggle-spotlight" ||
       action === "toggle-freeze" ||
+      action === "toggle-layers" ||
       action === "fullscreen"
     );
   }
@@ -2861,6 +2878,16 @@
     ctx.rotate(rotation);
     ctx.translate(-center.x, -center.y);
 
+    if (object.locked) {
+      ctx.strokeStyle = "#e11d48";
+      ctx.lineWidth = viewLen(1.5);
+      ctx.setLineDash([viewLen(3), viewLen(3)]);
+      ctx.strokeRect(frame.x, frame.y, frame.width, frame.height);
+      ctx.setLineDash([]);
+      ctx.restore();
+      return;
+    }
+
     ctx.strokeStyle = SELECT_COLOR;
     ctx.lineWidth = viewLen(1);
     ctx.setLineDash([viewLen(5), viewLen(4)]);
@@ -2964,10 +2991,11 @@
       return;
     }
 
+    const allLocked = objects.every((o) => o.locked);
     ctx.save();
-    ctx.strokeStyle = SELECT_COLOR;
-    ctx.lineWidth = viewLen(1);
-    ctx.setLineDash([viewLen(5), viewLen(4)]);
+    ctx.strokeStyle = allLocked ? "#e11d48" : SELECT_COLOR;
+    ctx.lineWidth = viewLen(allLocked ? 1.5 : 1);
+    ctx.setLineDash(allLocked ? [viewLen(3), viewLen(3)] : [viewLen(5), viewLen(4)]);
     ctx.strokeRect(minX, minY, maxX - minX, maxY - minY);
     ctx.restore();
   }
@@ -3145,7 +3173,9 @@
     drawGridOverlay();
 
     for (const object of state.objects) {
-      drawObject(object);
+      if (!object.hidden) {
+        drawObject(object);
+      }
     }
 
     if (state.preview) {
@@ -3513,7 +3543,7 @@
   function hitObject(point) {
     for (let i = state.objects.length - 1; i >= 0; i -= 1) {
       const object = state.objects[i];
-      if (!isSelectable(object)) {
+      if (!isSelectable(object) || object.locked) {
         continue;
       }
 
@@ -3532,7 +3562,7 @@
     }
 
     const object = findObject(state.selectedIds[0]);
-    if (!object) {
+    if (!object || object.locked) {
       return null;
     }
 
@@ -3612,6 +3642,7 @@
     syncPageUI();
     syncImageUI();
     syncLinkUI();
+    syncLayersUI();
   }
 
   function captureBefore() {
@@ -3640,6 +3671,7 @@
     state.future = [];
     state.historyBefore = null;
     syncEditUI();
+    syncLayersUI();
   }
 
   function discardHistoryCapture() {
@@ -4128,24 +4160,34 @@
   function syncEditUI() {
     const selectableCount = state.objects.filter(isSelectable).length;
     const hasSelection = state.selectedIds.length > 0;
+    const canMutate = selectedObjects().some((object) => !object.locked);
     const units = selectionUnits();
     const info = selectionGroupInfo();
 
     undoBtn.disabled = state.past.length === 0;
     redoBtn.disabled = state.future.length === 0;
-    deleteBtn.disabled = !hasSelection;
+    deleteBtn.disabled = !canMutate;
     copyBtn.disabled = !hasSelection;
-    cutBtn.disabled = !hasSelection;
+    cutBtn.disabled = !canMutate;
     duplicateBtn.disabled = !hasSelection;
     pasteBtn.disabled = state.clipboard.length === 0;
     selectAllBtn.disabled = selectableCount === 0;
     groupBtn.disabled = !info.canGroup;
     ungroupBtn.disabled = !info.canUngroup;
     for (const button of toolbar.querySelectorAll('[data-action="align"]')) {
-      button.disabled = units.length < 2;
+      button.disabled = units.length < 2 || !canMutate;
     }
     for (const button of toolbar.querySelectorAll('[data-action="flip-h"], [data-action="flip-v"]')) {
+      button.disabled = !canMutate;
+    }
+    for (const button of document.querySelectorAll('[data-action^="order-"]')) {
       button.disabled = !hasSelection;
+    }
+    for (const button of document.querySelectorAll('[data-action="toggle-lock"]')) {
+      button.disabled = !hasSelection;
+      const allLocked = hasSelection && selectedObjects().every((o) => o.locked);
+      button.setAttribute("aria-pressed", String(allLocked));
+      button.title = allLocked ? "Unlock selected (Ctrl+L)" : "Lock selected (Ctrl+L)";
     }
   }
 
@@ -4167,6 +4209,7 @@
     syncImageUI();
     syncLinkUI();
     syncTableUI();
+    syncLayersUI();
   }
 
   function clearSelection() {
@@ -4326,9 +4369,9 @@
 
     captureBefore();
     const ids = new Set(state.selectedIds);
-    state.objects = state.objects.filter((object) => !ids.has(object.id));
+    state.objects = state.objects.filter((object) => !ids.has(object.id) || object.locked);
     pruneOrphanGroups();
-    setSelection([]);
+    setSelection(state.objects.filter((object) => ids.has(object.id)).map((object) => object.id));
     commitIfChanged();
     redraw();
   }
@@ -4543,6 +4586,322 @@
     }
     commitIfChanged();
     redraw();
+  }
+
+  function objectLayerLabel(object) {
+    if (object.name && String(object.name).trim()) {
+      return String(object.name).trim();
+    }
+    if (object.type === "text" || object.type === "sticky") {
+      const text = String(object.text || "").replace(/\s+/g, " ").trim();
+      return text.slice(0, 28) || (object.type === "sticky" ? "Sticky note" : "Text");
+    }
+    if (object.type === "file") {
+      return object.fileName || "File";
+    }
+    if (object.type === "link") {
+      return object.text || object.href || "Link";
+    }
+    if (object.type === "image") {
+      return "Image";
+    }
+    if (object.type === "table") {
+      return "Table";
+    }
+    if (object.type === "stroke") {
+      const tool = object.tool || "pen";
+      return tool.charAt(0).toUpperCase() + tool.slice(1);
+    }
+    const names = {
+      line: "Line",
+      rect: "Rectangle",
+      roundrect: "Round rect",
+      ellipse: "Ellipse",
+      triangle: "Triangle",
+      arrow: "Arrow",
+      diamond: "Diamond",
+      pentagon: "Pentagon",
+      hexagon: "Hexagon",
+      star: "Star",
+    };
+    return names[object.type] || "Object";
+  }
+
+  function layerPeers(object) {
+    if (!object.groupId) {
+      return [object];
+    }
+    return state.objects.filter((item) => item.groupId === object.groupId);
+  }
+
+  function reorderSelection(mode) {
+    if (state.active || state.selectedIds.length === 0) {
+      return;
+    }
+    const ids = new Set(expandGroupIds(state.selectedIds));
+    const moving = state.objects.filter((object) => ids.has(object.id));
+    const staying = state.objects.filter((object) => !ids.has(object.id));
+    if (!moving.length || (mode !== "front" && mode !== "back" && staying.length === 0)) {
+      return;
+    }
+    captureBefore();
+    if (mode === "front") {
+      state.objects = [...staying, ...moving];
+    } else if (mode === "back") {
+      state.objects = [...moving, ...staying];
+    } else if (mode === "forward") {
+      let last = -1;
+      state.objects.forEach((object, index) => {
+        if (ids.has(object.id)) {
+          last = index;
+        }
+      });
+      const next = state.objects[last + 1];
+      if (next) {
+        const insertAt = staying.indexOf(next) + 1;
+        staying.splice(insertAt, 0, ...moving);
+        state.objects = staying;
+      }
+    } else if (mode === "backward") {
+      const first = state.objects.findIndex((object) => ids.has(object.id));
+      const prev = first > 0 ? state.objects[first - 1] : null;
+      if (prev) {
+        staying.splice(staying.indexOf(prev), 0, ...moving);
+        state.objects = staying;
+      }
+    }
+    commitIfChanged();
+    redraw();
+  }
+
+  function toggleObjectFlag(object, flag) {
+    if (!object || state.frozen) {
+      return;
+    }
+    captureBefore();
+    const next = !object[flag];
+    const targets = flag === "locked" ? layerPeers(object) : [object];
+    for (const item of targets) {
+      item[flag] = next;
+    }
+    if (flag === "hidden" && next) {
+      const hiddenIds = new Set(targets.map((item) => item.id));
+      setSelection(state.selectedIds.filter((id) => !hiddenIds.has(id)));
+    }
+    commitIfChanged();
+    redraw();
+  }
+
+  function renameLayerObject(object, name) {
+    if (!object || state.frozen) {
+      return;
+    }
+    const trimmed = String(name || "").trim().slice(0, 80);
+    if ((object.name || "") === trimmed) {
+      return;
+    }
+    captureBefore();
+    if (trimmed) {
+      object.name = trimmed;
+    } else {
+      delete object.name;
+    }
+    commitIfChanged();
+    syncLayersUI();
+  }
+
+  function toggleLayers() {
+    state.showLayers = !state.showLayers;
+    syncLayersUI();
+  }
+
+  function toggleLockSelected() {
+    if (state.active || state.selectedIds.length === 0 || state.frozen) {
+      return;
+    }
+    captureBefore();
+    const targets = expandGroupIds(state.selectedIds);
+    const objects = state.objects.filter((o) => targets.includes(o.id));
+    const allLocked = objects.every((o) => o.locked);
+    const nextLocked = !allLocked;
+    for (const object of objects) {
+      object.locked = nextLocked;
+    }
+    commitIfChanged();
+    redraw();
+  }
+
+  function reorderLayerItem(sourceId, targetId, placeAbove) {
+    if (!sourceId || !targetId || sourceId === targetId || state.frozen) {
+      return;
+    }
+    const sourceObj = findObject(sourceId);
+    const targetObj = findObject(targetId);
+    if (!sourceObj || !targetObj) {
+      return;
+    }
+    const movingIds = new Set(expandGroupIds([sourceId]));
+    const targetGroupIds = new Set(expandGroupIds([targetId]));
+    if (movingIds.has(targetId)) {
+      return;
+    }
+    captureBefore();
+    const moving = state.objects.filter((o) => movingIds.has(o.id));
+    const staying = state.objects.filter((o) => !movingIds.has(o.id));
+    let targetIndex = -1;
+    if (placeAbove) {
+      for (let i = staying.length - 1; i >= 0; i--) {
+        if (targetGroupIds.has(staying[i].id)) {
+          targetIndex = i + 1;
+          break;
+        }
+      }
+    } else {
+      for (let i = 0; i < staying.length; i++) {
+        if (targetGroupIds.has(staying[i].id)) {
+          targetIndex = i;
+          break;
+        }
+      }
+    }
+    if (targetIndex < 0) {
+      targetIndex = staying.length;
+    }
+    staying.splice(targetIndex, 0, ...moving);
+    state.objects = staying;
+    commitIfChanged();
+    redraw();
+  }
+
+  function objectKindIcon(object) {
+    if (object.type === "text" || object.type === "sticky") {
+      return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14M12 6v12M9 18h6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>';
+    }
+    if (object.type === "image") {
+      return '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.75"/><circle cx="8.5" cy="9.5" r="1.5" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="m20 15-4.5-4.5-8.5 8.5" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>';
+    }
+    if (object.type === "table") {
+      return '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M4 10h16M4 15h16M10 5v14M16 5v14" stroke="currentColor" stroke-width="1.75"/></svg>';
+    }
+    if (object.type === "file") {
+      return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5h7.2L19 9.3V19a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 6 19V6A1.5 1.5 0 0 1 7 4.5Z" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M14 4.5V9h4.8" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>';
+    }
+    if (object.type === "link") {
+      return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>';
+    }
+    if (object.type === "stroke") {
+      return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.5 14.5 6l3.5 3.5L6.5 21H3v-3.5Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>';
+    }
+    return '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>';
+  }
+
+  function syncLayersUI() {
+    layersPanel.hidden = !state.showLayers;
+    for (const button of document.querySelectorAll('[data-action="toggle-layers"]')) {
+      button.setAttribute("aria-pressed", String(state.showLayers));
+    }
+    const hasSelection = state.selectedIds.length > 0;
+    for (const button of document.querySelectorAll('[data-action^="order-"]')) {
+      button.disabled = !hasSelection;
+    }
+    for (const button of document.querySelectorAll('[data-action="toggle-lock"]')) {
+      button.disabled = !hasSelection;
+      const allLocked = hasSelection && selectedObjects().every((o) => o.locked);
+      button.setAttribute("aria-pressed", String(allLocked));
+      button.title = allLocked ? "Unlock selected (Ctrl+L)" : "Lock selected (Ctrl+L)";
+    }
+    if (!state.showLayers) {
+      return;
+    }
+    if (document.activeElement && document.activeElement.classList.contains("layer-label-input")) {
+      return;
+    }
+    const items = state.objects.filter(isLayerItem).slice().reverse();
+    layersEmpty.hidden = items.length > 0;
+    layersList.replaceChildren();
+    const selected = new Set(state.selectedIds);
+    for (const object of items) {
+      const row = document.createElement("li");
+      row.className = "layer-row";
+      row.dataset.id = object.id;
+      row.draggable = true;
+      if (selected.has(object.id)) {
+        row.classList.add("is-selected");
+      }
+      if (object.groupId) {
+        row.classList.add("is-grouped");
+      }
+      if (object.hidden) {
+        row.classList.add("is-hidden");
+      }
+      if (object.locked) {
+        row.classList.add("is-locked");
+      }
+
+      const vis = document.createElement("button");
+      vis.type = "button";
+      vis.className = "layer-icon";
+      vis.dataset.layerVis = object.id;
+      vis.title = object.hidden ? "Show object" : "Hide object";
+      vis.innerHTML = object.hidden
+        ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12s3.5-6 8-6 8 6 8 6-3.5 6-8 6-8-6-8-6Z" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="m5 5 14 14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>'
+        : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 12s3.6-6.5 8.5-6.5S20.5 12 20.5 12 16.9 18.5 12 18.5 3.5 12 3.5 12Z" fill="none" stroke="currentColor" stroke-width="1.75"/><circle cx="12" cy="12" r="2.4" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>';
+
+      const lock = document.createElement("button");
+      lock.type = "button";
+      lock.className = "layer-icon";
+      if (object.locked) {
+        lock.classList.add("is-locked");
+      }
+      lock.dataset.layerLock = object.id;
+      lock.title = object.locked ? "Unlock object" : "Lock object";
+      lock.innerHTML = object.locked
+        ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 11V8.5A4 4 0 0 1 16 8.5V11M8.5 11h7v8h-7V11Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>'
+        : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 11V8.2A4 4 0 0 1 16 8.8M8.5 11h7v8h-7V11Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>';
+
+      const kindSpan = document.createElement("span");
+      kindSpan.className = "layer-kind";
+      kindSpan.innerHTML = objectKindIcon(object);
+      kindSpan.title = object.type;
+
+      const label = document.createElement("button");
+      label.type = "button";
+      label.className = "layer-label";
+      label.textContent = objectLayerLabel(object);
+      label.title = `${label.textContent} (Double-click to rename)`;
+
+      row.append(vis, lock, kindSpan, label);
+      layersList.append(row);
+    }
+  }
+
+  function beginLayerRename(object, label) {
+    const input = document.createElement("input");
+    input.className = "layer-label-input";
+    input.value = object.name || objectLayerLabel(object);
+    input.setAttribute("aria-label", "Rename object");
+    label.replaceWith(input);
+    input.focus();
+    input.select();
+    const finish = (save) => {
+      input.removeEventListener("blur", onBlur);
+      if (save) {
+        renameLayerObject(object, input.value);
+      } else {
+        syncLayersUI();
+      }
+    };
+    const onBlur = () => finish(true);
+    input.addEventListener("blur", onBlur);
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        finish(true);
+      } else if (event.key === "Escape") {
+        event.preventDefault();
+        finish(false);
+      }
+    });
   }
 
   function alignSelected(edge) {
@@ -7799,6 +8158,18 @@
         toggleFullscreen();
       } else if (action === "clear-board") {
         requestClearBoard();
+      } else if (action === "toggle-layers") {
+        toggleLayers();
+      } else if (action === "toggle-lock") {
+        toggleLockSelected();
+      } else if (action === "order-front") {
+        reorderSelection("front");
+      } else if (action === "order-back") {
+        reorderSelection("back");
+      } else if (action === "order-forward") {
+        reorderSelection("forward");
+      } else if (action === "order-backward") {
+        reorderSelection("backward");
       } else if (action.startsWith("table-")) {
         runTableAction(action);
       }
@@ -8046,6 +8417,32 @@
         ungroupSelected();
       } else {
         groupSelected();
+      }
+      return;
+    }
+
+    if (ctrl && event.key.toLowerCase() === "l") {
+      event.preventDefault();
+      toggleLockSelected();
+      return;
+    }
+
+    if (ctrl && (event.key === "]" || event.key === "}")) {
+      event.preventDefault();
+      if (event.shiftKey) {
+        reorderSelection("front");
+      } else {
+        reorderSelection("forward");
+      }
+      return;
+    }
+
+    if (ctrl && (event.key === "[" || event.key === "{")) {
+      event.preventDefault();
+      if (event.shiftKey) {
+        reorderSelection("back");
+      } else {
+        reorderSelection("backward");
       }
       return;
     }
@@ -8489,6 +8886,142 @@
   });
   pageThumbs.addEventListener("dragend", () => {
     state.pageDragId = null;
+  });
+
+  layersPanel.addEventListener("click", (event) => {
+    const actionBtn = event.target.closest("[data-action]");
+    if (actionBtn && layersPanel.contains(actionBtn) && !actionBtn.disabled) {
+      const action = actionBtn.dataset.action;
+      if (state.frozen && !actionAllowedWhenFrozen(action)) {
+        return;
+      }
+      if (action === "toggle-layers") {
+        toggleLayers();
+      } else if (action === "toggle-lock") {
+        toggleLockSelected();
+      } else if (action === "order-front") {
+        reorderSelection("front");
+      } else if (action === "order-back") {
+        reorderSelection("back");
+      } else if (action === "order-forward") {
+        reorderSelection("forward");
+      } else if (action === "order-backward") {
+        reorderSelection("backward");
+      }
+      return;
+    }
+
+    const visBtn = event.target.closest("[data-layer-vis]");
+    if (visBtn) {
+      const object = findObject(visBtn.dataset.layerVis);
+      if (object) {
+        toggleObjectFlag(object, "hidden");
+      }
+      return;
+    }
+
+    const lockBtn = event.target.closest("[data-layer-lock]");
+    if (lockBtn) {
+      const object = findObject(lockBtn.dataset.layerLock);
+      if (object) {
+        toggleObjectFlag(object, "locked");
+      }
+      return;
+    }
+
+    const row = event.target.closest(".layer-row");
+    if (row && !event.target.closest(".layer-label-input")) {
+      const id = row.dataset.id;
+      const object = findObject(id);
+      if (object) {
+        const groupIds = expandGroupIds([object.id]);
+        if (event.shiftKey || event.ctrlKey || event.metaKey) {
+          const allSelected = groupIds.every((gid) => state.selectedIds.includes(gid));
+          if (allSelected) {
+            setSelection(state.selectedIds.filter((gid) => !groupIds.includes(gid)));
+          } else {
+            setSelection([...new Set([...state.selectedIds, ...groupIds])]);
+          }
+        } else {
+          setSelection(groupIds);
+        }
+        redraw();
+      }
+    }
+  });
+
+  layersList.addEventListener("dblclick", (event) => {
+    const label = event.target.closest(".layer-label");
+    if (!label) {
+      return;
+    }
+    const row = label.closest(".layer-row");
+    if (!row) {
+      return;
+    }
+    const object = findObject(row.dataset.id);
+    if (object && !state.frozen) {
+      beginLayerRename(object, label);
+    }
+  });
+
+  layersList.addEventListener("dragstart", (event) => {
+    const row = event.target.closest(".layer-row");
+    if (!row || state.frozen) {
+      return;
+    }
+    state.layerDragId = row.dataset.id;
+    row.classList.add("is-dragging");
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", row.dataset.id);
+  });
+
+  layersList.addEventListener("dragover", (event) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    const row = event.target.closest(".layer-row");
+    if (!row || row.dataset.id === state.layerDragId) {
+      return;
+    }
+    const rect = row.getBoundingClientRect();
+    const midY = rect.top + rect.height / 2;
+    if (event.clientY < midY) {
+      row.classList.add("drop-above");
+      row.classList.remove("drop-below");
+    } else {
+      row.classList.add("drop-below");
+      row.classList.remove("drop-above");
+    }
+  });
+
+  layersList.addEventListener("dragleave", (event) => {
+    const row = event.target.closest(".layer-row");
+    if (row && (!event.relatedTarget || !row.contains(event.relatedTarget))) {
+      row.classList.remove("drop-above", "drop-below");
+    }
+  });
+
+  layersList.addEventListener("drop", (event) => {
+    event.preventDefault();
+    const row = event.target.closest(".layer-row");
+    for (const el of layersList.querySelectorAll(".drop-above, .drop-below, .is-dragging")) {
+      el.classList.remove("drop-above", "drop-below", "is-dragging");
+    }
+    const targetId = row ? row.dataset.id : null;
+    const sourceId = state.layerDragId || event.dataTransfer.getData("text/plain");
+    if (row && targetId && sourceId && targetId !== sourceId) {
+      const rect = row.getBoundingClientRect();
+      const placeAbove = event.clientY < rect.top + rect.height / 2;
+      reorderLayerItem(sourceId, targetId, placeAbove);
+    }
+    state.layerDragId = null;
+  });
+
+  layersList.addEventListener("dragend", () => {
+    for (const el of layersList.querySelectorAll(".drop-above, .drop-below, .is-dragging")) {
+      el.classList.remove("drop-above", "drop-below", "is-dragging");
+    }
+    state.layerDragId = null;
   });
 
   const firstPage = makePage({ name: "Page 1", preset: "a4", orientation: "portrait" });

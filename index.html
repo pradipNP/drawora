@@ -169,6 +169,30 @@
                     <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.75"/><rect x="12.5" y="11" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M11 9.5 13.5 12" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
                     <span class="visually-hidden">Ungroup</span>
                   </button>
+                  <button type="button" class="ribbon-btn" data-action="order-forward" title="Bring forward (Ctrl+])" disabled>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="10" height="9" rx="1" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M9 10V6.5A1.5 1.5 0 0 1 10.5 5h8A1.5 1.5 0 0 1 20 6.5v8a1.5 1.5 0 0 1-1.5 1.5H15" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="m14 11 3-3 3 3" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span class="visually-hidden">Bring forward</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-action="order-backward" title="Send backward (Ctrl+[)" disabled>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="5" width="10" height="9" rx="1" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M9 14.5H5.5A1.5 1.5 0 0 1 4 13V5.5A1.5 1.5 0 0 1 5.5 4h8A1.5 1.5 0 0 1 15 5.5V9" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="m10 13-3 3-3-3" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span class="visually-hidden">Send backward</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-action="order-front" title="Bring to front (Ctrl+Shift+])" disabled>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="8" width="12" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M8 8V6.5A1.5 1.5 0 0 1 9.5 5h9A1.5 1.5 0 0 1 20 6.5v9a1.5 1.5 0 0 1-1.5 1.5H17" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>
+                    <span class="visually-hidden">Bring to front</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-action="order-back" title="Send to back (Ctrl+Shift+[)" disabled>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="8" width="12" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M8 16.5H6.5A1.5 1.5 0 0 1 5 15V6.5A1.5 1.5 0 0 1 6.5 5h9A1.5 1.5 0 0 1 17 6.5V8" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>
+                    <span class="visually-hidden">Send to back</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-action="toggle-lock" id="lock-btn" title="Lock / Unlock selected (Ctrl+L)" disabled>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 11V8a4 4 0 0 1 8 0v3M7.5 11h9A1.5 1.5 0 0 1 18 12.5v7A1.5 1.5 0 0 1 16.5 21h-9A1.5 1.5 0 0 1 6 19.5v-7A1.5 1.5 0 0 1 7.5 11Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>
+                    <span class="visually-hidden">Lock</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-action="toggle-layers" title="Objects list" aria-pressed="false">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 7h15M4.5 12h15M4.5 17h15" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/><path d="M7 5.5v3M12 10.5v3M9 15.5v3" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+                    <span class="visually-hidden">Objects</span>
+                  </button>
                   <div class="align-grid" role="group" aria-label="Align objects">
                     <button type="button" class="ribbon-btn" data-action="align" data-edge="left" title="Align left" disabled>
                       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4v16M9 8h10v3H9Zm0 5h7v3H9Z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>
@@ -606,6 +630,10 @@
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9V5h4M19 9V5h-4M5 15v4h4M19 15v4h-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     <span class="visually-hidden">Full screen</span>
                   </button>
+                  <button type="button" class="ribbon-btn" data-action="toggle-layers" title="Objects list" aria-pressed="false">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 7h15M4.5 12h15M4.5 17h15" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/><path d="M7 5.5v3M12 10.5v3M9 15.5v3" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+                    <span class="visually-hidden">Objects</span>
+                  </button>
                 </div>
                 <span class="ribbon-group-label">Show</span>
               </div>
@@ -809,6 +837,7 @@
                 <span><kbd>R</kbd> Laser pointer</span>
                 <span><kbd>M</kbd> Measure</span>
                 <span>View: grid, rulers, guides, spotlight, freeze</span>
+                <span>View → Objects lists items · hide, lock, rename, and reorder</span>
                 <span>Clear page asks before removing drawings</span>
                 <span>Middle-mouse drag to pan</span>
               </div>
@@ -888,6 +917,21 @@
             autocomplete="off"
             aria-label="Edit text"
           ></textarea>
+          <aside id="layers-panel" class="layers-panel" hidden aria-label="Objects panel">
+            <div class="layers-head">
+              <p class="layers-title">Objects</p>
+              <button type="button" class="layers-close" data-action="toggle-layers" title="Close objects list" aria-label="Close objects list">×</button>
+            </div>
+            <div class="layers-tools">
+              <button type="button" class="layers-tool" data-action="order-front" title="Bring to front (Ctrl+Shift+])" disabled>Front</button>
+              <button type="button" class="layers-tool" data-action="order-forward" title="Bring forward (Ctrl+])" disabled>Up</button>
+              <button type="button" class="layers-tool" data-action="order-backward" title="Send backward (Ctrl+[)" disabled>Down</button>
+              <button type="button" class="layers-tool" data-action="order-back" title="Send to back (Ctrl+Shift+[)" disabled>Back</button>
+              <button type="button" class="layers-tool" data-action="toggle-lock" title="Lock / Unlock selected (Ctrl+L)" disabled>Lock</button>
+            </div>
+            <ul id="layers-list" class="layers-list" aria-label="Objects list"></ul>
+            <p id="layers-empty" class="layers-empty" hidden>Nothing on this page</p>
+          </aside>
         </main>
       </div>
 

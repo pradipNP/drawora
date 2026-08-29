@@ -12,7 +12,7 @@ Statuses:
 | ⚪ | PLANNED |
 | 🔴 | BLOCKED |
 
-**Current:** Stages 1–17 complete. Stage 18 is next.
+**Current:** Stages 1–18 complete. Stage 19 is next.
 
 ---
 
@@ -316,17 +316,15 @@ Insert → File, or drop a file on the board. Images stay pictures. `.txt` / `.m
 
 ### Stage 18 — Layers / object organization
 
-**Status:** 🔵 NEXT
+**Status:** ✅ COMPLETED
 
-Layers panel, object list, z-order, lock/unlock, hide/show, rename, group/ungroup.
-
-UI optional and collapsible. Do not permanently consume large screen space.
+Layers panel (Objects list) with z-order controls (front/forward/backward/back), lock/unlock, hide/show, inline rename, drag-and-drop layer reordering, group visual indicators, and quick keyboard shortcuts (`Ctrl+L`, `Ctrl+[`, `Ctrl+]`, `Ctrl+Shift+[`, `Ctrl+Shift+]`). Collapsible floating panel that doesn't consume permanent canvas space.
 
 ---
 
 ### Stage 19 — Local project manager
 
-**Status:** ⚪ PLANNED
+**Status:** 🔵 NEXT
 
 IndexedDB: autosave, new/open/rename/duplicate/delete boards, recents, thumbnails, recovery after restart.
 
