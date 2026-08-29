@@ -69,6 +69,9 @@ Formatting (font, size, bold, italic, underline, strikethrough, alignment, line 
 | Open boards   | `Ctrl+O`              |
 | New board     | `Ctrl+Alt+N`          |
 | Export board  | `Ctrl+E`              |
+| Present mode  | `F5`                  |
+| Black screen  | `B` (in presentation) |
+| White screen  | `W` (in presentation) |
 | Quick save    | `Ctrl+S`              |
 | Delete        | `Delete` / `Backspace` |
 | Deselect      | `Esc`                 |
@@ -78,6 +81,12 @@ Select an object to move, resize, or rotate it. Click empty canvas and drag to s
 **View → Objects** (or the Objects button on the Home ribbon) opens the **Objects panel**. Reorder objects in the z-stack by dragging rows or using Front/Up/Down/Back, toggle visibility (hide/show), lock/unlock, or double-click a layer name to rename it.
 
 **Boards & Projects** (`Ctrl+O` or the top bar **Boards** button) opens the local project manager. Boards are stored offline in browser IndexedDB with automatic background saving, rendered preview thumbnails, search filtering, and actions to create, open, duplicate, rename, or delete boards.
+
+**Presentation Mode** (`F5` or the **Present** button in View ribbon) turns Drawora into a full-screen teaching presentation:
+- Hides editing chrome, headers, and panels with automatic page-fit.
+- Floating Presenter Bar with page navigation, laser pointer (`R`), pen annotation (`P`), and eraser (`E`).
+- Instant **Black Screen** (`B` / `.`) or **White Screen** (`W` / `,`) curtains to focus attention during lectures.
+- Navigate pages effortlessly with arrow keys, `Space`, `PageUp`, or `PageDown`, and exit with `Esc`.
 
 **Export** (`Ctrl+E` or the **Export** ribbon tab) offers high-resolution output formats:
 - **PNG / JPG**: Scalable resolution from 1× to 4×, custom background transparency, and JPEG quality compression.

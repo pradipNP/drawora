@@ -667,6 +667,10 @@
               </div>
               <div class="ribbon-group">
                 <div class="ribbon-group-tools">
+                  <button type="button" class="ribbon-btn ribbon-btn-wide" id="present-start-btn" data-action="presentation-start" title="Start presentation mode (F5)">
+                    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><polygon points="6 4 19 12 6 20 6 4" fill="currentColor"/></svg>
+                    Present
+                  </button>
                   <button type="button" class="ribbon-btn" data-tool="laser" aria-pressed="false" aria-keyshortcuts="R" title="Laser pointer (R)">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
                     <span class="visually-hidden">Laser</span>
@@ -849,6 +853,9 @@
                 <span><kbd>Ctrl</kbd>+<kbd>O</kbd> Open boards & projects</span>
                 <span><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd> New board</span>
                 <span><kbd>Ctrl</kbd>+<kbd>E</kbd> Export board</span>
+                <span><kbd>F5</kbd> Presentation mode</span>
+                <span><kbd>B</kbd> Black screen (in presentation)</span>
+                <span><kbd>W</kbd> White screen (in presentation)</span>
                 <span><kbd>Ctrl</kbd>+<kbd>S</kbd> Quick save</span>
                 <span><kbd>Ctrl</kbd>+<kbd>Z</kbd> Undo</span>
                 <span><kbd>Ctrl</kbd>+<kbd>Y</kbd> Redo</span>
@@ -975,6 +982,45 @@
             <p id="layers-empty" class="layers-empty" hidden>Nothing on this page</p>
           </aside>
         </main>
+      </div>
+
+      <div id="presenter-bar" class="presenter-bar" hidden role="toolbar" aria-label="Presentation controls">
+        <button type="button" class="presenter-btn" data-action="presenter-prev" title="Previous page (Left / PageUp)" aria-label="Previous page">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <span id="presenter-page-status" class="presenter-status">1 / 1</span>
+        <button type="button" class="presenter-btn" data-action="presenter-next" title="Next page (Right / Space / PageDown)" aria-label="Next page">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M9 18l6-6-6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="presenter-divider" aria-hidden="true"></div>
+        <button type="button" class="presenter-btn" id="presenter-laser-btn" data-action="presenter-laser" title="Laser pointer (R)" aria-pressed="false" aria-label="Laser pointer">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+        <button type="button" class="presenter-btn" id="presenter-pen-btn" data-action="presenter-pen" title="Draw / Annotate (P)" aria-pressed="false" aria-label="Pen annotation">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="m4 20 4.5-1 10-10-3.5-3.5-10 10L4 20Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+        </button>
+        <button type="button" class="presenter-btn" id="presenter-eraser-btn" data-action="presenter-eraser" title="Eraser (E)" aria-pressed="false" aria-label="Eraser">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="m18 14-6 6H4l4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="m14 6 4 4-8 8-4-4 8-8Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="presenter-divider" aria-hidden="true"></div>
+        <button type="button" class="presenter-btn" id="presenter-black-btn" data-action="presenter-black" title="Black screen (B)" aria-label="Black screen">
+          <span class="screen-indicator screen-indicator-black" aria-hidden="true"></span>
+        </button>
+        <button type="button" class="presenter-btn" id="presenter-white-btn" data-action="presenter-white" title="White screen (W)" aria-label="White screen">
+          <span class="screen-indicator screen-indicator-white" aria-hidden="true"></span>
+        </button>
+        <div class="presenter-divider" aria-hidden="true"></div>
+        <button type="button" class="presenter-btn" data-action="presenter-fit" title="Fit to screen (Ctrl+0)" aria-label="Fit to screen">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9 4v4H4M15 4v4h5M9 20v-4H4M15 20v-4h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+        <button type="button" class="presenter-btn presenter-btn-exit" data-action="presentation-stop" title="Exit presentation (Esc)" aria-label="Exit presentation">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <span>Exit</span>
+        </button>
+      </div>
+
+      <div id="presentation-curtain" class="presentation-curtain" hidden>
+        <div class="curtain-hint">Press <kbd>B</kbd>, <kbd>W</kbd>, or <kbd>Esc</kbd> to resume</div>
       </div>
 
       <footer class="statusbar">

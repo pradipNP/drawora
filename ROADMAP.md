@@ -12,7 +12,7 @@ Statuses:
 | ⚪ | PLANNED |
 | 🔴 | BLOCKED |
 
-**Current:** Stages 1–20 complete. Stage 21 is next.
+**Current:** Stages 1–21 complete. Stage 22 is next.
 
 ---
 
@@ -346,15 +346,20 @@ Comprehensive export suite:
 
 ### Stage 21 — Full-screen / presentation mode
 
-**Status:** 🔵 NEXT
+**Status:** ✅ COMPLETED
 
-Browser full screen, hide editing controls, page navigation, presentation/laser pointer, optional black/white screen, easy exit.
+Dedicated distraction-free presentation experience:
+- Fullscreen browser mode with hidden header chrome, ribbon toolbar, statusbar, and panels.
+- Floating glassmorphic presenter control bar (Presenter HUD) with page counter, Previous / Next page controls, quick laser pointer (`R`), pen annotation (`P`), eraser (`E`), fit to screen, and exit button.
+- Instant Black screen (`B` / `.`) and White screen (`W` / `,`) curtain overlays for classroom focus and lecture pauses.
+- Page navigation via arrow keys (`Left` / `Right` / `Up` / `Down`), `Space`, `PageUp`, and `PageDown`.
+- Seamless start with `F5` / `Present` ribbon button, and exit via `Esc` or fullscreen change.
 
 ---
 
 ### Stage 22 — PWA / install / offline
 
-**Status:** ⚪ PLANNED
+**Status:** 🔵 NEXT
 
 Manifest, service worker, icons, standalone window, install button, offline shell, local board access offline.
 

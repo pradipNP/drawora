@@ -19,6 +19,10 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 html,
 body {
   height: 100%;
@@ -1680,6 +1684,191 @@ kbd {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/* Presentation Mode & Fullscreen */
+.app.is-presenting {
+  user-select: none;
+}
+
+.app.is-presenting .chrome,
+.app.is-presenting .statusbar,
+.app.is-presenting #layers-panel {
+  display: none !important;
+}
+
+.app.is-presenting .canvas-wrap {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 10;
+}
+
+.presenter-bar[hidden] {
+  display: none !important;
+}
+
+.presenter-bar {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 10px;
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 9999px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+  color: #f8fafc;
+  opacity: 0.95;
+  transition: opacity 0.25s ease, transform 0.25s ease, background 0.2s;
+}
+
+.presenter-bar:hover {
+  opacity: 1;
+  background: rgba(15, 23, 42, 0.96);
+}
+
+.presenter-bar.is-idle {
+  opacity: 0.3;
+}
+
+.presenter-bar.is-idle:hover {
+  opacity: 1;
+}
+
+.presenter-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #cbd5e1;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, transform 0.12s;
+}
+
+.presenter-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}
+
+.presenter-btn:active {
+  transform: scale(0.92);
+}
+
+.presenter-btn[aria-pressed="true"] {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.presenter-status {
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0 8px;
+  color: #e2e8f0;
+  min-width: 48px;
+  text-align: center;
+  user-select: none;
+}
+
+.presenter-divider {
+  width: 1px;
+  height: 18px;
+  background: rgba(255, 255, 255, 0.15);
+  margin: 0 3px;
+}
+
+.screen-indicator {
+  width: 15px;
+  height: 15px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  display: block;
+}
+
+.screen-indicator-black {
+  background: #000000;
+}
+
+.screen-indicator-white {
+  background: #ffffff;
+}
+
+.presenter-btn.is-active-screen {
+  box-shadow: 0 0 0 2px #38bdf8;
+  background: rgba(56, 189, 248, 0.2);
+}
+
+.presenter-btn-exit {
+  width: auto;
+  padding: 0 10px;
+  gap: 4px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  border-radius: 9999px;
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+  margin-left: 2px;
+}
+
+.presenter-btn-exit:hover {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+.presentation-curtain[hidden] {
+  display: none !important;
+}
+
+.presentation-curtain {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.presentation-curtain.is-black {
+  background: #000000;
+  color: #ffffff;
+}
+
+.presentation-curtain.is-white {
+  background: #ffffff;
+  color: #0f172a;
+}
+
+.curtain-hint {
+  padding: 10px 20px;
+  border-radius: 9999px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  background: rgba(120, 120, 120, 0.25);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.presentation-curtain:hover .curtain-hint,
+.presentation-curtain.show-hint .curtain-hint {
+  opacity: 1;
 }
 
 @media (pointer: coarse) {

@@ -174,6 +174,9 @@
     autosaveTimer: null,
     pointerWorld: null,
     laserTrail: [],
+    presenting: false,
+    presentationScreen: null,
+    presenterIdleTimer: null,
   };
 
   const RIBBON_TABS = ["home", "draw", "insert", "view", "page", "export", "help"];
@@ -279,6 +282,15 @@
   const exportInfo = document.getElementById("export-info");
   const projectFileInput = document.getElementById("project-file");
   const importProjectBtn = document.getElementById("import-project-btn");
+  const presenterBar = document.getElementById("presenter-bar");
+  const presenterPageStatus = document.getElementById("presenter-page-status");
+  const presenterLaserBtn = document.getElementById("presenter-laser-btn");
+  const presenterPenBtn = document.getElementById("presenter-pen-btn");
+  const presenterEraserBtn = document.getElementById("presenter-eraser-btn");
+  const presenterBlackBtn = document.getElementById("presenter-black-btn");
+  const presenterWhiteBtn = document.getElementById("presenter-white-btn");
+  const presentationCurtain = document.getElementById("presentation-curtain");
+  const presentStartBtn = document.getElementById("present-start-btn");
 
   if (
     !canvas ||
@@ -381,7 +393,16 @@
     !exportDownloadBtn ||
     !exportInfo ||
     !projectFileInput ||
-    !importProjectBtn
+    !importProjectBtn ||
+    !presenterBar ||
+    !presenterPageStatus ||
+    !presenterLaserBtn ||
+    !presenterPenBtn ||
+    !presenterEraserBtn ||
+    !presenterBlackBtn ||
+    !presenterWhiteBtn ||
+    !presentationCurtain ||
+    !presentStartBtn
   ) {
     console.error("Drawora: missing canvas or toolbar controls.");
     return;
@@ -1683,7 +1704,9 @@
       action === "toggle-layers" ||
       action === "open-projects" ||
       action === "close-projects" ||
-      action === "fullscreen"
+      action === "fullscreen" ||
+      action === "presentation-start" ||
+      action === "presentation-stop"
     );
   }
 
@@ -7188,6 +7211,113 @@
     imageFileInput.click();
   }
 
+  function syncPresenterUI() {
+    if (!presenterBar) return;
+    presenterBar.hidden = !state.presenting;
+    if (!state.presenting) {
+      if (presentationCurtain) presentationCurtain.hidden = true;
+      return;
+    }
+    const curIdx = currentPageIndex() + 1;
+    const total = state.pages.length;
+    presenterPageStatus.textContent = `${curIdx} / ${total}`;
+
+    presenterLaserBtn.setAttribute("aria-pressed", String(state.tool === "laser"));
+    presenterPenBtn.setAttribute("aria-pressed", String(state.tool === "pen" || state.tool === "brush" || state.tool === "pencil" || state.tool === "highlighter" || state.tool === "marker"));
+    presenterEraserBtn.setAttribute("aria-pressed", String(state.tool === "eraser"));
+
+    presenterBlackBtn.classList.toggle("is-active-screen", state.presentationScreen === "black");
+    presenterWhiteBtn.classList.toggle("is-active-screen", state.presentationScreen === "white");
+
+    if (presentationCurtain) {
+      if (state.presentationScreen === "black") {
+        presentationCurtain.hidden = false;
+        presentationCurtain.className = "presentation-curtain is-black";
+      } else if (state.presentationScreen === "white") {
+        presentationCurtain.hidden = false;
+        presentationCurtain.className = "presentation-curtain is-white";
+      } else {
+        presentationCurtain.hidden = true;
+      }
+    }
+  }
+
+  function resetPresenterIdleTimer() {
+    if (!state.presenting || !presenterBar) return;
+    presenterBar.classList.remove("is-idle");
+    if (state.presenterIdleTimer) {
+      clearTimeout(state.presenterIdleTimer);
+    }
+    state.presenterIdleTimer = setTimeout(() => {
+      if (state.presenting && presenterBar) {
+        presenterBar.classList.add("is-idle");
+      }
+    }, 3500);
+  }
+
+  function startPresentation() {
+    if (state.presenting) return;
+    finishOpenWork();
+    clearSelection();
+    state.presenting = true;
+    state.presentationScreen = null;
+    appEl.classList.add("is-presenting");
+
+    if (!document.fullscreenElement && appEl.requestFullscreen) {
+      appEl.requestFullscreen().catch(() => {});
+    }
+
+    setTool("laser");
+    resetPresenterIdleTimer();
+    setTimeout(() => {
+      resizeCanvas();
+      fitCanvas();
+    }, 50);
+    syncPresenterUI();
+    syncTeachUI();
+  }
+
+  function stopPresentation() {
+    if (!state.presenting) return;
+    state.presenting = false;
+    state.presentationScreen = null;
+    appEl.classList.remove("is-presenting");
+
+    if (document.fullscreenElement && document.exitFullscreen) {
+      document.exitFullscreen().catch(() => {});
+    }
+
+    if (state.presenterIdleTimer) {
+      clearTimeout(state.presenterIdleTimer);
+      state.presenterIdleTimer = null;
+    }
+    if (presenterBar) {
+      presenterBar.classList.remove("is-idle");
+    }
+
+    setTool("select");
+    setTimeout(() => {
+      resizeCanvas();
+      fitCanvas();
+    }, 50);
+    syncPresenterUI();
+    syncTeachUI();
+  }
+
+  function togglePresentation() {
+    if (state.presenting) {
+      stopPresentation();
+    } else {
+      startPresentation();
+    }
+  }
+
+  function setPresentationScreen(screen) {
+    if (!state.presenting) return;
+    state.presentationScreen = screen;
+    syncPresenterUI();
+  }
+
   function syncTeachUI() {
     const pressed = (selector, on) => {
       for (const button of toolbar.querySelectorAll(selector)) {
@@ -7200,6 +7330,7 @@
     pressed('[data-action="toggle-spotlight"]', state.spotlight);
     pressed('[data-action="toggle-freeze"]', state.frozen);
     pressed('[data-action="fullscreen"]', Boolean(document.fullscreenElement));
+    pressed('[data-action="presentation-start"]', state.presenting);
     appEl.classList.toggle("is-frozen", state.frozen);
     const parts = [];
     if (state.frozen) {
@@ -7220,6 +7351,7 @@
       teachStatus.hidden = true;
       teachStatus.textContent = "";
     }
+    syncPresenterUI();
   }
 
   function toggleFlag(name) {
@@ -9569,6 +9701,10 @@
         closeProjectsDialog();
       } else if (action === "board-duplicate") {
         duplicateBoard();
+      } else if (action === "presentation-start") {
+        startPresentation();
+      } else if (action === "presentation-stop") {
+        stopPresentation();
       } else if (action === "export-dialog") {
         openExportDialog(actionButton.dataset.exportType || "png");
       } else if (action === "import-project") {
@@ -9684,6 +9820,22 @@
   }
 
   function onKeyDown(event) {
+    if (state.presentationScreen) {
+      if (
+        event.key === "Escape" ||
+        event.key.toLowerCase() === "b" ||
+        event.key.toLowerCase() === "w" ||
+        event.key === " " ||
+        event.key === "Enter" ||
+        event.key === "." ||
+        event.key === ","
+      ) {
+        event.preventDefault();
+        setPresentationScreen(null);
+        return;
+      }
+    }
+
     if (!exportDialog.hidden) {
       if (event.key === "Escape") {
         event.preventDefault();
@@ -9721,6 +9873,58 @@
         handleEditorKeys(event);
       }
       return;
+    }
+
+    if (event.key === "F5") {
+      event.preventDefault();
+      togglePresentation();
+      return;
+    }
+
+    if (state.presenting) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        stopPresentation();
+        return;
+      }
+      const keyLower = event.key.toLowerCase();
+      if (keyLower === "b" || event.key === ".") {
+        event.preventDefault();
+        setPresentationScreen(state.presentationScreen === "black" ? null : "black");
+        return;
+      }
+      if (keyLower === "w" || event.key === ",") {
+        event.preventDefault();
+        setPresentationScreen(state.presentationScreen === "white" ? null : "white");
+        return;
+      }
+      if (event.key === "ArrowRight" || event.key === "ArrowDown" || event.key === "PageDown" || event.key === " ") {
+        event.preventDefault();
+        stepPage(1);
+        fitCanvas();
+        return;
+      }
+      if (event.key === "ArrowLeft" || event.key === "ArrowUp" || event.key === "PageUp") {
+        event.preventDefault();
+        stepPage(-1);
+        fitCanvas();
+        return;
+      }
+      if (keyLower === "r") {
+        event.preventDefault();
+        setTool("laser");
+        return;
+      }
+      if (keyLower === "p") {
+        event.preventDefault();
+        setTool("pen");
+        return;
+      }
+      if (keyLower === "e") {
+        event.preventDefault();
+        setTool("eraser");
+        return;
+      }
     }
 
     if (event.key === "Shift") {
@@ -10593,6 +10797,50 @@
 
   importProjectBtn.addEventListener("click", () => {
     projectFileInput.click();
+  });
+
+  presenterBar.addEventListener("click", (event) => {
+    const btn = event.target.closest("button[data-action]");
+    if (!btn) return;
+    const action = btn.dataset.action;
+    if (action === "presenter-prev") {
+      stepPage(-1);
+      fitCanvas();
+    } else if (action === "presenter-next") {
+      stepPage(1);
+      fitCanvas();
+    } else if (action === "presenter-laser") {
+      setTool("laser");
+    } else if (action === "presenter-pen") {
+      setTool("pen");
+    } else if (action === "presenter-eraser") {
+      setTool("eraser");
+    } else if (action === "presenter-black") {
+      setPresentationScreen(state.presentationScreen === "black" ? null : "black");
+    } else if (action === "presenter-white") {
+      setPresentationScreen(state.presentationScreen === "white" ? null : "white");
+    } else if (action === "presenter-fit") {
+      fitCanvas();
+    } else if (action === "presentation-stop") {
+      stopPresentation();
+    }
+  });
+
+  presentationCurtain.addEventListener("click", () => {
+    setPresentationScreen(null);
+  });
+
+  window.addEventListener("pointermove", () => {
+    if (state.presenting) {
+      resetPresenterIdleTimer();
+    }
+  });
+
+  document.addEventListener("fullscreenchange", () => {
+    if (!document.fullscreenElement && state.presenting) {
+      stopPresentation();
+    }
+    syncTeachUI();
   });
 
   async function initProjectManager() {
