@@ -118,25 +118,48 @@ button {
 
 .ribbon {
   display: flex;
-  align-items: stretch;
-  height: 80px;
-  min-height: 80px;
-  max-height: 80px;
-  overflow: visible;
+  align-items: flex-start;
+  height: 90px;
+  min-height: 90px;
+  max-height: 90px;
+  overflow: hidden;
 }
 
 .ribbon-panels {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
+  height: 90px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: #a8a29e var(--paper);
+}
+
+.ribbon-panels::-webkit-scrollbar {
+  height: 10px;
+}
+
+.ribbon-panels::-webkit-scrollbar-track {
+  background: var(--paper);
+}
+
+.ribbon-panels::-webkit-scrollbar-thumb {
+  background: #a8a29e;
+  border-radius: 8px;
+}
+
+.ribbon-panels::-webkit-scrollbar-thumb:hover {
+  background: #78716c;
 }
 
 .ribbon-panel {
   display: flex;
   flex-wrap: nowrap;
   align-items: stretch;
-  width: 100%;
-  min-width: 0;
+  width: max-content;
+  min-width: 100%;
   height: 80px;
   min-height: 80px;
   max-height: 80px;
@@ -180,7 +203,6 @@ button {
   align-items: center;
   gap: 2px;
   width: max-content;
-  max-width: 100%;
   height: 48px;
 }
 
@@ -190,9 +212,8 @@ button {
   align-items: center;
   gap: 2px;
   width: max-content;
-  max-width: 100%;
   height: 48px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .page-size-tools,
@@ -582,8 +603,7 @@ button {
 }
 
 .ribbon-panel-help {
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow: visible;
 }
 
 .shortcut-list {

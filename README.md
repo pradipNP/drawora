@@ -8,7 +8,7 @@ License: [MIT](LICENSE). Development plan: see [ROADMAP.md](ROADMAP.md).
 
 Open `index.html` in a modern browser.
 
-The top bar is a ribbon. **Home** has the everyday tools. **Draw**, **Insert**, **View**, **Page**, **Export**, and **Help** group related actions. Color, size, undo, redo, and delete stay on the right of every tab. Items marked coming soon are visible for later stages and do not do anything yet.
+The top bar is a ribbon. **Home** has the everyday tools. **Draw**, **Insert**, **View**, **Page**, **Export**, and **Help** group related actions. Scroll the tool strip sideways (or use the bar under it) to reach every group. Color, size, undo, redo, and delete stay on the right of every tab. Items marked coming soon are visible for later stages and do not do anything yet.
 
 **Insert** places a default object at the center of the view (text, sticky, shapes, image, diagram, page, link, or table), then selects it. **Home** and **Draw** still draw by dragging. File stays disabled until a later stage. Double-click a link to edit it; Ctrl+click or **Open** visits http, https, and mailto addresses. **Insert → Diagram** adds a grouped Start → Process → End flow.
 

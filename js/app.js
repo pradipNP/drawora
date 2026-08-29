@@ -6937,6 +6937,10 @@
       panel.hidden = panel.dataset.ribbon !== name;
     }
 
+    const panels = toolbar.querySelector(".ribbon-panels");
+    if (panels) {
+      panels.scrollLeft = 0;
+    }
     layoutRibbonOverflow();
     requestAnimationFrame(layoutRibbonOverflow);
   }
@@ -7097,7 +7101,11 @@
   function layoutRibbonOverflow() {
     closeRibbonMenus();
     for (const panel of toolbar.querySelectorAll(".ribbon-panel")) {
-      layoutRibbonStrip(panel);
+      const groups = [...panel.querySelectorAll(":scope > .ribbon-group")];
+      for (const group of groups) {
+        restoreRibbonItems(group);
+        hideRibbonMore(group);
+      }
     }
     layoutRibbonStrip(toolbar.querySelector(".ribbon-persistent"));
   }
@@ -8008,6 +8016,20 @@
 
   prepareRibbonOverflow();
   window.addEventListener("resize", layoutRibbonOverflow);
+  const ribbonPanels = toolbar.querySelector(".ribbon-panels");
+  if (ribbonPanels) {
+    ribbonPanels.addEventListener("scroll", closeRibbonMenus, { passive: true });
+    ribbonPanels.addEventListener(
+      "wheel",
+      (event) => {
+        if (event.deltaY && !event.shiftKey && Math.abs(event.deltaY) >= Math.abs(event.deltaX)) {
+          ribbonPanels.scrollLeft += event.deltaY;
+          event.preventDefault();
+        }
+      },
+      { passive: false }
+    );
+  }
   document.addEventListener("pointerdown", (event) => {
     const target = event.target;
     if (
