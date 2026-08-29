@@ -66,11 +66,16 @@ Formatting (font, size, bold, italic, underline, strikethrough, alignment, line 
 | Send backward | `Ctrl+[`              |
 | Bring to front| `Ctrl+Shift+]`        |
 | Send to back  | `Ctrl+Shift+[`        |
+| Open boards   | `Ctrl+O`              |
+| New board     | `Ctrl+Alt+N`          |
+| Quick save    | `Ctrl+S`              |
 | Delete        | `Delete` / `Backspace` |
 | Deselect      | `Esc`                 |
 
 Select an object to move, resize, or rotate it. Click empty canvas and drag to select several objects. Shift-click or Shift-drag adds to the selection. **Group** keeps selected objects moving together. Align buttons line up two or more selected objects (or groups). **Lock** (`Ctrl+L`) prevents moving or editing an object while still allowing selection from the Objects panel.
 
 **View → Objects** (or the Objects button on the Home ribbon) opens the **Objects panel**. Reorder objects in the z-stack by dragging rows or using Front/Up/Down/Back, toggle visibility (hide/show), lock/unlock, or double-click a layer name to rename it.
+
+**Boards & Projects** (`Ctrl+O` or the top bar **Boards** button) opens the local project manager. Boards are stored offline in browser IndexedDB with automatic background saving, rendered preview thumbnails, search filtering, and actions to create, open, duplicate, rename, or delete boards.
 
 Use **Stroke** and **Fill** to set outline and fill colors. With an object selected, color and size changes apply to that object.

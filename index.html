@@ -35,6 +35,16 @@
             <h1>Drawora</h1>
           </div>
 
+          <div class="board-meta" role="group" aria-label="Current board">
+            <button type="button" class="menubar-btn" id="boards-btn" data-action="open-projects" title="Open Boards & Projects (Ctrl+O)">
+              <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M4 6.5h6l2 2h8a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5H4a1.5 1.5 0 0 1-1.5-1.5V8A1.5 1.5 0 0 1 4 6.5Z" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>
+              <span>Boards</span>
+            </button>
+            <span class="board-meta-divider" aria-hidden="true">/</span>
+            <input id="board-title-input" class="board-title-input" type="text" maxlength="80" value="Untitled Board" aria-label="Board title" title="Click to rename board" />
+            <span id="save-status" class="save-status" title="IndexedDB Autosave status">Saved</span>
+          </div>
+
           <div class="ribbon-tabs" role="tablist" aria-label="Ribbon">
             <button type="button" class="ribbon-tab" role="tab" id="tab-home" data-ribbon-tab="home" aria-controls="panel-home" aria-selected="true" tabindex="0">Home</button>
             <button type="button" class="ribbon-tab" role="tab" id="tab-draw" data-ribbon-tab="draw" aria-controls="panel-draw" aria-selected="false" tabindex="-1">Draw</button>
@@ -49,6 +59,24 @@
         <div class="ribbon" role="toolbar" aria-label="Tools">
           <div class="ribbon-panels">
             <div class="ribbon-panel" role="tabpanel" id="panel-home" data-ribbon="home" aria-labelledby="tab-home">
+              <div class="ribbon-group">
+                <div class="ribbon-group-tools">
+                  <button type="button" class="ribbon-btn" data-action="board-new" title="New board (Ctrl+Alt+N)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3.5H6A1.5 1.5 0 0 0 4.5 5v14A1.5 1.5 0 0 0 6 20.5h12a1.5 1.5 0 0 0 1.5-1.5V9.5L14 3.5Z" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M14 3.5v6h5.5M12 11.5v6M9 14.5h6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+                    <span class="visually-hidden">New board</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-action="open-projects" title="All boards & projects (Ctrl+O)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5h6l2 2h8a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5H4a1.5 1.5 0 0 1-1.5-1.5V8A1.5 1.5 0 0 1 4 6.5Z" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>
+                    <span class="visually-hidden">All boards</span>
+                  </button>
+                  <button type="button" class="ribbon-btn" data-action="board-duplicate" title="Duplicate board">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="7" width="10" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M10.5 7V5.5A1.5 1.5 0 0 1 12 4h7.5A1.5 1.5 0 0 1 21 5.5V16a1.5 1.5 0 0 1-1.5 1.5H16" fill="none" stroke="currentColor" stroke-width="1.75"/></svg>
+                    <span class="visually-hidden">Duplicate board</span>
+                  </button>
+                </div>
+                <span class="ribbon-group-label">Project</span>
+              </div>
+
               <div class="ribbon-group">
                 <div class="ribbon-group-tools">
                   <button type="button" class="ribbon-btn" data-tool="select" aria-pressed="false" aria-keyshortcuts="V" title="Select (V)">
@@ -808,6 +836,8 @@
                 <span><kbd>Ctrl</kbd>+<kbd>I</kbd> Italic</span>
                 <span><kbd>Ctrl</kbd>+<kbd>U</kbd> Underline</span>
                 <span><kbd>Tab</kbd> / <kbd>Shift</kbd>+<kbd>Tab</kbd> Indent</span>
+                <span><kbd>Ctrl</kbd>+<kbd>O</kbd> Open boards & projects</span>
+                <span><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd> New board</span>
                 <span><kbd>Ctrl</kbd>+<kbd>Z</kbd> Undo</span>
                 <span><kbd>Ctrl</kbd>+<kbd>Y</kbd> Redo</span>
                 <span><kbd>Ctrl</kbd>+<kbd>A</kbd> Select all</span>
@@ -979,6 +1009,37 @@
           <button type="submit" class="dialog-btn dialog-btn-primary">Insert</button>
         </div>
       </form>
+    </div>
+
+    <div id="projects-dialog" class="dialog" hidden>
+      <div class="dialog-card projects-card" role="dialog" aria-modal="true" aria-labelledby="projects-dialog-title">
+        <div class="projects-head">
+          <div class="projects-head-text">
+            <h2 id="projects-dialog-title" class="projects-title">Boards & Projects</h2>
+            <p class="projects-subtitle">Stored locally in your browser (IndexedDB) · Works offline</p>
+          </div>
+          <button type="button" class="projects-close" data-action="close-projects" title="Close (Esc)" aria-label="Close">×</button>
+        </div>
+
+        <div class="projects-bar">
+          <div class="projects-search-wrap">
+            <svg viewBox="0 0 24 24" class="projects-search-icon" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="m16 16 4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+            <input id="projects-search" type="search" placeholder="Search boards..." aria-label="Search boards" autocomplete="off" />
+          </div>
+          <button type="button" class="dialog-btn dialog-btn-primary" id="projects-new-btn" data-action="board-new" title="Create a new board">
+            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            New Board
+          </button>
+        </div>
+
+        <div id="projects-grid" class="projects-grid" role="list" aria-label="Saved boards"></div>
+        <p id="projects-empty" class="projects-empty" hidden>No boards found</p>
+
+        <div class="projects-footer">
+          <span id="projects-count" class="projects-count">0 boards</span>
+          <button type="button" class="dialog-btn" data-action="close-projects">Close</button>
+        </div>
+      </div>
     </div>
 
     <script src="js/app.js"></script>

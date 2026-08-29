@@ -12,7 +12,7 @@ Statuses:
 | ⚪ | PLANNED |
 | 🔴 | BLOCKED |
 
-**Current:** Stages 1–18 complete. Stage 19 is next.
+**Current:** Stages 1–19 complete. Stage 20 is next.
 
 ---
 
@@ -324,17 +324,15 @@ Layers panel (Objects list) with z-order controls (front/forward/backward/back),
 
 ### Stage 19 — Local project manager
 
-**Status:** 🔵 NEXT
+**Status:** ✅ COMPLETED
 
-IndexedDB: autosave, new/open/rename/duplicate/delete boards, recents, thumbnails, recovery after restart.
-
-No account. Must keep working offline.
+IndexedDB storage engine with automatic background autosaving (`Ctrl+S` or debounced on edit), auto-recovery on restart/refresh. Complete board management: New board (`Ctrl+Alt+N`), Open & Recents manager modal (`Ctrl+O`), Duplicate, Rename, and Delete with visual board preview thumbnails and search filtering. 100% offline, privacy-focused, zero accounts.
 
 ---
 
 ### Stage 20 — Professional export
 
-**Status:** ⚪ PLANNED
+**Status:** 🔵 NEXT
 
 PNG, JPG, SVG, PDF, DOCX, editable project format. Scope: current page, selection, all pages, page range.
 

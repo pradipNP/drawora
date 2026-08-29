@@ -167,6 +167,11 @@
     frozen: false,
     showLayers: false,
     layerDragId: null,
+    boardId: null,
+    boardName: "Untitled Board",
+    boardCreatedAt: null,
+    saveStatus: "saved",
+    autosaveTimer: null,
     pointerWorld: null,
     laserTrail: [],
   };
@@ -247,6 +252,14 @@
   const layersPanel = document.getElementById("layers-panel");
   const layersList = document.getElementById("layers-list");
   const layersEmpty = document.getElementById("layers-empty");
+  const boardTitleInput = document.getElementById("board-title-input");
+  const boardsBtn = document.getElementById("boards-btn");
+  const saveStatus = document.getElementById("save-status");
+  const projectsDialog = document.getElementById("projects-dialog");
+  const projectsSearch = document.getElementById("projects-search");
+  const projectsGrid = document.getElementById("projects-grid");
+  const projectsEmpty = document.getElementById("projects-empty");
+  const projectsCount = document.getElementById("projects-count");
 
   if (
     !canvas ||
@@ -322,7 +335,15 @@
     !appEl ||
     !layersPanel ||
     !layersList ||
-    !layersEmpty
+    !layersEmpty ||
+    !boardTitleInput ||
+    !boardsBtn ||
+    !saveStatus ||
+    !projectsDialog ||
+    !projectsSearch ||
+    !projectsGrid ||
+    !projectsEmpty ||
+    !projectsCount
   ) {
     console.error("Drawora: missing canvas or toolbar controls.");
     return;
@@ -1622,6 +1643,8 @@
       action === "toggle-spotlight" ||
       action === "toggle-freeze" ||
       action === "toggle-layers" ||
+      action === "open-projects" ||
+      action === "close-projects" ||
       action === "fullscreen"
     );
   }
@@ -3672,6 +3695,7 @@
     state.historyBefore = null;
     syncEditUI();
     syncLayersUI();
+    scheduleAutosave();
   }
 
   function discardHistoryCapture() {
@@ -3858,6 +3882,7 @@
     syncEditUI();
     syncPageUI();
     syncViewUI();
+    scheduleAutosave();
   }
 
   function addPage() {
@@ -4127,6 +4152,587 @@
     const next = state.pages[index + delta];
     if (next) {
       switchPage(next.id);
+    }
+  }
+
+  const DB_NAME = "drawora_db";
+  const DB_VERSION = 1;
+  const STORE_NAME = "boards";
+  const LS_FALLBACK_KEY = "drawora_boards_fallback";
+  const LS_ACTIVE_BOARD_KEY = "drawora_active_board";
+  let dbInstance = null;
+
+  async function openDraworaDb() {
+    if (dbInstance) {
+      return dbInstance;
+    }
+    if (!window.indexedDB) {
+      return null;
+    }
+    return new Promise((resolve) => {
+      try {
+        const request = window.indexedDB.open(DB_NAME, DB_VERSION);
+        request.onupgradeneeded = (event) => {
+          const db = event.target.result;
+          if (!db.objectStoreNames.contains(STORE_NAME)) {
+            db.createObjectStore(STORE_NAME, { keyPath: "id" });
+          }
+        };
+        request.onsuccess = (event) => {
+          dbInstance = event.target.result;
+          resolve(dbInstance);
+        };
+        request.onerror = () => {
+          resolve(null);
+        };
+      } catch {
+        resolve(null);
+      }
+    });
+  }
+
+  function getFallbackBoards() {
+    try {
+      const raw = localStorage.getItem(LS_FALLBACK_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveFallbackBoards(boards) {
+    try {
+      localStorage.setItem(LS_FALLBACK_KEY, JSON.stringify(boards));
+    } catch (e) {
+      console.warn("Drawora: LocalStorage quota exceeded for fallback boards", e);
+    }
+  }
+
+  async function dbGetAllBoards() {
+    const db = await openDraworaDb();
+    if (!db) {
+      const list = getFallbackBoards();
+      list.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+      return list;
+    }
+    return new Promise((resolve) => {
+      try {
+        const tx = db.transaction(STORE_NAME, "readonly");
+        const store = tx.objectStore(STORE_NAME);
+        const req = store.getAll();
+        req.onsuccess = () => {
+          const list = Array.isArray(req.result) ? req.result : [];
+          list.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+          resolve(list);
+        };
+        req.onerror = () => {
+          const list = getFallbackBoards();
+          list.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+          resolve(list);
+        };
+      } catch {
+        const list = getFallbackBoards();
+        list.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+        resolve(list);
+      }
+    });
+  }
+
+  async function dbGetBoard(id) {
+    if (!id) return null;
+    const db = await openDraworaDb();
+    if (!db) {
+      const list = getFallbackBoards();
+      return list.find((b) => b.id === id) || null;
+    }
+    return new Promise((resolve) => {
+      try {
+        const tx = db.transaction(STORE_NAME, "readonly");
+        const store = tx.objectStore(STORE_NAME);
+        const req = store.get(id);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => resolve(null);
+      } catch {
+        resolve(null);
+      }
+    });
+  }
+
+  async function dbSaveBoard(record) {
+    if (!record || !record.id) return;
+    const db = await openDraworaDb();
+    if (!db) {
+      const list = getFallbackBoards();
+      const idx = list.findIndex((b) => b.id === record.id);
+      if (idx >= 0) {
+        list[idx] = record;
+      } else {
+        list.push(record);
+      }
+      saveFallbackBoards(list);
+      return;
+    }
+    return new Promise((resolve) => {
+      try {
+        const tx = db.transaction(STORE_NAME, "readwrite");
+        const store = tx.objectStore(STORE_NAME);
+        store.put(record);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => {
+          const list = getFallbackBoards();
+          const idx = list.findIndex((b) => b.id === record.id);
+          if (idx >= 0) list[idx] = record; else list.push(record);
+          saveFallbackBoards(list);
+          resolve();
+        };
+      } catch {
+        resolve();
+      }
+    });
+  }
+
+  async function dbDeleteBoard(id) {
+    if (!id) return;
+    const db = await openDraworaDb();
+    if (!db) {
+      const list = getFallbackBoards().filter((b) => b.id !== id);
+      saveFallbackBoards(list);
+      return;
+    }
+    return new Promise((resolve) => {
+      try {
+        const tx = db.transaction(STORE_NAME, "readwrite");
+        const store = tx.objectStore(STORE_NAME);
+        store.delete(id);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => resolve();
+      } catch {
+        resolve();
+      }
+    });
+  }
+
+  function formatRelativeTime(timestamp) {
+    if (!timestamp) return "Never";
+    const diff = Date.now() - timestamp;
+    const secs = Math.floor(diff / 1000);
+    if (secs < 60) return "Just now";
+    const mins = Math.floor(secs / 60);
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days === 1) return "Yesterday";
+    if (days < 7) return `${days}d ago`;
+    const date = new Date(timestamp);
+    return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  }
+
+  function drawThumbObject(target, object) {
+    target.save();
+    if (object.rotation) {
+      const center = getCenter(object);
+      target.translate(center.x, center.y);
+      target.rotate(object.rotation);
+      target.translate(-center.x, -center.y);
+    }
+    if (object.type === "stroke") {
+      target.strokeStyle = object.color || "#0f172a";
+      target.lineWidth = Math.max(object.size || 2, 2);
+      target.lineCap = "round";
+      target.lineJoin = "round";
+      if (object.points && object.points.length > 0) {
+        target.beginPath();
+        target.moveTo(object.points[0].x, object.points[0].y);
+        for (let i = 1; i < object.points.length; i++) {
+          target.lineTo(object.points[i].x, object.points[i].y);
+        }
+        target.stroke();
+      }
+    } else if (object.type === "rect" || object.type === "roundrect") {
+      target.fillStyle = object.fill || "transparent";
+      target.strokeStyle = object.stroke || "#0f172a";
+      target.lineWidth = Math.max(object.strokeSize || 1, 1);
+      if (object.fill) target.fillRect(object.x, object.y, object.width, object.height);
+      target.strokeRect(object.x, object.y, object.width, object.height);
+    } else if (object.type === "ellipse") {
+      target.fillStyle = object.fill || "transparent";
+      target.strokeStyle = object.stroke || "#0f172a";
+      target.lineWidth = Math.max(object.strokeSize || 1, 1);
+      target.beginPath();
+      target.ellipse(
+        object.x + object.width / 2,
+        object.y + object.height / 2,
+        Math.abs(object.width / 2),
+        Math.abs(object.height / 2),
+        0,
+        0,
+        Math.PI * 2
+      );
+      if (object.fill) target.fill();
+      target.stroke();
+    } else if (object.type === "text" || object.type === "sticky") {
+      if (object.type === "sticky") {
+        target.fillStyle = object.fill || "#fef08a";
+        target.fillRect(object.x, object.y, object.width, object.height);
+      }
+      target.fillStyle = object.color || "#0f172a";
+      target.font = `bold ${Math.max(object.fontSize || 16, 12)}px sans-serif`;
+      const text = String(object.text || "").split("\n")[0] || "";
+      target.fillText(text.slice(0, 24), object.x + 6, object.y + 18, object.width - 12);
+    } else if (object.type === "table") {
+      target.strokeStyle = object.stroke || "#0f172a";
+      target.lineWidth = 1;
+      target.strokeRect(object.x, object.y, object.width, object.height);
+      const cols = (object.colW || []).length || 3;
+      const rows = (object.rowH || []).length || 3;
+      for (let c = 1; c < cols; c++) {
+        const cx = object.x + (object.width / cols) * c;
+        target.beginPath();
+        target.moveTo(cx, object.y);
+        target.lineTo(cx, object.y + object.height);
+        target.stroke();
+      }
+      for (let r = 1; r < rows; r++) {
+        const ry = object.y + (object.height / rows) * r;
+        target.beginPath();
+        target.moveTo(object.x, ry);
+        target.lineTo(object.x + object.width, ry);
+        target.stroke();
+      }
+    } else {
+      const bounds = getLocalBounds(object);
+      target.fillStyle = object.fill || "rgba(15, 118, 110, 0.25)";
+      target.strokeStyle = object.stroke || "#0f766e";
+      target.lineWidth = 1;
+      target.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
+      target.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+    }
+    target.restore();
+  }
+
+  function generateBoardThumbnail(pages, currentPageId, width = 240, height = 150) {
+    try {
+      const thumbCanvas = document.createElement("canvas");
+      thumbCanvas.width = width;
+      thumbCanvas.height = height;
+      const tctx = thumbCanvas.getContext("2d");
+      if (!tctx) return "";
+
+      tctx.fillStyle = "#e7e5e4";
+      tctx.fillRect(0, 0, width, height);
+
+      const targetPage = (pages && pages.find((p) => p.id === currentPageId)) || (pages && pages[0]);
+      if (!targetPage) return thumbCanvas.toDataURL("image/webp", 0.85);
+
+      const pad = 12;
+      const availW = width - pad * 2;
+      const availH = height - pad * 2;
+      const scale = Math.min(availW / targetPage.width, availH / targetPage.height);
+      const pw = targetPage.width * scale;
+      const ph = targetPage.height * scale;
+      const ox = (width - pw) / 2;
+      const oy = (height - ph) / 2;
+      const surface = pageSurface(targetPage);
+
+      tctx.shadowColor = "rgba(0, 0, 0, 0.12)";
+      tctx.shadowBlur = 8;
+      tctx.shadowOffsetY = 2;
+      tctx.fillStyle = surface.paperColor || "#ffffff";
+      tctx.fillRect(ox, oy, pw, ph);
+      tctx.shadowColor = "transparent";
+
+      tctx.save();
+      tctx.beginPath();
+      tctx.rect(ox, oy, pw, ph);
+      tctx.clip();
+      tctx.translate(ox, oy);
+      tctx.scale(scale, scale);
+
+      drawPagePattern(tctx, targetPage.width, targetPage.height, surface, (pixels) => pixels / scale);
+
+      const pageObjects = targetPage.id === state.currentPageId ? state.objects : targetPage.objects || [];
+      for (const object of pageObjects) {
+        if (!object || object.hidden) continue;
+        drawThumbObject(tctx, object);
+      }
+
+      tctx.restore();
+
+      tctx.strokeStyle = "rgba(0,0,0,0.12)";
+      tctx.lineWidth = 1;
+      tctx.strokeRect(ox, oy, pw, ph);
+
+      return thumbCanvas.toDataURL("image/webp", 0.85);
+    } catch {
+      return "";
+    }
+  }
+
+  function updateSaveStatus(text, kind = "") {
+    if (!saveStatus) return;
+    saveStatus.textContent = text;
+    saveStatus.className = "save-status" + (kind ? ` is-${kind}` : "");
+  }
+
+  function scheduleAutosave(immediate = false) {
+    if (!state.boardId) return;
+    updateSaveStatus("Saving...", "saving");
+    if (state.autosaveTimer) {
+      clearTimeout(state.autosaveTimer);
+      state.autosaveTimer = null;
+    }
+    const execute = async () => {
+      try {
+        const snapshot = cloneBoard();
+        const thumbnail = generateBoardThumbnail(state.pages, state.currentPageId);
+        const record = {
+          id: state.boardId,
+          name: state.boardName || "Untitled Board",
+          createdAt: state.boardCreatedAt || Date.now(),
+          updatedAt: Date.now(),
+          pageCount: state.pages.length,
+          thumbnail,
+          snapshot,
+        };
+        await dbSaveBoard(record);
+        try {
+          localStorage.setItem(LS_ACTIVE_BOARD_KEY, state.boardId);
+        } catch {}
+        updateSaveStatus("Saved", "");
+      } catch (err) {
+        console.error("Drawora: Autosave failed", err);
+        updateSaveStatus("Save error", "error");
+      }
+    };
+    if (immediate) {
+      execute();
+    } else {
+      state.autosaveTimer = setTimeout(execute, 400);
+    }
+  }
+
+  async function createNewBoard(customName = null) {
+    if (state.boardId) {
+      await scheduleAutosave(true);
+    }
+    finishOpenWork();
+    clearSelection();
+    state.past = [];
+    state.future = [];
+    state.historyBefore = null;
+
+    const newId = createId();
+    const newName = customName || "Untitled Board";
+    const firstPage = makePage({ name: "Page 1", preset: "a4", orientation: "portrait" });
+
+    state.boardId = newId;
+    state.boardName = newName;
+    state.boardCreatedAt = Date.now();
+    state.pages = [firstPage];
+    attachPage(firstPage);
+
+    boardTitleInput.value = newName;
+    resetView();
+    fitCanvas();
+    syncEditUI();
+    syncPageUI();
+    syncLayersUI();
+    closeProjectsDialog();
+    await scheduleAutosave(true);
+  }
+
+  async function openBoard(id) {
+    if (!id || id === state.boardId) {
+      closeProjectsDialog();
+      return;
+    }
+    if (state.boardId) {
+      await scheduleAutosave(true);
+    }
+    const record = await dbGetBoard(id);
+    if (!record || !record.snapshot) {
+      return;
+    }
+    finishOpenWork();
+    clearSelection();
+    state.past = [];
+    state.future = [];
+    state.historyBefore = null;
+
+    state.boardId = record.id;
+    state.boardName = record.name || "Untitled Board";
+    state.boardCreatedAt = record.createdAt || Date.now();
+    boardTitleInput.value = state.boardName;
+
+    restoreBoard(record.snapshot);
+    try {
+      localStorage.setItem(LS_ACTIVE_BOARD_KEY, state.boardId);
+    } catch {}
+
+    fitCanvas();
+    syncEditUI();
+    syncPageUI();
+    syncLayersUI();
+    updateSaveStatus("Saved", "");
+    closeProjectsDialog();
+  }
+
+  async function duplicateBoard(id = null) {
+    const targetId = id || state.boardId;
+    if (!targetId) return;
+    if (targetId === state.boardId) {
+      await scheduleAutosave(true);
+      const snapshot = cloneBoard();
+      const newId = createId();
+      const newName = `Copy of ${state.boardName}`;
+      const newRecord = {
+        id: newId,
+        name: newName,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        pageCount: state.pages.length,
+        thumbnail: generateBoardThumbnail(state.pages, state.currentPageId),
+        snapshot,
+      };
+      await dbSaveBoard(newRecord);
+      await openBoard(newId);
+    } else {
+      const record = await dbGetBoard(targetId);
+      if (!record) return;
+      const newId = createId();
+      const newName = `Copy of ${record.name || "Untitled Board"}`;
+      const newRecord = {
+        ...cloneData(record),
+        id: newId,
+        name: newName,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+      await dbSaveBoard(newRecord);
+      await renderProjectsList();
+    }
+  }
+
+  async function deleteBoard(id) {
+    if (!id) return;
+    const board = await dbGetBoard(id);
+    const name = board ? board.name : "this board";
+    openConfirmDialog(
+      `Delete "${name}"?`,
+      "This board and all its pages will be permanently deleted.",
+      "Delete",
+      async () => {
+        await dbDeleteBoard(id);
+        if (id === state.boardId) {
+          const remaining = await dbGetAllBoards();
+          if (remaining.length > 0) {
+            await openBoard(remaining[0].id);
+          } else {
+            await createNewBoard();
+          }
+        }
+        await renderProjectsList();
+      }
+    );
+  }
+
+  function renameBoard(nextName) {
+    const trimmed = (nextName || "").trim().slice(0, 80) || "Untitled Board";
+    if (state.boardName === trimmed) {
+      boardTitleInput.value = state.boardName;
+      return;
+    }
+    state.boardName = trimmed;
+    boardTitleInput.value = trimmed;
+    scheduleAutosave(true);
+  }
+
+  async function openProjectsDialog() {
+    projectsDialog.hidden = false;
+    projectsSearch.value = "";
+    await renderProjectsList();
+    projectsSearch.focus();
+  }
+
+  function closeProjectsDialog() {
+    projectsDialog.hidden = true;
+  }
+
+  async function renderProjectsList() {
+    const boards = await dbGetAllBoards();
+    const query = (projectsSearch.value || "").trim().toLowerCase();
+    const filtered = query ? boards.filter((b) => (b.name || "").toLowerCase().includes(query)) : boards;
+
+    projectsCount.textContent = `${boards.length} board${boards.length === 1 ? "" : "s"}`;
+    projectsEmpty.hidden = filtered.length > 0;
+    projectsGrid.replaceChildren();
+
+    for (const board of filtered) {
+      const card = document.createElement("div");
+      card.className = "project-card" + (board.id === state.boardId ? " is-active" : "");
+      card.dataset.boardId = board.id;
+
+      const thumbBox = document.createElement("div");
+      thumbBox.className = "project-thumb-box";
+      if (board.thumbnail) {
+        const img = document.createElement("img");
+        img.className = "project-thumb-img";
+        img.src = board.thumbnail;
+        img.alt = board.name || "Board thumbnail";
+        thumbBox.append(img);
+      }
+      if (board.id === state.boardId) {
+        const badge = document.createElement("span");
+        badge.className = "project-badge-active";
+        badge.textContent = "Current";
+        thumbBox.append(badge);
+      }
+
+      const cardBody = document.createElement("div");
+      cardBody.className = "project-card-body";
+
+      const title = document.createElement("h3");
+      title.className = "project-card-title";
+      title.textContent = board.name || "Untitled Board";
+      title.title = title.textContent;
+
+      const meta = document.createElement("div");
+      meta.className = "project-card-meta";
+      const pagesCount = board.pageCount || (board.snapshot && board.snapshot.pages ? board.snapshot.pages.length : 1);
+      const pagesSpan = document.createElement("span");
+      pagesSpan.textContent = `${pagesCount} page${pagesCount === 1 ? "" : "s"}`;
+      const timeSpan = document.createElement("span");
+      timeSpan.textContent = formatRelativeTime(board.updatedAt);
+      meta.append(pagesSpan, timeSpan);
+
+      const actions = document.createElement("div");
+      actions.className = "project-card-actions";
+
+      const openBtn = document.createElement("button");
+      openBtn.type = "button";
+      openBtn.className = "project-action-btn";
+      openBtn.dataset.projectAction = "open";
+      openBtn.textContent = "Open";
+
+      const dupBtn = document.createElement("button");
+      dupBtn.type = "button";
+      dupBtn.className = "project-action-btn";
+      dupBtn.dataset.projectAction = "duplicate";
+      dupBtn.title = "Duplicate board";
+      dupBtn.textContent = "Duplicate";
+
+      const delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "project-action-btn is-delete";
+      delBtn.dataset.projectAction = "delete";
+      delBtn.title = "Delete board";
+      delBtn.textContent = "Delete";
+
+      actions.append(openBtn, dupBtn, delBtn);
+      cardBody.append(title, meta, actions);
+      card.append(thumbBox, cardBody);
+      projectsGrid.append(card);
     }
   }
 
@@ -8170,6 +8776,14 @@
         reorderSelection("forward");
       } else if (action === "order-backward") {
         reorderSelection("backward");
+      } else if (action === "board-new") {
+        createNewBoard();
+      } else if (action === "open-projects") {
+        openProjectsDialog();
+      } else if (action === "close-projects") {
+        closeProjectsDialog();
+      } else if (action === "board-duplicate") {
+        duplicateBoard();
       } else if (action.startsWith("table-")) {
         runTableAction(action);
       }
@@ -8281,6 +8895,14 @@
   }
 
   function onKeyDown(event) {
+    if (!projectsDialog.hidden) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeProjectsDialog();
+      }
+      return;
+    }
+
     if (!confirmDialog.hidden) {
       if (event.key === "Escape") {
         event.preventDefault();
@@ -8384,6 +9006,24 @@
     if (ctrl && event.key.toLowerCase() === "y") {
       event.preventDefault();
       redo();
+      return;
+    }
+
+    if (ctrl && event.key.toLowerCase() === "o") {
+      event.preventDefault();
+      openProjectsDialog();
+      return;
+    }
+
+    if (ctrl && event.altKey && event.key.toLowerCase() === "n") {
+      event.preventDefault();
+      createNewBoard();
+      return;
+    }
+
+    if (ctrl && event.key.toLowerCase() === "s") {
+      event.preventDefault();
+      scheduleAutosave(true);
       return;
     }
 
@@ -9060,6 +9700,82 @@
     }
   });
 
+  boardTitleInput.addEventListener("change", () => {
+    renameBoard(boardTitleInput.value);
+  });
+  boardTitleInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      boardTitleInput.blur();
+    }
+  });
+
+  boardsBtn.addEventListener("click", () => {
+    openProjectsDialog();
+  });
+
+  projectsDialog.addEventListener("click", (event) => {
+    const actionBtn = event.target.closest("[data-action]");
+    if (actionBtn) {
+      const action = actionBtn.dataset.action;
+      if (action === "close-projects") {
+        closeProjectsDialog();
+        return;
+      }
+      if (action === "board-new") {
+        createNewBoard();
+        return;
+      }
+    }
+
+    const projectActionBtn = event.target.closest("[data-project-action]");
+    if (projectActionBtn) {
+      const card = projectActionBtn.closest(".project-card");
+      if (!card) return;
+      const boardId = card.dataset.boardId;
+      const pAction = projectActionBtn.dataset.projectAction;
+      if (pAction === "open") {
+        openBoard(boardId);
+      } else if (pAction === "duplicate") {
+        duplicateBoard(boardId);
+      } else if (pAction === "delete") {
+        deleteBoard(boardId);
+      }
+      return;
+    }
+
+    const card = event.target.closest(".project-card");
+    if (card && !event.target.closest(".project-action-btn")) {
+      openBoard(card.dataset.boardId);
+      return;
+    }
+
+    if (event.target === projectsDialog) {
+      closeProjectsDialog();
+    }
+  });
+
+  projectsSearch.addEventListener("input", () => {
+    renderProjectsList();
+  });
+
+  async function initProjectManager() {
+    await openDraworaDb();
+    let initialBoardId = null;
+    try {
+      initialBoardId = localStorage.getItem(LS_ACTIVE_BOARD_KEY);
+    } catch {}
+
+    const allBoards = await dbGetAllBoards();
+    if (initialBoardId && allBoards.some((b) => b.id === initialBoardId)) {
+      await openBoard(initialBoardId);
+    } else if (allBoards.length > 0) {
+      await openBoard(allBoards[0].id);
+    } else {
+      await createNewBoard("My First Board");
+    }
+  }
+
   const observer = new ResizeObserver(resizeCanvas);
   new ResizeObserver(layoutRibbonOverflow).observe(toolbar);
   observer.observe(canvas.parentElement);
@@ -9075,4 +9791,6 @@
   syncImageUI();
   syncLinkUI();
   syncTeachUI();
+
+  initProjectManager();
 })();
