@@ -1,0 +1,25 @@
+{
+  "name": "drawora",
+  "version": "1.0.0",
+  "description": "Free, open-source digital whiteboard and canvas for notes, drawing, and teaching",
+  "main": "js/app.js",
+  "scripts": {
+    "start": "npx serve .",
+    "pages:dev": "npx wrangler pages dev .",
+    "pages:deploy": "npx wrangler pages deploy ."
+  },
+  "keywords": [
+    "whiteboard",
+    "canvas",
+    "drawing",
+    "pwa",
+    "notes",
+    "teaching",
+    "cloudflare-pages"
+  ],
+  "author": "Drawora",
+  "license": "MIT",
+  "devDependencies": {
+    "wrangler": "^3.109.2"
+  }
+}

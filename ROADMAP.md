@@ -12,7 +12,7 @@ Statuses:
 | ⚪ | PLANNED |
 | 🔴 | BLOCKED |
 
-**Current:** Stages 1–22 complete. Stage 23 is next.
+**Current:** Stages 1–23 complete. Stage 24 is next.
 
 ---
 
@@ -372,17 +372,20 @@ Progressive Web App (PWA) & Offline Shell:
 
 ### Stage 23 — Cloudflare deployment
 
-**Status:** 🔵 NEXT
+**Status:** ✅ COMPLETED
 
-Cloudflare Pages, Workers where required, public `.pages.dev` site.
-
-Cloud must not be required for personal local use.
+Cloudflare Pages & Edge Infrastructure:
+- Full Cloudflare Pages compatibility with zero-build static site configuration.
+- `_headers` configuration enforcing security headers (nosniff, SAMEORIGIN, strict referrer, permissions policy) and HTTP caching rules for PWA and assets.
+- `wrangler.toml` project configuration for local Pages emulation (`npm run pages:dev`) and production deployment (`npm run pages:deploy`).
+- Serverless Cloudflare Pages Functions (`/api/health`) ready for edge requests.
+- 100% offline and standalone personal local use preserved with zero cloud lock-in.
 
 ---
 
 ### Stage 24 — Real-time collaboration
 
-**Status:** ⚪ PLANNED
+**Status:** 🔵 NEXT
 
 WebSocket rooms, structured operations (not screenshots). Sync object CRUD, transforms, text, style, pages. Room ID, join/leave, presence, live cursors.
 

@@ -91,7 +91,12 @@ Select an object to move, resize, or rotate it. Click empty canvas and drag to s
 **Progressive Web App (PWA) & Offline**:
 - Installable standalone app on Windows, macOS, Linux, Android, and iOS.
 - Complete offline capability via Service Worker caching (`sw.js`) and IndexedDB persistence.
-- Install button in top menubar appears when installation is supported.
+- Install button in top-right navbar appears when installation is supported.
+
+**Deployment (Cloudflare Pages)**:
+- Ready for immediate Cloudflare Pages deployment via `npx wrangler pages deploy .` or Git integration.
+- Includes `_headers` for asset caching & security headers, plus edge functions (`/api/health`).
+- Zero build step required — works as a pure static web app or edge-hosted service.
 
 **Export** (`Ctrl+E` or the **Export** ribbon tab) offers high-resolution output formats:
 - **PNG / JPG**: Scalable resolution from 1× to 4×, custom background transparency, and JPEG quality compression.
