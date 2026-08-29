@@ -98,6 +98,12 @@ Select an object to move, resize, or rotate it. Click empty canvas and drag to s
 - Includes `_headers` for asset caching & security headers, plus edge functions (`/api/health`).
 - Zero build step required — works as a pure static web app or edge-hosted service.
 
+**Real-Time Collaboration**:
+- Live multi-user drawing, transforms, deletions, and page operations synchronized instantly.
+- Live remote cursors with user name badges, custom avatar color palette, and synchronized laser pointer trails (`R`).
+- Dual-mode synchronization: Cloudflare Pages Function WebSockets (`functions/api/room.js`) for edge deployment, with automatic zero-configuration fallback to browser `BroadcastChannel` for local multi-tab / offline collaboration.
+- Room code generator, shareable room links (`?room=<room_id>`), and active participant presence chips in the navbar.
+
 **Export** (`Ctrl+E` or the **Export** ribbon tab) offers high-resolution output formats:
 - **PNG / JPG**: Scalable resolution from 1× to 4×, custom background transparency, and JPEG quality compression.
 - **SVG**: Clean vector graphic output preserving text, paths, strokes, and shapes.

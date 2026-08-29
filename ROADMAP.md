@@ -12,7 +12,7 @@ Statuses:
 | ⚪ | PLANNED |
 | 🔴 | BLOCKED |
 
-**Current:** Stages 1–23 complete. Stage 24 is next.
+**Current:** Stages 1–24 complete. Stage 25 is next.
 
 ---
 
@@ -385,15 +385,20 @@ Cloudflare Pages & Edge Infrastructure:
 
 ### Stage 24 — Real-time collaboration
 
-**Status:** 🔵 NEXT
+**Status:** ✅ COMPLETED
 
-WebSocket rooms, structured operations (not screenshots). Sync object CRUD, transforms, text, style, pages. Room ID, join/leave, presence, live cursors.
+Real-Time Multi-User Collaboration & Synchronization:
+- **Edge WebSocket Rooms (`functions/api/room.js`)**: Serverless Cloudflare Pages Function WebSocket room router supporting multi-client real-time synchronization.
+- **Dual-mode Sync (WebSocket + BroadcastChannel)**: Seamless multi-client communication over Cloudflare WebSockets with automatic zero-config fallback to browser `BroadcastChannel` for local/cross-tab collaboration.
+- **Structured Operation Model**: Lightweight operation packets for object CRUD (`object-upsert`, `object-delete`), page operations (`page-sync`), and board snapshots (`board-sync-request` / `board-sync-response`).
+- **Live Cursors & Presence**: Real-time remote cursors rendered with world-space coordinates, user name badges, custom avatar colors, and synchronized live laser pointer trails (`R`).
+- **Presence UI & Room Management**: Navbar presence badge with connection state dot, active avatar chips, custom username & palette color picker, random room code generator, and instant shareable room link copying.
 
 ---
 
 ### Stage 25 — Sharing / collaboration rooms
 
-**Status:** ⚪ PLANNED
+**Status:** 🔵 NEXT
 
 Share link, create/join room, participant list, permissions (viewer / editor / owner).
 
