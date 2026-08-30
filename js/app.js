@@ -479,6 +479,64 @@
   let nextImageAssetId = 1;
   let linkDialogTargetId = null;
   let confirmCallback = null;
+  const a11yLiveRegion = document.getElementById("a11y-live-region");
+  let a11yTimer = null;
+  let modalFocusRestoreEl = null;
+
+  function announceA11y(message) {
+    if (!a11yLiveRegion || !message) return;
+    clearTimeout(a11yTimer);
+    a11yLiveRegion.textContent = "";
+    a11yTimer = setTimeout(() => {
+      a11yLiveRegion.textContent = message;
+    }, 50);
+  }
+
+  function trapModalFocus(dialogEl) {
+    if (!dialogEl) return;
+    modalFocusRestoreEl = document.activeElement;
+    const focusableSelector = 'button:not([disabled]), [href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const focusables = Array.from(dialogEl.querySelectorAll(focusableSelector));
+    if (focusables.length > 0) {
+      setTimeout(() => {
+        focusables[0].focus();
+      }, 30);
+    }
+  }
+
+  function releaseModalFocus() {
+    if (modalFocusRestoreEl && typeof modalFocusRestoreEl.focus === "function") {
+      try {
+        modalFocusRestoreEl.focus();
+      } catch {}
+    }
+    modalFocusRestoreEl = null;
+  }
+
+  function handleModalTabKey(event, dialogEl) {
+    if (event.key !== "Tab" || dialogEl.hidden) return false;
+    const focusableSelector = 'button:not([disabled]), [href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const focusables = Array.from(dialogEl.querySelectorAll(focusableSelector));
+    if (focusables.length === 0) return false;
+
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+
+    if (event.shiftKey) {
+      if (document.activeElement === first || !dialogEl.contains(document.activeElement)) {
+        event.preventDefault();
+        last.focus();
+        return true;
+      }
+    } else {
+      if (document.activeElement === last || !dialogEl.contains(document.activeElement)) {
+        event.preventDefault();
+        first.focus();
+        return true;
+      }
+    }
+    return false;
+  }
 
   function isTypingTarget(element) {
     if (!element || !(element instanceof HTMLElement)) {
@@ -1678,6 +1736,10 @@
     state.currentPageId = page.id;
     state.objects = page.objects;
     applyPageCamera(page);
+    const pageIndex = state.pages.indexOf(page);
+    if (pageIndex >= 0) {
+      announceA11y(`Page ${pageIndex + 1} of ${state.pages.length}: ${page.name}`);
+    }
   }
 
   function finishOpenWork() {
@@ -3098,6 +3160,21 @@
     return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
   }
 
+  function getViewportWorldBounds(padding = 64) {
+    const p1 = screenToWorld({ x: 0, y: 0 });
+    const p2 = screenToWorld({ x: canvas.clientWidth, y: canvas.clientHeight });
+    const minX = Math.min(p1.x, p2.x) - padding;
+    const minY = Math.min(p1.y, p2.y) - padding;
+    const maxX = Math.max(p1.x, p2.x) + padding;
+    const maxY = Math.max(p1.y, p2.y) + padding;
+    return {
+      x: minX,
+      y: minY,
+      width: Math.max(maxX - minX, 0),
+      height: Math.max(maxY - minY, 0),
+    };
+  }
+
   function unionBounds(list) {
     let minX = Infinity;
     let minY = Infinity;
@@ -3317,8 +3394,17 @@
     drawPageSheet();
     drawGridOverlay();
 
+    const viewportBounds = getViewportWorldBounds(64);
+    const hasManyObjects = state.objects.length > 20;
+
     for (const object of state.objects) {
       if (!object.hidden) {
+        if (hasManyObjects && !state.selectedIds.includes(object.id)) {
+          const objBounds = objectWorldBounds(object);
+          if (!boundsIntersect(objBounds, viewportBounds)) {
+            continue;
+          }
+        }
         drawObject(object);
       }
     }
@@ -3799,6 +3885,31 @@
     return a.currentPageId === b.currentPageId && JSON.stringify(a.pages) === JSON.stringify(b.pages);
   }
 
+  function pruneUnusedImageAssets() {
+    if (imageAssets.size === 0) return;
+    const activeAssetIds = new Set();
+    for (const page of state.pages) {
+      const list = page.id === state.currentPageId ? state.objects : page.objects || [];
+      for (const obj of list) {
+        if (obj && obj.assetId) activeAssetIds.add(obj.assetId);
+      }
+    }
+    for (const snap of state.past) {
+      if (snap && Array.isArray(snap.pages)) {
+        for (const page of snap.pages) {
+          for (const obj of (page.objects || [])) {
+            if (obj && obj.assetId) activeAssetIds.add(obj.assetId);
+          }
+        }
+      }
+    }
+    for (const key of imageAssets.keys()) {
+      if (!activeAssetIds.has(key)) {
+        imageAssets.delete(key);
+      }
+    }
+  }
+
   function commitIfChanged() {
     if (!state.historyBefore) {
       return;
@@ -3814,6 +3925,7 @@
     if (state.past.length > MAX_HISTORY) {
       state.past.shift();
     }
+    pruneUnusedImageAssets();
     state.future = [];
     state.historyBefore = null;
     syncEditUI();
@@ -4776,11 +4888,12 @@
     projectsDialog.hidden = false;
     projectsSearch.value = "";
     await renderProjectsList();
-    projectsSearch.focus();
+    trapModalFocus(projectsDialog);
   }
 
   function closeProjectsDialog() {
     projectsDialog.hidden = true;
+    releaseModalFocus();
   }
 
   async function renderProjectsList() {
@@ -5097,10 +5210,12 @@
       collabRoomInput.value = collabRoomInput.value || "room-" + Math.random().toString(36).substring(2, 7);
     }
     syncCollabUI();
+    trapModalFocus(collabDialog);
   }
 
   function closeCollabDialog() {
     collabDialog.hidden = true;
+    releaseModalFocus();
   }
 
   function collabSend(payload) {
@@ -6152,10 +6267,12 @@
     const cleanName = (state.boardName || "Drawora-Board").replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "_") || "Drawora-Board";
     exportFilenameInput.value = cleanName;
     syncExportOptionsUI();
+    trapModalFocus(exportDialog);
   }
 
   function closeExportDialog() {
     exportDialog.hidden = true;
+    releaseModalFocus();
   }
 
   async function executeExportDownload() {
@@ -6269,11 +6386,13 @@
           const dataUrl = pCanvas.toDataURL(mime, quality);
           downloadFile(dataUrl, `${baseName}.${ext}`);
         }
+        announceA11y("Export downloaded successfully");
         closeExportDialog();
       }
     } catch (err) {
       console.error("Drawora: Export failed", err);
       exportInfo.textContent = "Export failed. Please try again.";
+      announceA11y("Export failed. Please try again.");
     } finally {
       exportDownloadBtn.disabled = false;
     }
@@ -8138,6 +8257,7 @@
   function closeConfirmDialog() {
     confirmDialog.hidden = true;
     confirmCallback = null;
+    releaseModalFocus();
   }
 
   function openConfirmDialog(title, message, okLabel, onConfirm) {
@@ -8147,7 +8267,7 @@
     confirmOk.textContent = okLabel;
     confirmCallback = onConfirm;
     confirmDialog.hidden = false;
-    confirmOk.focus();
+    trapModalFocus(confirmDialog);
   }
 
   function requestClearBoard() {
@@ -8390,6 +8510,7 @@
     linkDialog.hidden = true;
     linkError.hidden = true;
     linkDialogTargetId = null;
+    releaseModalFocus();
   }
 
   function openLinkDialog(object) {
@@ -8401,8 +8522,7 @@
     linkHrefInput.value = object ? object.href || "" : "";
     linkError.hidden = true;
     linkDialog.hidden = false;
-    linkHrefInput.focus();
-    linkHrefInput.select();
+    trapModalFocus(linkDialog);
   }
 
   function commitLinkDialog() {
@@ -9733,6 +9853,7 @@
     }
     syncImageUI();
     syncTeachUI();
+    announceA11y(`Tool selected: ${tool}`);
   }
 
   function syncColorUI() {
@@ -10629,6 +10750,8 @@
       if (event.key === "Escape") {
         event.preventDefault();
         closeCollabDialog();
+      } else if (event.key === "Tab") {
+        handleModalTabKey(event, collabDialog);
       }
       return;
     }
@@ -10637,6 +10760,8 @@
       if (event.key === "Escape") {
         event.preventDefault();
         closeExportDialog();
+      } else if (event.key === "Tab") {
+        handleModalTabKey(event, exportDialog);
       }
       return;
     }
@@ -10645,6 +10770,8 @@
       if (event.key === "Escape") {
         event.preventDefault();
         closeProjectsDialog();
+      } else if (event.key === "Tab") {
+        handleModalTabKey(event, projectsDialog);
       }
       return;
     }
@@ -10653,6 +10780,8 @@
       if (event.key === "Escape") {
         event.preventDefault();
         closeConfirmDialog();
+      } else if (event.key === "Tab") {
+        handleModalTabKey(event, confirmDialog);
       }
       return;
     }
@@ -10661,6 +10790,8 @@
       if (event.key === "Escape") {
         event.preventDefault();
         closeLinkDialog();
+      } else if (event.key === "Tab") {
+        handleModalTabKey(event, linkDialog);
       }
       return;
     }

@@ -1074,7 +1074,7 @@
       hidden
     />
     <div id="confirm-dialog" class="dialog" hidden>
-      <form id="confirm-form" class="dialog-card">
+      <form id="confirm-form" class="dialog-card" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
         <h2 id="confirm-title">Clear this page?</h2>
         <p id="confirm-message" class="dialog-copy">Drawings on this page will be removed. The page template stays.</p>
         <div class="dialog-actions">
@@ -1084,7 +1084,7 @@
       </form>
     </div>
     <div id="link-dialog" class="dialog" hidden>
-      <form id="link-form" class="dialog-card" autocomplete="off" novalidate>
+      <form id="link-form" class="dialog-card" role="dialog" aria-modal="true" aria-labelledby="link-dialog-title" autocomplete="off" novalidate>
         <h2 id="link-dialog-title">Insert link</h2>
         <label class="dialog-field">
           Text
@@ -1309,6 +1309,8 @@
         </div>
       </div>
     </div>
+
+    <div id="a11y-live-region" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
 
     <script src="js/app.js"></script>
   </body>

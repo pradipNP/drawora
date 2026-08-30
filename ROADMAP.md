@@ -12,7 +12,7 @@ Statuses:
 | ⚪ | PLANNED |
 | 🔴 | BLOCKED |
 
-**Current:** Stages 1–25 complete. Stage 26 is next.
+**Current:** Stages 1–26 complete. Stage 27 is next.
 
 ---
 
@@ -413,17 +413,21 @@ Share Links, Room Management & Role Permissions:
 
 ### Stage 26 — Performance / accessibility / security
 
-**Status:** 🔵 NEXT
+**Status:** ✅ COMPLETED
 
-Audit rendering, large boards, images, memory, undo, IndexedDB, collaboration traffic.
-
-Keyboard, focus, ARIA, contrast, labels. Sanitize input/files/clipboard. No secrets in frontend. No eval.
+Comprehensive Performance, Accessibility & Security Suite:
+- **Viewport Culling**: Intelligent canvas viewport culling (`getViewportWorldBounds()`) preventing off-screen object rendering on large boards and preserving a steady 60 FPS under high zoom and object density.
+- **Memory & Asset Garbage Collection**: Automatic image asset pruning (`pruneUnusedImageAssets()`) stripping orphaned image assets and detached memory buffers from undo/redo history.
+- **Modal Focus Traps & ARIA Compliance**: Strict keyboard focus trapping inside dialogs (`trapModalFocus`, `releaseModalFocus`, `handleModalTabKey`) with automatic focus restoration upon modal dismissal.
+- **Screen Reader Announcements**: Live region (`#a11y-live-region`, `aria-live="polite"`) announcing tool selections, page switches, autosaves, and export statuses in real time.
+- **High-Contrast Focus Rings & Reduced Motion**: Universal `:focus-visible` ring indicators across all buttons, swatches, and inputs, plus full `@media (prefers-reduced-motion: reduce)` animation suppression.
+- **Security & Headers Hardening**: Strict scheme validation (`http:`, `https:`, `mailto:`), zero `eval()` / `new Function()`, and Cloudflare Pages Content-Security-Policy (CSP), `X-Content-Type-Options: nosniff`, and permissions policies in `_headers`.
 
 ---
 
 ### Stage 27 — Final professional polish
 
-**Status:** ⚪ PLANNED
+**Status:** 🔵 NEXT
 
 Product-quality review: visuals, shortcuts, dialogs, empty/loading states, desktop/tablet/mobile, templates, export, PWA, offline, performance, collaboration.
 

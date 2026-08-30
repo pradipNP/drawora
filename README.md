@@ -113,4 +113,10 @@ Select an object to move, resize, or rotate it. Click empty canvas and drag to s
 - **PDF**: Multi-page or single-page PDF generation matching page dimensions and orientation.
 - **Project (.drawora / .json)**: Fully editable project format exporting all pages, layers, positions, and styles, with project re-import support.
 
+**Performance, Accessibility & Security**:
+- **Viewport Culling**: Renders only objects within the visible screen area (+ padding), keeping canvas rendering fast even on boards with thousands of elements.
+- **Memory Optimization**: Automated image asset garbage collection during edits and undo history management.
+- **Accessibility (a11y)**: Focus trapping in dialogs with Tab cycling and focus restoration, live region announcements (`aria-live="polite"`), high-contrast `:focus-visible` rings, and `prefers-reduced-motion` compliance.
+- **Security**: Content Security Policy (CSP), strict URL scheme sanitization (`http:`, `https:`, `mailto:`), zero `eval()` usage, and `X-Content-Type-Options: nosniff` headers.
+
 Use **Stroke** and **Fill** to set outline and fill colors. With an object selected, color and size changes apply to that object.
