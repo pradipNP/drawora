@@ -2021,10 +2021,12 @@ kbd {
 .collab-card {
   width: min(560px, 92vw);
   max-width: 560px;
+  max-height: min(88vh, calc(100dvh - 32px));
   display: flex;
   flex-direction: column;
   padding: 20px 22px;
   gap: 16px;
+  overflow: hidden;
 }
 
 .collab-head {
@@ -2032,6 +2034,7 @@ kbd {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+  flex-shrink: 0;
 }
 
 .collab-head-text {
@@ -2073,6 +2076,31 @@ kbd {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+  padding-right: 2px;
+}
+
+.collab-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.collab-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.collab-body::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 4px;
+}
+
+.collab-body::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-muted);
 }
 
 .collab-status-banner {
@@ -2363,6 +2391,7 @@ kbd {
   justify-content: space-between;
   padding-top: 10px;
   border-top: 1px solid var(--line);
+  flex-shrink: 0;
 }
 
 .collab-footer-right {
@@ -2571,7 +2600,11 @@ kbd {
   .dialog-card {
     padding: 16px;
     width: calc(100vw - 20px) !important;
-    max-height: 90vh;
+    max-height: min(90vh, calc(100dvh - 24px));
+  }
+
+  .collab-user-row {
+    flex-wrap: wrap;
   }
 
   .shortcuts-grid {

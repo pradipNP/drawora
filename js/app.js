@@ -6462,6 +6462,19 @@
     }
   }
 
+  function undo() {
+    if (state.editingId) {
+      finishEditing();
+    }
+
+    if (state.active || state.past.length === 0) {
+      return;
+    }
+
+    state.future.push(cloneBoard());
+    restoreBoard(state.past.pop());
+  }
+
   function redo() {
     if (state.editingId) {
       finishEditing();
