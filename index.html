@@ -63,10 +63,14 @@
           </div>
 
           <div class="menubar-right">
-            <button type="button" class="menubar-btn collab-presence" id="collab-presence-btn" title="Real-time collaboration (Click to manage room)">
+            <button type="button" class="menubar-btn collab-presence" id="collab-presence-btn" title="Real-time collaboration (Click to manage room &amp; permissions)">
               <span id="collab-status-dot" class="collab-status-dot" data-status="offline"></span>
               <span id="collab-label" class="collab-label">Live Sync</span>
               <div id="collab-avatars" class="collab-avatars" aria-label="Active participants"></div>
+            </button>
+            <button type="button" class="menubar-btn menubar-share-btn" id="share-btn" data-action="open-collab" title="Share board link and manage permissions">
+              <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><circle cx="18" cy="5" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="6" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="18" cy="19" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+              <span>Share</span>
             </button>
             <button type="button" class="menubar-btn menubar-install-btn" id="install-app-btn" title="Install Drawora App (offline &amp; standalone)" hidden>
               <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M12 3v11M7.5 9.5 12 14l4.5-4.5M4 17.5v2A1.5 1.5 0 0 0 5.5 21h13a1.5 1.5 0 0 0 1.5-1.5v-2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -975,6 +979,10 @@
       </header>
 
       <div class="workspace">
+        <div id="viewer-mode-banner" class="viewer-mode-banner" hidden>
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+          <span><strong>View-Only Mode:</strong> You are viewing this board live. Drawing and editing are disabled for viewers.</span>
+        </div>
         <main class="canvas-wrap">
           <canvas id="board" aria-label="Whiteboard canvas"></canvas>
           <textarea
@@ -1210,8 +1218,8 @@
       <div class="dialog-card collab-card" role="dialog" aria-modal="true" aria-labelledby="collab-dialog-title">
         <div class="collab-head">
           <div class="collab-head-text">
-            <h2 id="collab-dialog-title" class="collab-title">Real-Time Collaboration</h2>
-            <p class="collab-subtitle">Live sync, multi-user cursors, and instant board collaboration</p>
+            <h2 id="collab-dialog-title" class="collab-title">Share &amp; Collaboration Rooms</h2>
+            <p class="collab-subtitle">Live real-time sync, participant permissions (Owner / Editor / Viewer), and share links</p>
           </div>
           <button type="button" class="collab-close" data-action="close-collab" title="Close (Esc)" aria-label="Close">×</button>
         </div>
@@ -1227,14 +1235,47 @@
             <div class="collab-input-group">
               <input type="text" id="collab-room-input" class="collab-input" placeholder="e.g. math-class-101" maxlength="60" />
               <button type="button" class="dialog-btn" id="collab-random-btn" title="Generate random room code">New Code</button>
-              <button type="button" class="dialog-btn" id="collab-copy-link-btn" title="Copy shareable room link">Copy Link</button>
             </div>
           </div>
 
+          <!-- Share Links Box -->
+          <div class="collab-section collab-share-section" id="collab-share-section">
+            <label class="collab-label">Invite Links</label>
+            <div class="collab-links-grid">
+              <div class="collab-link-card">
+                <div class="collab-link-header">
+                  <span class="collab-role-badge is-editor">Editor Link</span>
+                  <span class="collab-link-desc">Can draw, add objects, and edit pages</span>
+                </div>
+                <div class="collab-link-input-wrap">
+                  <input type="text" id="collab-link-editor" class="collab-input collab-link-input" readonly aria-label="Editor invite link" />
+                  <button type="button" class="dialog-btn dialog-btn-primary" id="collab-copy-editor-btn" title="Copy Editor Link">Copy</button>
+                </div>
+              </div>
+
+              <div class="collab-link-card">
+                <div class="collab-link-header">
+                  <span class="collab-role-badge is-viewer">Viewer Link</span>
+                  <span class="collab-link-desc">View-only mode (Cannot modify board)</span>
+                </div>
+                <div class="collab-link-input-wrap">
+                  <input type="text" id="collab-link-viewer" class="collab-input collab-link-input" readonly aria-label="Viewer invite link" />
+                  <button type="button" class="dialog-btn" id="collab-copy-viewer-btn" title="Copy Viewer Link">Copy</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- User Profile & Initial Role -->
           <div class="collab-section">
-            <label class="collab-label" for="collab-user-name">Your Display Name</label>
+            <label class="collab-label" for="collab-user-name">Your Profile &amp; Role</label>
             <div class="collab-user-row">
               <input type="text" id="collab-user-name" class="collab-input" maxlength="32" placeholder="Your Name" value="Presenter" />
+              <select id="collab-self-role" class="collab-select" title="Your permission role">
+                <option value="owner">Owner (Host)</option>
+                <option value="editor" selected>Editor (Can edit)</option>
+                <option value="viewer">Viewer (Read-only)</option>
+              </select>
               <div class="collab-color-swatches" id="collab-color-swatches" role="radiogroup" aria-label="Your cursor color">
                 <button type="button" class="collab-swatch" data-color="#0f766e" style="background-color: #0f766e" aria-label="Teal" aria-checked="true"></button>
                 <button type="button" class="collab-swatch" data-color="#2563eb" style="background-color: #2563eb" aria-label="Blue" aria-checked="false"></button>
@@ -1247,9 +1288,10 @@
             </div>
           </div>
 
+          <!-- Participants and Roles List -->
           <div class="collab-section">
             <div class="collab-participants-head">
-              <label class="collab-label">Online Participants</label>
+              <label class="collab-label">Room Participants &amp; Permissions</label>
               <span id="collab-participants-count" class="collab-count-badge">1 active</span>
             </div>
             <ul id="collab-participants-list" class="collab-participants-list">

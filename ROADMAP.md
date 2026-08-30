@@ -12,7 +12,7 @@ Statuses:
 | ⚪ | PLANNED |
 | 🔴 | BLOCKED |
 
-**Current:** Stages 1–24 complete. Stage 25 is next.
+**Current:** Stages 1–25 complete. Stage 26 is next.
 
 ---
 
@@ -398,17 +398,22 @@ Real-Time Multi-User Collaboration & Synchronization:
 
 ### Stage 25 — Sharing / collaboration rooms
 
-**Status:** 🔵 NEXT
+**Status:** ✅ COMPLETED
 
-Share link, create/join room, participant list, permissions (viewer / editor / owner).
-
-Do not introduce accounts unless genuinely required.
+Share Links, Room Management & Role Permissions:
+- **Share Links Suite**: Dedicated Editor invite link (`?room=XYZ&role=editor`) and Viewer invite link (`?room=XYZ&role=viewer`) with one-click copy buttons.
+- **Role Hierarchy (Owner / Editor / Viewer)**:
+  - **Owner (Host)**: Full board authority with ability to promote, demote, or kick participants in real time.
+  - **Editor**: Full drawing, object creation, transform, page management, and collaborative editing capabilities.
+  - **Viewer**: Read-only observation mode with interactive panning, zooming, measuring, laser-pointer highlights, and instant presenter tracking.
+- **Viewer-Mode Protection & Banner**: Top indicator banner when in Viewer mode with strict drawing, mutation, and shortcut disabling.
+- **Real-Time Role Synchronization**: Live role broadcasts (`role-update`, `role-announce`, `kick-user`) propagating permissions immediately across all connected clients without requiring account login or cloud lock-in.
 
 ---
 
 ### Stage 26 — Performance / accessibility / security
 
-**Status:** ⚪ PLANNED
+**Status:** 🔵 NEXT
 
 Audit rendering, large boards, images, memory, undo, IndexedDB, collaboration traffic.
 

@@ -179,6 +179,7 @@
     presenterIdleTimer: null,
     collabRoomId: null,
     collabStatus: "offline",
+    collabRole: "owner",
     collabClientId: null,
     collabUserName: "Presenter",
     collabUserColor: "#0f766e",
@@ -319,6 +320,13 @@
   const collabDialogStatusDot = document.getElementById("collab-dialog-status-dot");
   const collabDialogStatusText = document.getElementById("collab-dialog-status-text");
   const collabStatusBanner = document.getElementById("collab-status-banner");
+  const shareBtn = document.getElementById("share-btn");
+  const viewerModeBanner = document.getElementById("viewer-mode-banner");
+  const collabLinkEditor = document.getElementById("collab-link-editor");
+  const collabLinkViewer = document.getElementById("collab-link-viewer");
+  const collabCopyEditorBtn = document.getElementById("collab-copy-editor-btn");
+  const collabCopyViewerBtn = document.getElementById("collab-copy-viewer-btn");
+  const collabSelfRole = document.getElementById("collab-self-role");
 
   if (
     !canvas ||
@@ -448,7 +456,14 @@
     !collabParticipantsCount ||
     !collabDialogStatusDot ||
     !collabDialogStatusText ||
-    !collabStatusBanner
+    !collabStatusBanner ||
+    !shareBtn ||
+    !viewerModeBanner ||
+    !collabLinkEditor ||
+    !collabLinkViewer ||
+    !collabCopyEditorBtn ||
+    !collabCopyViewerBtn ||
+    !collabSelfRole
   ) {
     console.error("Drawora: missing canvas or toolbar controls.");
     return;
@@ -4848,7 +4863,58 @@
   // --- REAL-TIME COLLABORATION MODULE ---
   const COLLAB_LS_NAME_KEY = "drawora_collab_username";
   const COLLAB_LS_COLOR_KEY = "drawora_collab_usercolor";
+  const COLLAB_LS_ROLE_KEY = "drawora_collab_userrole";
   const COLLAB_COLORS = ["#0f766e", "#2563eb", "#7c3aed", "#dc2626", "#d97706", "#059669", "#db2777"];
+
+  function isViewer() {
+    return state.collabStatus === "connected" && state.collabRole === "viewer";
+  }
+
+  function isCollabOwner() {
+    return state.collabRole === "owner";
+  }
+
+  function setCollabRole(role, notify = true) {
+    const valid = ["owner", "editor", "viewer"].includes(role) ? role : "editor";
+    state.collabRole = valid;
+    try {
+      localStorage.setItem(COLLAB_LS_ROLE_KEY, valid);
+    } catch {}
+
+    if (collabSelfRole) {
+      collabSelfRole.value = valid;
+    }
+
+    const appEl = document.querySelector(".app");
+    if (valid === "viewer") {
+      if (appEl) appEl.classList.add("is-viewer-mode");
+      if (viewerModeBanner) viewerModeBanner.hidden = false;
+      deselectAll();
+      cancelActive();
+      if (state.tool !== "pan" && state.tool !== "laser") {
+        setTool("pan");
+      }
+    } else {
+      if (appEl) appEl.classList.remove("is-viewer-mode");
+      if (viewerModeBanner) viewerModeBanner.hidden = true;
+    }
+
+    syncCollabUI();
+
+    if (notify && state.collabRoomId) {
+      collabSend({ type: "role-announce", role: valid });
+    }
+  }
+
+  function getCollabShareUrls(roomId) {
+    const clean = (roomId || state.collabRoomId || "default").trim();
+    const loc = window.location;
+    const base = `${loc.protocol}//${loc.host}${loc.pathname}`;
+    return {
+      editor: `${base}?room=${encodeURIComponent(clean)}&role=editor`,
+      viewer: `${base}?room=${encodeURIComponent(clean)}&role=viewer`,
+    };
+  }
 
   function initCollabProfile() {
     if (!state.collabClientId) {
@@ -4859,8 +4925,11 @@
       if (savedName) state.collabUserName = savedName;
       const savedColor = localStorage.getItem(COLLAB_LS_COLOR_KEY);
       if (savedColor && COLLAB_COLORS.includes(savedColor)) state.collabUserColor = savedColor;
+      const savedRole = localStorage.getItem(COLLAB_LS_ROLE_KEY);
+      if (savedRole && ["owner", "editor", "viewer"].includes(savedRole)) state.collabRole = savedRole;
     } catch {}
     if (collabUserName) collabUserName.value = state.collabUserName;
+    if (collabSelfRole) collabSelfRole.value = state.collabRole;
     syncCollabColorUI();
   }
 
@@ -4879,13 +4948,20 @@
     collabStatusDot.dataset.status = state.collabStatus;
     collabDialogStatusDot.dataset.status = state.collabStatus;
 
+    const currentRoom = state.collabRoomId || (collabRoomInput ? collabRoomInput.value : "") || "room-1";
+    const shareUrls = getCollabShareUrls(currentRoom);
+    if (collabLinkEditor) collabLinkEditor.value = shareUrls.editor;
+    if (collabLinkViewer) collabLinkViewer.value = shareUrls.viewer;
+    if (collabSelfRole) collabSelfRole.value = state.collabRole;
+
     if (isConnected) {
-      collabLabel.textContent = state.collabRoomId;
-      collabDialogStatusText.textContent = `Connected to room "${state.collabRoomId}"`;
+      const roleLabel = state.collabRole === "owner" ? "Host" : state.collabRole === "viewer" ? "Viewer" : "Editor";
+      collabLabel.textContent = `${state.collabRoomId} (${roleLabel})`;
+      collabDialogStatusText.textContent = `Connected to "${state.collabRoomId}" as ${roleLabel}`;
       collabStatusBanner.className = "collab-status-banner is-connected";
       collabConnectBtn.hidden = true;
       collabDisconnectBtn.hidden = false;
-      collabPresenceBtn.title = `Connected to room "${state.collabRoomId}" · Click to manage`;
+      collabPresenceBtn.title = `Connected to room "${state.collabRoomId}" (${roleLabel}) · Click to manage`;
     } else if (isConnecting) {
       collabLabel.textContent = "Connecting...";
       collabDialogStatusText.textContent = `Connecting to room "${state.collabRoomId || ""}"...`;
@@ -4901,7 +4977,7 @@
       collabConnectBtn.hidden = false;
       collabConnectBtn.disabled = false;
       collabDisconnectBtn.hidden = true;
-      collabPresenceBtn.title = "Real-time collaboration (Offline) · Click to join room";
+      collabPresenceBtn.title = "Real-time collaboration & share (Offline) · Click to join room";
     }
 
     // Render Avatars in Navbar & Participants in Dialog
@@ -4913,6 +4989,7 @@
         id: state.collabClientId,
         name: state.collabUserName || "You",
         color: state.collabUserColor || "#0f766e",
+        role: state.collabRole || "editor",
         isSelf: true,
       },
     ];
@@ -4924,6 +5001,7 @@
             id: peerId,
             name: peer.name,
             color: peer.color || "#2563eb",
+            role: peer.role || "editor",
             isSelf: false,
           });
         }
@@ -4938,7 +5016,8 @@
       chip.className = "collab-avatar-chip";
       chip.style.backgroundColor = p.color;
       chip.textContent = (p.name || "U").charAt(0).toUpperCase();
-      chip.title = `${p.name}${p.isSelf ? " (You)" : ""}`;
+      const pRoleStr = p.role === "owner" ? "Host" : p.role === "viewer" ? "Viewer" : "Editor";
+      chip.title = `${p.name}${p.isSelf ? " (You)" : ""} · ${pRoleStr}`;
       collabAvatars.append(chip);
 
       // Dialog participant row
@@ -4959,6 +5038,51 @@
         youBadge.className = "collab-participant-you";
         youBadge.textContent = "You";
         row.append(youBadge);
+
+        const selfBadge = document.createElement("span");
+        selfBadge.className = `collab-role-badge is-${state.collabRole}`;
+        selfBadge.textContent = state.collabRole.charAt(0).toUpperCase() + state.collabRole.slice(1);
+        row.append(selfBadge);
+      } else {
+        if (isCollabOwner()) {
+          const roleSelect = document.createElement("select");
+          roleSelect.className = "collab-role-select";
+          roleSelect.dataset.peerId = p.id;
+          roleSelect.innerHTML = `<option value="editor"${p.role === "editor" ? " selected" : ""}>Editor</option><option value="viewer"${p.role === "viewer" ? " selected" : ""}>Viewer</option>`;
+          roleSelect.addEventListener("change", (e) => {
+            const newRole = e.target.value;
+            p.role = newRole;
+            collabSend({
+              type: "role-update",
+              targetId: p.id,
+              role: newRole,
+            });
+            syncCollabUI();
+          });
+
+          const kickBtn = document.createElement("button");
+          kickBtn.type = "button";
+          kickBtn.className = "collab-kick-btn";
+          kickBtn.dataset.peerId = p.id;
+          kickBtn.title = `Remove ${p.name} from room`;
+          kickBtn.textContent = "×";
+          kickBtn.addEventListener("click", () => {
+            collabSend({
+              type: "kick-user",
+              targetId: p.id,
+            });
+            state.collabPeers.delete(p.id);
+            syncCollabUI();
+            requestAnimationFrame(redraw);
+          });
+          row.append(roleSelect, kickBtn);
+        } else {
+          const roleBadge = document.createElement("span");
+          const pRole = p.role || "editor";
+          roleBadge.className = `collab-role-badge is-${pRole}`;
+          roleBadge.textContent = pRole.charAt(0).toUpperCase() + pRole.slice(1);
+          row.append(roleBadge);
+        }
       }
       collabParticipantsList.append(row);
     }
@@ -4987,6 +5111,7 @@
       senderId: state.collabClientId,
       senderName: state.collabUserName,
       senderColor: state.collabUserColor,
+      senderRole: state.collabRole,
       timestamp: Date.now(),
     };
     const json = JSON.stringify(msg);
@@ -5027,7 +5152,7 @@
   }
 
   function collabBroadcastCurrentPageObjects() {
-    if (!state.collabRoomId || state.collabSyncInProgress) return;
+    if (!state.collabRoomId || state.collabSyncInProgress || isViewer()) return;
     collabSend({
       type: "object-upsert",
       pageId: state.currentPageId,
@@ -5036,7 +5161,7 @@
   }
 
   function collabBroadcastDelete(deletedIds) {
-    if (!state.collabRoomId || state.collabSyncInProgress || !deletedIds.length) return;
+    if (!state.collabRoomId || state.collabSyncInProgress || isViewer() || !deletedIds.length) return;
     collabSend({
       type: "object-delete",
       pageId: state.currentPageId,
@@ -5045,7 +5170,7 @@
   }
 
   function collabBroadcastPages() {
-    if (!state.collabRoomId || state.collabSyncInProgress) return;
+    if (!state.collabRoomId || state.collabSyncInProgress || isViewer()) return;
     collabSend({
       type: "page-sync",
       pages: snapshotPages(),
@@ -5057,10 +5182,13 @@
     if (!msg || msg.senderId === state.collabClientId) return;
 
     if (msg.type === "cursor") {
+      const existing = state.collabPeers.get(msg.senderId) || {};
       state.collabPeers.set(msg.senderId, {
+        ...existing,
         id: msg.senderId,
         name: msg.senderName || "Collaborator",
         color: msg.senderColor || "#2563eb",
+        role: existing.role || msg.senderRole || "editor",
         cursor: {
           x: msg.x,
           y: msg.y,
@@ -5079,6 +5207,7 @@
         id: msg.senderId,
         name: msg.senderName || "Collaborator",
         color: msg.senderColor || "#2563eb",
+        role: msg.role || msg.senderRole || "editor",
         cursor: null,
       });
       syncCollabUI();
@@ -5087,6 +5216,7 @@
       collabSend({
         type: "presence-ack",
         recipientId: msg.senderId,
+        role: state.collabRole,
       });
 
       // Also share current board snapshot if we have active content
@@ -5105,6 +5235,7 @@
         id: msg.senderId,
         name: msg.senderName || "Collaborator",
         color: msg.senderColor || "#2563eb",
+        role: msg.role || msg.senderRole || "editor",
         cursor: null,
       });
       syncCollabUI();
@@ -5115,6 +5246,40 @@
       state.collabPeers.delete(msg.senderId);
       syncCollabUI();
       requestAnimationFrame(redraw);
+      return;
+    }
+
+    if (msg.type === "role-announce") {
+      const peer = state.collabPeers.get(msg.senderId);
+      if (peer) {
+        peer.role = msg.role;
+        syncCollabUI();
+      }
+      return;
+    }
+
+    if (msg.type === "role-update") {
+      if (msg.targetId === state.collabClientId) {
+        setCollabRole(msg.role, false);
+      } else {
+        const peer = state.collabPeers.get(msg.targetId);
+        if (peer) {
+          peer.role = msg.role;
+          syncCollabUI();
+        }
+      }
+      return;
+    }
+
+    if (msg.type === "kick-user") {
+      if (msg.targetId === state.collabClientId) {
+        collabDisconnect();
+        window.alert("You have been removed from the collaboration room by the host.");
+      } else {
+        state.collabPeers.delete(msg.targetId);
+        syncCollabUI();
+        requestAnimationFrame(redraw);
+      }
       return;
     }
 
@@ -5280,8 +5445,12 @@
     ctx.restore();
   }
 
-  function collabConnect(roomId) {
+  function collabConnect(roomId, forcedRole) {
     const cleanRoom = (roomId || "").trim().toLowerCase().replace(/[^\w-]/g, "") || "room-default";
+    if (forcedRole && ["owner", "editor", "viewer"].includes(forcedRole)) {
+      setCollabRole(forcedRole, false);
+    }
+
     if (state.collabRoomId === cleanRoom && state.collabStatus === "connected") {
       closeCollabDialog();
       return;
@@ -5316,7 +5485,7 @@
         ws.onopen = () => {
           state.collabStatus = "connected";
           syncCollabUI();
-          collabSend({ type: "presence-join" });
+          collabSend({ type: "presence-join", role: state.collabRole });
           collabSend({ type: "board-sync-request" });
         };
 
@@ -5348,7 +5517,7 @@
         // file:// or non-http environment
         state.collabStatus = "connected";
         syncCollabUI();
-        collabSend({ type: "presence-join" });
+        collabSend({ type: "presence-join", role: state.collabRole });
       }
     } catch (err) {
       console.warn("Drawora Collab WS initiation note:", err);
@@ -5378,6 +5547,7 @@
     state.collabRoomId = null;
     state.collabStatus = "offline";
     state.collabPeers.clear();
+    setCollabRole("owner", false);
     syncCollabUI();
     requestAnimationFrame(redraw);
   }
@@ -9690,6 +9860,10 @@
       return;
     }
 
+    if (isViewer() && state.tool !== "laser" && state.tool !== "measure" && state.tool !== "protractor") {
+      return;
+    }
+
     const rulerAxis = hitRulerEdge(screen);
     if (rulerAxis) {
       startGuideDrag(event.pointerId, rulerAxis, rulerAxis === "x" ? point.x : point.y, -1);
@@ -10163,6 +10337,35 @@
   }
 
   function onToolbarClick(event) {
+    if (isViewer()) {
+      const allowedViewerActions = [
+        "zoom-in", "zoom-out", "zoom-reset", "zoom-fit", "zoom-selection",
+        "fullscreen", "presentation-start", "presentation-stop", "link-open",
+        "open-projects", "open-collab", "export-dialog"
+      ];
+      const toolButton = event.target.closest("[data-tool]");
+      if (toolButton && toolbar.contains(toolButton)) {
+        const t = toolButton.dataset.tool;
+        if (t === "pan" || t === "laser" || t === "measure" || t === "protractor") {
+          setTool(t);
+        }
+        return;
+      }
+      const actionBtn = event.target.closest("[data-action]");
+      if (actionBtn && toolbar.contains(actionBtn)) {
+        const act = actionBtn.dataset.action;
+        if (!allowedViewerActions.includes(act) && !act.startsWith("help-")) {
+          return;
+        }
+      } else {
+        const more = event.target.closest(".ribbon-more");
+        if (more && toolbar.contains(more)) {
+          toggleRibbonMenu(more);
+        }
+        return;
+      }
+    }
+
     const more = event.target.closest(".ribbon-more");
     if (more && toolbar.contains(more)) {
       toggleRibbonMenu(more);
@@ -10526,6 +10729,53 @@
     }
 
     const ctrl = event.ctrlKey || event.metaKey;
+
+    if (isViewer()) {
+      if (ctrl) {
+        const allowedCtrl =
+          event.key === "=" ||
+          event.key === "+" ||
+          event.key === "-" ||
+          event.key === "0" ||
+          event.key.toLowerCase() === "o" ||
+          event.key.toLowerCase() === "e";
+        if (!allowedCtrl) {
+          event.preventDefault();
+          return;
+        }
+      }
+      if (event.key === "Delete" || event.key === "Backspace") {
+        event.preventDefault();
+        return;
+      }
+      const keyLower = event.key.toLowerCase();
+      if (keyLower === "h") {
+        setTool("pan");
+        return;
+      }
+      if (keyLower === "r") {
+        setTool("laser");
+        return;
+      }
+      if (keyLower === "m") {
+        setTool("measure");
+        return;
+      }
+      if (
+        keyLower === "v" ||
+        keyLower === "p" ||
+        keyLower === "b" ||
+        keyLower === "e" ||
+        keyLower === "t" ||
+        keyLower === "n" ||
+        keyLower === "l" ||
+        keyLower === "f" ||
+        keyLower === "i"
+      ) {
+        event.preventDefault();
+        return;
+      }
+    }
 
     if (event.key === "Escape") {
       event.preventDefault();
@@ -11506,6 +11756,8 @@
   }
 
   collabPresenceBtn.addEventListener("click", openCollabDialog);
+  shareBtn.addEventListener("click", openCollabDialog);
+
   collabDialog.addEventListener("click", (event) => {
     if (event.target === collabDialog || event.target.closest('[data-action="close-collab"]')) {
       closeCollabDialog();
@@ -11514,25 +11766,43 @@
 
   collabRandomBtn.addEventListener("click", () => {
     collabRoomInput.value = "room-" + Math.random().toString(36).substring(2, 7);
+    syncCollabUI();
   });
 
-  collabCopyLinkBtn.addEventListener("click", async () => {
-    const roomId = (collabRoomInput.value || state.collabRoomId || "default").trim();
-    const url = new URL(window.location.href);
-    url.searchParams.set("room", roomId);
+  collabRoomInput.addEventListener("input", syncCollabUI);
+
+  collabCopyEditorBtn.addEventListener("click", async () => {
+    const urls = getCollabShareUrls(collabRoomInput.value || state.collabRoomId);
     try {
-      await navigator.clipboard.writeText(url.toString());
-      collabCopyLinkBtn.textContent = "Copied!";
+      await navigator.clipboard.writeText(urls.editor);
+      collabCopyEditorBtn.textContent = "Copied!";
       setTimeout(() => {
-        collabCopyLinkBtn.textContent = "Copy Link";
+        collabCopyEditorBtn.textContent = "Copy";
       }, 2000);
     } catch {
-      window.prompt("Shareable Room URL:", url.toString());
+      window.prompt("Editor Invite Link:", urls.editor);
     }
   });
 
+  collabCopyViewerBtn.addEventListener("click", async () => {
+    const urls = getCollabShareUrls(collabRoomInput.value || state.collabRoomId);
+    try {
+      await navigator.clipboard.writeText(urls.viewer);
+      collabCopyViewerBtn.textContent = "Copied!";
+      setTimeout(() => {
+        collabCopyViewerBtn.textContent = "Copy";
+      }, 2000);
+    } catch {
+      window.prompt("Viewer Invite Link:", urls.viewer);
+    }
+  });
+
+  collabSelfRole.addEventListener("change", (event) => {
+    setCollabRole(event.target.value, true);
+  });
+
   collabConnectBtn.addEventListener("click", () => {
-    collabConnect(collabRoomInput.value);
+    collabConnect(collabRoomInput.value, collabSelfRole.value);
   });
 
   collabDisconnectBtn.addEventListener("click", () => {
@@ -11546,7 +11816,7 @@
       localStorage.setItem(COLLAB_LS_NAME_KEY, val);
     } catch {}
     syncCollabUI();
-    collabSend({ type: "presence-join" });
+    collabSend({ type: "presence-join", role: state.collabRole });
   });
 
   if (collabColorSwatches) {
@@ -11559,7 +11829,7 @@
         } catch {}
         syncCollabColorUI();
         syncCollabUI();
-        collabSend({ type: "presence-join" });
+        collabSend({ type: "presence-join", role: state.collabRole });
       }
     });
   }
@@ -11568,8 +11838,12 @@
     try {
       const urlParams = new URLSearchParams(window.location.search);
       const urlRoom = urlParams.get("room");
+      const urlRole = urlParams.get("role");
+      if (urlRole && ["owner", "editor", "viewer"].includes(urlRole)) {
+        setCollabRole(urlRole, false);
+      }
       if (urlRoom) {
-        collabConnect(urlRoom);
+        collabConnect(urlRoom, urlRole || state.collabRole);
       }
     } catch {}
   }
