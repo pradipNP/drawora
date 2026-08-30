@@ -1,0 +1,96 @@
+name: Bug report
+description: Report something that is broken or not working as expected
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve Drawora. Please fill in as much detail as you can.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the bug clearly.
+      placeholder: e.g. Undo button does nothing after drawing with the pen tool.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+      placeholder: e.g. The last stroke should be removed when I click Undo.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: List the steps so we can reproduce the issue.
+      placeholder: |
+        1. Open Drawora in Chrome
+        2. Select Pen tool
+        3. Draw a line
+        4. Click Undo
+    validations:
+      required: true
+
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Browser
+      options:
+        - Chrome / Chromium
+        - Microsoft Edge
+        - Firefox
+        - Safari
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: browser-version
+    attributes:
+      label: Browser version
+      placeholder: e.g. 128.0.6613.120
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - Android
+        - iOS
+        - Other
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: context
+    attributes:
+      label: Context
+      options:
+        - label: I was using Presentation mode (F5)
+        - label: I was in a live collaboration / share room
+        - label: I was in Viewer (read-only) mode
+        - label: I was offline or using the installed PWA
+        - label: I imported a file or project (.drawora / .json)
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots or recordings
+      description: Drag and drop images or paste links here.
+      placeholder: Optional but very helpful for UI issues.
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      placeholder: Console errors, workarounds, or related issues.

@@ -1,14 +1,117 @@
 # Drawora
 
-A free, open-source, browser-based collaborative whiteboard.
+**A free, open-source digital whiteboard for teaching, notes, drawing, and real-time collaboration.**
 
-License: [MIT](LICENSE). Development plan: see [ROADMAP.md](ROADMAP.md).
+Drawora runs entirely in your browser — no account required, no install required (unless you want the PWA). Draw, present, export, and collaborate live with Owner / Editor / Viewer roles. Works offline and deploys to Cloudflare Pages with zero build step.
 
-## Usage
+[![License: MIT](https://img.shields.io/badge/License-MIT-teal.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](ROADMAP.md)
+
+## Features
+
+- **Drawing & objects** — Pen, brush, marker, highlighter, spray, shapes, text, sticky notes, images, tables, links, and file import
+- **Pages & templates** — Multi-page boards, A4/Letter/custom sizes, teacher/student templates (grid, ruled, graph, dark board, and more)
+- **Presentation mode** — Full-screen teaching with laser pointer, pen, eraser, black/white screen curtains, and page navigation (`F5`)
+- **Projects** — Local boards saved in IndexedDB with autosave, thumbnails, search, import/export (`.drawora`)
+- **Export** — PNG, JPG, SVG, PDF, and editable project JSON
+- **Real-time collaboration** — Share links, live cursors, role permissions (Owner / Editor / Viewer), WebSocket rooms on Cloudflare Pages
+- **Offline PWA** — Installable app with Service Worker caching; works without internet after first load
+- **Accessible & secure** — Keyboard shortcuts, focus traps, ARIA live regions, CSP headers, viewport culling for performance
+
+## Where you can use Drawora
+
+Drawora is built for anyone who needs a free, flexible canvas — in the classroom, at home, or on camera.
+
+### Education & teaching
+- **Online teaching** — Live classes on Zoom, Google Meet, Teams, or Discord with screen share and presentation mode
+- **Classroom whiteboard** — In-person lessons on a projector, smart board, or laptop
+- **Tutoring & coaching** — One-on-one sessions with step-by-step explanations
+- **Homework help** — Work through math, science, or language problems visually
+- **Student collaboration** — Group projects with shared Editor or Viewer room links
+
+### Content creation
+- **YouTube videos** — Record your screen while drawing diagrams, tutorials, and walkthroughs
+- **Educational content** — Explain concepts with shapes, arrows, text, and images
+- **Course materials** — Build lesson slides and export as PNG, PDF, or SVG
+- **Thumbnails & visuals** — Sketch ideas, layouts, and annotations for social posts
+- **Podcast / livestream visuals** — Use spotlight, laser pointer, and black/white screen during streams
+
+### Personal productivity
+- **Self-study** — Take visual notes, mind maps, and revision sheets
+- **Self-notes** — Quick sketches, to-do boards, and idea dumps without signing up
+- **Self-presentation** — Practice talks, pitch decks, and demos in full-screen mode
+- **Brainstorming** — Sticky notes, diagrams, and freeform drawing for planning
+- **Journaling & planning** — Ruled, grid, and dotted page templates for daily notes
+
+### Work & teams
+- **Meetings & workshops** — Whiteboard for standups, retros, and design discussions
+- **Remote collaboration** — Real-time co-editing with Owner / Editor / Viewer roles
+- **Documentation** — Annotate screenshots, flowcharts, and wireframes
+- **Training & onboarding** — Walk new team members through processes visually
+
+### Study & exam prep
+- **Math & science** — Graph paper, geometry, formulas, measure tool, and protractor
+- **Programming** — Explain algorithms, data structures, and system design
+- **Language learning** — Vocabulary lists, grammar notes, and practice exercises
+- **Revision boards** — Multi-page boards for subjects, chapters, or exam topics
+
+No account, subscription, or install is required — open Drawora and start drawing.
+
+## Quick start
+
+```bash
+git clone https://github.com/pradipNP/drawora.git
+cd drawora
+npx serve .
+```
+
+Open the URL in your browser (usually `http://localhost:3000`), or simply open `index.html` directly.
+
+**Deploy to Cloudflare Pages:**
+
+```bash
+npx wrangler pages deploy .
+```
+
+## Documentation
+
+| Resource | Description |
+| -------- | ----------- |
+| [ROADMAP.md](ROADMAP.md) | Full development plan (27 stages — all complete for v1.0.0) |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | How to report bugs, request features, and submit PRs |
+| [LICENSE](LICENSE) | MIT License |
+
+Press **`F1`** or **`Ctrl+/`** in the app for the built-in shortcuts and help guide.
+
+## Contributing & issues
+
+Drawora is open source and community-driven.
+
+- **Bug?** → [Open a bug report](../../issues/new?template=bug_report.yml)
+- **Feature idea?** → [Open a feature request](../../issues/new?template=feature_request.yml)
+- **Want to code?** → Read [CONTRIBUTING.md](CONTRIBUTING.md) and open a pull request
+
+Please search [existing issues](../../issues) before creating a new one.
+
+## Tech stack
+
+- Vanilla HTML, CSS, and JavaScript (no framework, no build step)
+- Canvas API for rendering
+- IndexedDB for local project storage
+- Service Worker + Web App Manifest for PWA
+- Cloudflare Pages Functions for WebSocket collaboration rooms
+
+## License
+
+MIT © Drawora contributors. See [LICENSE](LICENSE).
+
+---
+
+## User guide
 
 Open `index.html` in a modern browser.
 
-The top bar is a ribbon. **Home** has the everyday tools. **Draw**, **Insert**, **View**, **Page**, **Export**, and **Help** group related actions. Scroll the tool strip sideways (or use the bar under it) to reach every group. Color, size, undo, redo, and delete stay on the right of every tab. Items marked coming soon are visible for later stages and do not do anything yet.
+The top bar is a ribbon. **Home** has the everyday tools. **Draw**, **Insert**, **View**, **Page**, **Export**, and **Help** group related actions. Scroll the tool strip sideways (or use the bar under it) to reach every group. Color, size, undo, redo, and delete stay on the right of every tab.
 
 **Insert** places a default object at the center of the view (text, sticky, shapes, image, diagram, page, link, table, or file), then selects it. **Home** and **Draw** still draw by dragging. Double-click a link to edit it; Ctrl+click or **Open** visits http, https, and mailto addresses. **Insert → Diagram** adds a grouped Start → Process → End flow.
 
@@ -95,7 +198,7 @@ Select an object to move, resize, or rotate it. Click empty canvas and drag to s
 
 **Deployment (Cloudflare Pages)**:
 - Ready for immediate Cloudflare Pages deployment via `npx wrangler pages deploy .` or Git integration.
-- Includes `_headers` for asset caching & security headers, plus edge functions (`/api/health`).
+- Includes `_headers` for asset caching & security headers, plus edge functions (`/api/health`, `/api/room`).
 - Zero build step required — works as a pure static web app or edge-hosted service.
 
 **Real-Time Collaboration & Sharing Rooms**:

@@ -1,7 +1,15 @@
 {
   "name": "drawora",
   "version": "1.0.0",
-  "description": "Free, open-source digital whiteboard and canvas for notes, drawing, and teaching",
+  "description": "Free, open-source browser whiteboard for teaching, notes, drawing, and real-time collaboration. Offline PWA with export, presentation mode, and Cloudflare Pages support.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pradipNP/drawora.git"
+  },
+  "bugs": {
+    "url": "https://github.com/pradipNP/drawora/issues"
+  },
+  "homepage": "https://github.com/pradipNP/drawora#readme",
   "main": "js/app.js",
   "scripts": {
     "start": "npx serve .",
@@ -10,12 +18,19 @@
   },
   "keywords": [
     "whiteboard",
+    "digital-whiteboard",
     "canvas",
     "drawing",
-    "pwa",
-    "notes",
+    "collaboration",
     "teaching",
-    "cloudflare-pages"
+    "education",
+    "presentation",
+    "pwa",
+    "offline-first",
+    "notes",
+    "open-source",
+    "cloudflare-pages",
+    "vanilla-js"
   ],
   "author": "Drawora",
   "license": "MIT",
