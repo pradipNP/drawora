@@ -858,6 +858,19 @@
             </div>
 
             <div class="ribbon-panel ribbon-panel-help" role="tabpanel" id="panel-help" data-ribbon="help" aria-labelledby="tab-help" hidden>
+              <div class="ribbon-group">
+                <div class="ribbon-group-tools">
+                  <button type="button" class="ribbon-btn ribbon-btn-wide" id="help-shortcuts-btn" data-action="open-shortcuts" title="Keyboard Shortcuts &amp; Guide (F1)">
+                    <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M7 15h10M7 9h2M11 9h2M15 9h2M7 12h2M11 12h2M15 12h2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                    Shortcuts (F1)
+                  </button>
+                  <button type="button" class="ribbon-btn ribbon-btn-wide" id="help-about-btn" data-action="open-about" title="About Drawora &amp; Version">
+                    <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 8v.01M12 11v5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    About
+                  </button>
+                </div>
+                <span class="ribbon-group-label">Help</span>
+              </div>
               <div class="shortcut-list" aria-label="Keyboard shortcuts">
                 <span><kbd>V</kbd> Select</span>
                 <span><kbd>P</kbd> Pen</span>
@@ -1306,6 +1319,111 @@
             <button type="button" class="dialog-btn" data-action="close-collab">Close</button>
             <button type="button" class="dialog-btn dialog-btn-primary" id="collab-connect-btn">Connect Room</button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="shortcuts-dialog" class="dialog" hidden>
+      <div class="dialog-card shortcuts-card" role="dialog" aria-modal="true" aria-labelledby="shortcuts-dialog-title">
+        <div class="shortcuts-head">
+          <div class="shortcuts-head-text">
+            <h2 id="shortcuts-dialog-title" class="shortcuts-title">Help &amp; Shortcuts Guide</h2>
+            <p class="shortcuts-subtitle">Keyboard shortcuts, presenter controls, and whiteboard reference</p>
+          </div>
+          <button type="button" class="shortcuts-close" data-action="close-shortcuts" title="Close (Esc)" aria-label="Close">×</button>
+        </div>
+
+        <div class="shortcuts-tabs" role="tablist">
+          <button type="button" class="shortcuts-tab-btn is-active" data-tab="keys">Keyboard Shortcuts</button>
+          <button type="button" class="shortcuts-tab-btn" data-tab="guide">Teaching &amp; Presenting</button>
+          <button type="button" class="shortcuts-tab-btn" data-tab="about">About Drawora</button>
+        </div>
+
+        <div class="shortcuts-body">
+          <div id="shortcuts-panel-keys" class="shortcuts-tab-panel">
+            <div class="shortcuts-grid">
+              <div class="shortcuts-section">
+                <h3>Tools &amp; Drawing</h3>
+                <div class="shortcut-row"><span>Select</span><kbd>V</kbd></div>
+                <div class="shortcut-row"><span>Pan canvas</span><kbd>H</kbd> / <kbd>Space</kbd></div>
+                <div class="shortcut-row"><span>Pen tool</span><kbd>P</kbd></div>
+                <div class="shortcut-row"><span>Brush tool</span><kbd>B</kbd></div>
+                <div class="shortcut-row"><span>Eraser</span><kbd>E</kbd></div>
+                <div class="shortcut-row"><span>Text box</span><kbd>T</kbd></div>
+                <div class="shortcut-row"><span>Sticky note</span><kbd>N</kbd></div>
+                <div class="shortcut-row"><span>Fill paint</span><kbd>F</kbd></div>
+                <div class="shortcut-row"><span>Eyedropper</span><kbd>I</kbd></div>
+                <div class="shortcut-row"><span>Lasso select</span><kbd>L</kbd></div>
+                <div class="shortcut-row"><span>Laser pointer</span><kbd>R</kbd></div>
+                <div class="shortcut-row"><span>Measure distance</span><kbd>M</kbd></div>
+              </div>
+
+              <div class="shortcuts-section">
+                <h3>Editing &amp; Clipboard</h3>
+                <div class="shortcut-row"><span>Undo</span><kbd>Ctrl+Z</kbd></div>
+                <div class="shortcut-row"><span>Redo</span><kbd>Ctrl+Y</kbd> / <kbd>Ctrl+Shift+Z</kbd></div>
+                <div class="shortcut-row"><span>Select all</span><kbd>Ctrl+A</kbd></div>
+                <div class="shortcut-row"><span>Cut</span><kbd>Ctrl+X</kbd></div>
+                <div class="shortcut-row"><span>Copy</span><kbd>Ctrl+C</kbd></div>
+                <div class="shortcut-row"><span>Paste</span><kbd>Ctrl+V</kbd></div>
+                <div class="shortcut-row"><span>Duplicate</span><kbd>Ctrl+D</kbd></div>
+                <div class="shortcut-row"><span>Group objects</span><kbd>Ctrl+G</kbd></div>
+                <div class="shortcut-row"><span>Ungroup</span><kbd>Ctrl+Shift+G</kbd></div>
+                <div class="shortcut-row"><span>Lock / Unlock</span><kbd>Ctrl+L</kbd></div>
+                <div class="shortcut-row"><span>Delete selection</span><kbd>Del</kbd> / <kbd>Backspace</kbd></div>
+              </div>
+
+              <div class="shortcuts-section">
+                <h3>View, Presentation &amp; Pages</h3>
+                <div class="shortcut-row"><span>Present mode</span><kbd>F5</kbd></div>
+                <div class="shortcut-row"><span>Black screen curtain</span><kbd>B</kbd> / <kbd>.</kbd></div>
+                <div class="shortcut-row"><span>White screen curtain</span><kbd>W</kbd> / <kbd>,</kbd></div>
+                <div class="shortcut-row"><span>Next page</span><kbd>Ctrl+PageDown</kbd> / <kbd>→</kbd></div>
+                <div class="shortcut-row"><span>Previous page</span><kbd>Ctrl+PageUp</kbd> / <kbd>←</kbd></div>
+                <div class="shortcut-row"><span>Zoom in / out</span><kbd>Ctrl++</kbd> / <kbd>Ctrl+-</kbd></div>
+                <div class="shortcut-row"><span>Reset 100% zoom</span><kbd>Ctrl+0</kbd></div>
+                <div class="shortcut-row"><span>Open boards</span><kbd>Ctrl+O</kbd></div>
+                <div class="shortcut-row"><span>New board</span><kbd>Ctrl+Alt+N</kbd></div>
+                <div class="shortcut-row"><span>Export board</span><kbd>Ctrl+E</kbd></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="shortcuts-panel-guide" class="shortcuts-tab-panel" hidden>
+            <div class="guide-content">
+              <h3>Presenter &amp; Classroom Features</h3>
+              <p><strong>Presentation Mode (F5):</strong> Hides all menus, ribbons, and panels. A floating Presenter HUD lets you navigate pages, activate the laser pointer, pen, eraser, and toggle black/white focus screens.</p>
+              <p><strong>Spotlight:</strong> Dim everything on the canvas except a focused circular spotlight following your pointer.</p>
+              <p><strong>Board Freeze:</strong> Lock the board during live demonstrations to prevent accidental drawing or edits.</p>
+              <p><strong>Real-Time Collaboration:</strong> Share a live Editor or Viewer link. Viewers can watch live annotations without modifying the board.</p>
+            </div>
+          </div>
+
+          <div id="shortcuts-panel-about" class="shortcuts-tab-panel" hidden>
+            <div class="about-content">
+              <div class="about-brand">
+                <span class="brand-mark" aria-hidden="true">
+                  <svg viewBox="0 0 32 32" width="28" height="28"><rect width="32" height="32" rx="8" fill="#0f766e" /><path d="M7 21c4-10 14-12 18-8" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" /></svg>
+                </span>
+                <div class="about-brand-text">
+                  <h3>Drawora</h3>
+                  <span class="about-version">Version 1.0.0 (Production Release)</span>
+                </div>
+              </div>
+              <p>A free, open-source, local-first digital whiteboard &amp; teaching canvas for notes, drawing, mathematics, diagrams, presentations, and real-time collaboration.</p>
+              <div class="about-badges">
+                <span class="about-badge">100% Offline-Capable</span>
+                <span class="about-badge">PWA Ready</span>
+                <span class="about-badge">Edge WebSocket Sync</span>
+                <span class="about-badge">Zero Accounts Required</span>
+                <span class="about-badge">MIT Licensed</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="shortcuts-footer">
+          <button type="button" class="dialog-btn dialog-btn-primary" data-action="close-shortcuts">Got it</button>
         </div>
       </div>
     </div>

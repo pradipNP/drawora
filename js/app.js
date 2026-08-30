@@ -312,7 +312,6 @@
   const collabUserName = document.getElementById("collab-user-name");
   const collabColorSwatches = document.getElementById("collab-color-swatches");
   const collabRandomBtn = document.getElementById("collab-random-btn");
-  const collabCopyLinkBtn = document.getElementById("collab-copy-link-btn");
   const collabConnectBtn = document.getElementById("collab-connect-btn");
   const collabDisconnectBtn = document.getElementById("collab-disconnect-btn");
   const collabParticipantsList = document.getElementById("collab-participants-list");
@@ -327,6 +326,9 @@
   const collabCopyEditorBtn = document.getElementById("collab-copy-editor-btn");
   const collabCopyViewerBtn = document.getElementById("collab-copy-viewer-btn");
   const collabSelfRole = document.getElementById("collab-self-role");
+  const shortcutsDialog = document.getElementById("shortcuts-dialog");
+  const helpShortcutsBtn = document.getElementById("help-shortcuts-btn");
+  const helpAboutBtn = document.getElementById("help-about-btn");
 
   if (
     !canvas ||
@@ -449,7 +451,6 @@
     !collabUserName ||
     !collabColorSwatches ||
     !collabRandomBtn ||
-    !collabCopyLinkBtn ||
     !collabConnectBtn ||
     !collabDisconnectBtn ||
     !collabParticipantsList ||
@@ -5199,6 +5200,35 @@
       }
       collabParticipantsList.append(row);
     }
+  }
+
+  function openShortcutsDialog(activeTab = "keys") {
+    if (!shortcutsDialog) return;
+    shortcutsDialog.hidden = false;
+    setShortcutsTab(activeTab);
+    trapModalFocus(shortcutsDialog);
+  }
+
+  function closeShortcutsDialog() {
+    if (!shortcutsDialog) return;
+    shortcutsDialog.hidden = true;
+    releaseModalFocus();
+  }
+
+  function setShortcutsTab(tabName) {
+    if (!shortcutsDialog) return;
+    const tabButtons = shortcutsDialog.querySelectorAll(".shortcuts-tab-btn");
+    const panels = shortcutsDialog.querySelectorAll(".shortcuts-tab-panel");
+
+    tabButtons.forEach((btn) => {
+      const isActive = btn.dataset.tab === tabName;
+      btn.classList.toggle("is-active", isActive);
+      btn.setAttribute("aria-selected", isActive ? "true" : "false");
+    });
+
+    panels.forEach((p) => {
+      p.hidden = p.id !== `shortcuts-panel-${tabName}`;
+    });
   }
 
   function openCollabDialog() {
@@ -10617,6 +10647,10 @@
         stopPresentation();
       } else if (action === "export-dialog") {
         openExportDialog(actionButton.dataset.exportType || "png");
+      } else if (action === "open-shortcuts") {
+        openShortcutsDialog("keys");
+      } else if (action === "open-about") {
+        openShortcutsDialog("about");
       } else if (action === "import-project") {
         projectFileInput.click();
       } else if (action.startsWith("table-")) {
@@ -10796,10 +10830,26 @@
       return;
     }
 
+    if (shortcutsDialog && !shortcutsDialog.hidden) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeShortcutsDialog();
+      } else if (event.key === "Tab") {
+        handleModalTabKey(event, shortcutsDialog);
+      }
+      return;
+    }
+
     if (isTypingTarget(event.target)) {
       if (event.target === editor) {
         handleEditorKeys(event);
       }
+      return;
+    }
+
+    if (event.key === "F1" || ((event.ctrlKey || event.metaKey) && event.key === "/")) {
+      event.preventDefault();
+      openShortcutsDialog("keys");
       return;
     }
 
@@ -11888,6 +11938,26 @@
 
   collabPresenceBtn.addEventListener("click", openCollabDialog);
   shareBtn.addEventListener("click", openCollabDialog);
+
+  if (helpShortcutsBtn) {
+    helpShortcutsBtn.addEventListener("click", () => openShortcutsDialog("keys"));
+  }
+  if (helpAboutBtn) {
+    helpAboutBtn.addEventListener("click", () => openShortcutsDialog("about"));
+  }
+
+  if (shortcutsDialog) {
+    shortcutsDialog.addEventListener("click", (event) => {
+      if (event.target === shortcutsDialog || event.target.closest('[data-action="close-shortcuts"]')) {
+        closeShortcutsDialog();
+        return;
+      }
+      const tabBtn = event.target.closest(".shortcuts-tab-btn");
+      if (tabBtn && tabBtn.dataset.tab) {
+        setShortcutsTab(tabBtn.dataset.tab);
+      }
+    });
+  }
 
   collabDialog.addEventListener("click", (event) => {
     if (event.target === collabDialog || event.target.closest('[data-action="close-collab"]')) {

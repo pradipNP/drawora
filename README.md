@@ -119,4 +119,8 @@ Select an object to move, resize, or rotate it. Click empty canvas and drag to s
 - **Accessibility (a11y)**: Focus trapping in dialogs with Tab cycling and focus restoration, live region announcements (`aria-live="polite"`), high-contrast `:focus-visible` rings, and `prefers-reduced-motion` compliance.
 - **Security**: Content Security Policy (CSP), strict URL scheme sanitization (`http:`, `https:`, `mailto:`), zero `eval()` usage, and `X-Content-Type-Options: nosniff` headers.
 
+**Help & Shortcuts Guide (`F1` / `Ctrl+/`)**:
+- Interactive dialog with tabbed reference for all keyboard shortcuts, presenter tools, and teaching workflows.
+- Responsive design tailored for desktops, touch laptops, tablets, and mobile devices.
+
 Use **Stroke** and **Fill** to set outline and fill colors. With an object selected, color and size changes apply to that object.
