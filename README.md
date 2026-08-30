@@ -93,6 +93,12 @@ Drawora is open source and community-driven.
 
 Please search [existing issues](../../issues) before creating a new one.
 
+## Support / Star the project
+
+If Drawora helps you — for teaching, notes, content creation, or collaboration — please **star the repository** on GitHub. It helps others discover the project and supports continued development.
+
+[![Star Drawora on GitHub](https://img.shields.io/github/stars/pradipNP/drawora?style=social&label=Star%20Drawora)](https://github.com/pradipNP/drawora)
+
 ## Tech stack
 
 - Vanilla HTML, CSS, and JavaScript (no framework, no build step)
