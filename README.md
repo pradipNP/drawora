@@ -7,6 +7,14 @@ Drawora runs entirely in your browser — no account required, no install requir
 [![License: MIT](https://img.shields.io/badge/License-MIT-teal.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](ROADMAP.md)
 
+## 🚀 Live Demo
+
+Try Drawora live:
+
+👉 **[Open Drawora](https://drawora.pages.dev)**
+
+---
+
 ## Features
 
 - **Drawing & objects** — Pen, brush, marker, highlighter, spray, shapes, text, sticky notes, images, tables, links, and file import
