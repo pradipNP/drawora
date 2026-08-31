@@ -35,6 +35,7 @@
   "author": "Drawora",
   "license": "MIT",
   "devDependencies": {
+    "serve": "^14.2.6",
     "wrangler": "^3.109.2"
   }
 }
