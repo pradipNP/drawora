@@ -14,6 +14,7 @@ Try Drawora live:
 👉 **[Open Drawora](https://drawora.pages.dev)**
 
 ---
+<img width="958" height="417" alt="image" src="https://github.com/user-attachments/assets/f63dcfde-f1be-4613-9868-40a5f3cde03c" />
 
 ## Features
 
