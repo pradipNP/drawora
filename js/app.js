@@ -1487,10 +1487,26 @@
         placeImportedObject(createFileCard(file, "csv", "CSV had no cells to place.", at));
         return null;
       }
+      const totalRows = Math.max(1, grid.length);
+      const totalCols = Math.max(1, ...grid.map((row) => (row ? row.length : 0)), 1);
+      const truncatedRows = totalRows > MAX_IMPORT_ROWS ? totalRows - MAX_IMPORT_ROWS : 0;
+      const truncatedCols = totalCols > MAX_IMPORT_COLS ? totalCols - MAX_IMPORT_COLS : 0;
       const box = importAnchor(at, 360, 120);
       beginInsert();
       const object = createTableFromGrid(grid, box.x, box.y);
       placeImportedObject(object);
+      if (truncatedRows || truncatedCols) {
+        const parts = [];
+        if (truncatedRows) parts.push(`${truncatedRows} row${truncatedRows === 1 ? "" : "s"}`);
+        if (truncatedCols) parts.push(`${truncatedCols} column${truncatedCols === 1 ? "" : "s"}`);
+        const warnBox = importAnchor(at, 300, 88);
+        warnBox.y = box.y + object.height + 24;
+        state.objects.push(
+          createFileCard(file, "csv", `CSV truncated: imported first ${MAX_IMPORT_ROWS}x${MAX_IMPORT_COLS}, dropped ${parts.join(" and ")}.`, warnBox)
+        );
+      }
+      finishInsert([object.id]);
+      redraw();
       return object;
     }
     if (kind === "docx") {
