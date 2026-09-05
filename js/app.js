@@ -329,6 +329,9 @@
   const shortcutsDialog = document.getElementById("shortcuts-dialog");
   const helpShortcutsBtn = document.getElementById("help-shortcuts-btn");
   const helpAboutBtn = document.getElementById("help-about-btn");
+  const helpPersistentBtn = document.getElementById("help-persistent-btn");
+  const shortcutsHintBanner = document.getElementById("shortcuts-hint-banner");
+  const shortcutsHintDismiss = document.getElementById("shortcuts-hint-dismiss");
 
   if (
     !canvas ||
@@ -11973,6 +11976,32 @@
   }
   if (helpAboutBtn) {
     helpAboutBtn.addEventListener("click", () => openShortcutsDialog("about"));
+  }
+  if (helpPersistentBtn) {
+    helpPersistentBtn.addEventListener("click", () => openShortcutsDialog("keys"));
+  }
+
+  const SHORTCUTS_HINT_DISMISSED_KEY = "drawora-shortcuts-hint-dismissed";
+  if (shortcutsHintBanner) {
+    let hintDismissed = true;
+    try {
+      hintDismissed = localStorage.getItem(SHORTCUTS_HINT_DISMISSED_KEY) === "1";
+    } catch (error) {
+      console.error("Error in localStorage.getItem(SHORTCUTS_HINT_DISMISSED_KEY):", error);
+    }
+    if (!hintDismissed) {
+      shortcutsHintBanner.hidden = false;
+    }
+    if (shortcutsHintDismiss) {
+      shortcutsHintDismiss.addEventListener("click", () => {
+        shortcutsHintBanner.hidden = true;
+        try {
+          localStorage.setItem(SHORTCUTS_HINT_DISMISSED_KEY, "1");
+        } catch (error) {
+          console.error("Error in localStorage.setItem(SHORTCUTS_HINT_DISMISSED_KEY):", error);
+        }
+      });
+    }
   }
 
   if (shortcutsDialog) {

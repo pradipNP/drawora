@@ -1938,6 +1938,44 @@ kbd {
   display: none !important;
 }
 
+.shortcuts-hint-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #ccfbf1;
+  border-bottom: 1px solid #99f6e4;
+  color: #0f766e;
+  padding: 6px 14px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  z-index: 10;
+  animation: slide-down 0.2s ease;
+}
+
+.shortcuts-hint-banner[hidden] {
+  display: none !important;
+}
+
+.shortcuts-hint-banner kbd {
+  font-family: inherit;
+  font-size: 0.72rem;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: #ffffff;
+  border: 1px solid #99f6e4;
+}
+
+.shortcuts-hint-dismiss {
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+}
+
 @keyframes slide-down {
   from {
     transform: translateY(-100%);
