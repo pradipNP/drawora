@@ -6187,53 +6187,108 @@
   }
 
   function buildMinimalPdf(pagesDataUrls) {
-    let pdf = "%PDF-1.4\n";
+    const encoder = new TextEncoder();
+    const parts = [];
+    let byteLength = 0;
+
+    function addChunk(uint8) {
+      parts.push(uint8);
+      byteLength += uint8.length;
+    }
+
+    function addAscii(str) {
+      addChunk(encoder.encode(str));
+    }
+
+    // PDF 1.4 header with binary comment marker
+    addAscii("%PDF-1.4\n%\xE2\xE3\xCF\xD3\n");
+
     const xrefs = [];
     let objCount = 0;
 
-    function addObj(content) {
+    function startObj() {
       objCount++;
-      xrefs.push(pdf.length);
-      pdf += `${objCount} 0 obj\n${content}\nendobj\n`;
+      xrefs[objCount] = byteLength;
+      addAscii(`${objCount} 0 obj\n`);
       return objCount;
     }
 
+    function endObj() {
+      addAscii("endobj\n");
+    }
+
+    // Object 1: Catalog
+    const catalogId = startObj();
+    addAscii("<< /Type /Catalog /Pages 2 0 R >>\n");
+    endObj();
+
+    // Object 2: Pages tree root
+    const pageCount = pagesDataUrls.length;
     const pageObjIds = [];
+    for (let i = 0; i < pageCount; i++) {
+      pageObjIds.push(3 + i * 3);
+    }
+    startObj(); // object 2
+    addAscii(`<< /Type /Pages /Kids [${pageObjIds.map((id) => `${id} 0 R`).join(" ")}] /Count ${pageCount} >>\n`);
+    endObj();
 
-    for (const pageData of pagesDataUrls) {
-      const imgWidth = pageData.width;
-      const imgHeight = pageData.height;
+    // Each page gets 3 objects:
+    // pageObjId (Page), contentObjId (Content Stream), imgObjId (Image XObject)
+    for (let i = 0; i < pageCount; i++) {
+      const pageData = pagesDataUrls[i];
+      const pageObjId = pageObjIds[i]; // 3 + i * 3
+      const contentObjId = pageObjId + 1; // 4 + i * 3
+      const imgObjId = pageObjId + 2; // 5 + i * 3
+
+      const pw = Math.round(pageData.width);
+      const ph = Math.round(pageData.height);
+      const imgW = Math.round(pageData.pixelWidth || pageData.width);
+      const imgH = Math.round(pageData.pixelHeight || pageData.height);
+
       const rawBase64 = pageData.dataUrl.split(",")[1];
-      const binaryImg = atob(rawBase64);
-      const imgStreamLen = binaryImg.length;
+      const binaryStr = atob(rawBase64);
+      const imgBytes = new Uint8Array(binaryStr.length);
+      for (let j = 0; j < binaryStr.length; j++) {
+        imgBytes[j] = binaryStr.charCodeAt(j);
+      }
 
-      const imgObjId = objCount + 1;
-      addObj(`<< /Type /XObject /Subtype /Image /Width ${imgWidth} /Height ${imgHeight} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${imgStreamLen} >>\nstream\n${binaryImg}\nendstream`);
+      // Page Object
+      startObj();
+      addAscii(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pw} ${ph}] /Contents ${contentObjId} 0 R /Resources << /XObject << /Im1 ${imgObjId} 0 R >> >> >>\n`);
+      endObj();
 
-      const contentStream = `q\n${imgWidth} 0 0 ${imgHeight} 0 0 cm\n/Im1 Do\nQ\n`;
-      const contentStreamId = addObj(`<< /Length ${contentStream.length} >>\nstream\n${contentStream}endstream`);
+      // Content Stream: Scale image to fill page
+      const contentStream = `q\n${pw} 0 0 ${ph} 0 0 cm\n/Im1 Do\nQ\n`;
+      const contentBytes = encoder.encode(contentStream);
+      startObj();
+      addAscii(`<< /Length ${contentBytes.length} >>\nstream\n${contentStream}endstream\n`);
+      endObj();
 
-      const pageObjId = addObj(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${imgWidth} ${imgHeight}] /Resources << /XObject << /Im1 ${imgObjId} 0 R >> >> /Contents ${contentStreamId} 0 R >>`);
-      pageObjIds.push(pageObjId);
+      // Image XObject with actual image pixel dimensions and JPEG stream
+      startObj();
+      addAscii(`<< /Type /XObject /Subtype /Image /Width ${imgW} /Height ${imgH} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${imgBytes.length} >>\nstream\n`);
+      addChunk(imgBytes);
+      addAscii("\nendstream\n");
+      endObj();
     }
 
-    const catalogObjId = addObj(`<< /Type /Catalog /Pages 2 0 R >>`);
-    const pagesObjId = addObj(`<< /Type /Pages /Kids [${pageObjIds.map((id) => `${id} 0 R`).join(" ")}] /Count ${pageObjIds.length} >>`);
-
-    const startxref = pdf.length;
-    pdf += "xref\n";
-    pdf += `0 ${objCount + 1}\n`;
-    pdf += "0000000000 65535 f \n";
-    for (const offset of xrefs) {
-      pdf += `${String(offset).padStart(10, "0")} 00000 n \n`;
+    // Cross-reference table (each entry must be exactly 20 bytes)
+    const startXref = byteLength;
+    addAscii("xref\n");
+    addAscii(`0 ${objCount + 1}\n`);
+    addAscii("0000000000 65535 f \r\n");
+    for (let i = 1; i <= objCount; i++) {
+      const offsetStr = String(xrefs[i]).padStart(10, "0");
+      addAscii(`${offsetStr} 00000 n \r\n`);
     }
-    pdf += `trailer\n<< /Size ${objCount + 1} /Root ${catalogObjId} 0 R >>\nstartxref\n${startxref}\n%%EOF`;
 
-    const bytes = new Uint8Array(pdf.length);
-    for (let i = 0; i < pdf.length; i++) {
-      bytes[i] = pdf.charCodeAt(i) & 0xff;
-    }
-    return new Blob([bytes], { type: "application/pdf" });
+    // Trailer
+    addAscii("trailer\n");
+    addAscii(`<< /Size ${objCount + 1} /Root ${catalogId} 0 R >>\n`);
+    addAscii("startxref\n");
+    addAscii(`${startXref}\n%%EOF\n`);
+
+    return new Blob(parts, { type: "application/pdf" });
   }
 
   async function generateExportPreview() {
@@ -6380,18 +6435,57 @@
       }
 
       if (format === "pdf") {
-        const targetPages = scope === "all" ? state.pages : [currentPage()];
         const pdfPages = [];
-        for (const page of targetPages) {
-          const pCanvas = renderPageToCanvas(page, { scale, transparent: false, scope: "current" });
+        if (scope === "all" && state.pages.length > 1) {
+          for (const page of state.pages) {
+            const pageObjects = page.id === state.currentPageId ? state.objects : page.objects || [];
+            const pCanvas = renderPageToCanvas(page, {
+              scale,
+              transparent: false,
+              scope: "current",
+              objects: pageObjects,
+            });
+            pdfPages.push({
+              dataUrl: pCanvas.toDataURL("image/jpeg", quality),
+              width: page.width,
+              height: page.height,
+              pixelWidth: pCanvas.width,
+              pixelHeight: pCanvas.height,
+            });
+          }
+        } else {
+          const page = currentPage();
+          let bounds = null;
+          let objects = page.id === state.currentPageId ? state.objects : page.objects || [];
+          let targetW = page.width;
+          let targetH = page.height;
+          if (scope === "selection") {
+            const sel = selectedObjects();
+            if (sel.length > 0) {
+              objects = sel;
+              bounds = unionBounds(sel.map((o) => objectWorldBounds(o)));
+              targetW = Math.round(Math.max(bounds.width, 20));
+              targetH = Math.round(Math.max(bounds.height, 20));
+            }
+          }
+          const pCanvas = renderPageToCanvas(page, {
+            scale,
+            transparent: false,
+            scope,
+            bounds,
+            objects,
+          });
           pdfPages.push({
             dataUrl: pCanvas.toDataURL("image/jpeg", quality),
-            width: page.width,
-            height: page.height,
+            width: targetW,
+            height: targetH,
+            pixelWidth: pCanvas.width,
+            pixelHeight: pCanvas.height,
           });
         }
         const pdfBlob = buildMinimalPdf(pdfPages);
         downloadFile(pdfBlob, `${baseName}.pdf`);
+        announceA11y("Export downloaded successfully");
         closeExportDialog();
         return;
       }
