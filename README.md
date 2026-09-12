@@ -17,7 +17,7 @@ Try Drawora live:
 <img width="958" height="417" alt="image" src="https://github.com/user-attachments/assets/f63dcfde-f1be-4613-9868-40a5f3cde03c" />
 
 ## Features
-
+- **Reusable text styles** — Save named combinations of font, size, color, emphasis, spacing, alignment, and related text formatting; apply them with one click and import/export style libraries
 - **Drawing & objects** — Pen, brush, marker, highlighter, spray, shapes, text, sticky notes, images, tables, links, and file import
 - **Pages & templates** — Multi-page boards, A4/Letter/custom sizes, teacher/student templates (grid, ruled, graph, dark board, and more)
 - **Presentation mode** — Full-screen teaching with laser pointer, pen, eraser, black/white screen curtains, and page navigation (`F5`)
@@ -164,6 +164,8 @@ Text tools: **Text** (`T`) and **Sticky note** (`N`). Click to place, or drag to
 **Draw** has pencil, brush (`B`), marker, highlighter, and spray, plus fill (`F`), eyedropper (`I`), and lasso select (`L`). Fill applies color to the object you click. The eyedropper samples the board. **Draw → Image** flips the selection; crop is for a selected picture. Object handles still resize.
 
 Formatting (font, size, bold, italic, underline, strikethrough, alignment, line height, letter spacing, paragraph spacing, lists, indent, and text background) applies to the selected text or sticky note, and to the next one you create. `Ctrl+B` / `Ctrl+I` / `Ctrl+U`; `Tab` / `Shift+Tab` indent while editing.
+
+**Home → Styles** opens the reusable style library. Set the formatting you want, choose **Save current style**, and give it a name. Saved styles can be applied to selected text or used as the formatting for the next text object. Styles can be renamed, updated from the current formatting, deleted, reordered, and imported/exported as JSON. The library is stored locally in the browser and is shared across Drawora boards.
 
 **Insert → Image** opens a file picker. You can also drop a picture on the board or paste one with `Ctrl+V`. Select an image to crop, flip, add a shadow, round the corners, or change opacity, brightness, contrast, saturation, and blur. Stroke color and size become the border. Corner resize keeps the aspect ratio; hold Shift to stretch.
 
