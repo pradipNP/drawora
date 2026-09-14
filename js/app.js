@@ -3,6 +3,25 @@
 (function (D) {
   "use strict";
 
+  function loadStyleManager() {
+    if (typeof D.initStyleManager === "function") {
+      D.initStyleManager();
+      return;
+    }
+    if (document.querySelector('script[data-drawora-style-manager="true"]')) {
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "js/modules/styles.js";
+    script.defer = true;
+    script.dataset.draworaStyleManager = "true";
+    script.onerror = () => {
+      console.warn("Drawora: custom style manager failed to load.");
+    };
+    document.body.appendChild(script);
+  }
+
   // Initialize first page if none exist
   if (!D.state.pages || D.state.pages.length === 0) {
     const firstPage = makePage({ name: "Page 1", preset: "a4", orientation: "portrait" });
@@ -50,4 +69,7 @@
   initProjectManager();
   setupPwa();
   checkUrlRoomParam();
+
+  // Issue #35: load the reusable custom text-style library.
+  loadStyleManager();
 })(window.Drawora = window.Drawora || {});

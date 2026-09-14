@@ -1,0 +1,45 @@
+.drawora-style-launcher svg { width: 18px; height: 18px; }
+.drawora-style-backdrop { position: fixed; inset: 0; z-index: 9990; background: rgb(15 23 42 / .28); backdrop-filter: blur(1px); }
+.drawora-style-panel { position: fixed; z-index: 9991; top: 50%; left: 50%; width: min(680px, calc(100vw - 28px)); max-height: min(760px, calc(100vh - 28px)); transform: translate(-50%, -50%); display: flex; flex-direction: column; background: #fff; border: 1px solid #d9e1e7; border-radius: 14px; box-shadow: 0 24px 64px rgb(15 23 42 / .22); color: #1f2937; overflow: hidden; }
+.drawora-style-panel[hidden], .drawora-style-backdrop[hidden] { display: none !important; }
+.drawora-style-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 18px 20px 14px; border-bottom: 1px solid #e5e7eb; }
+.drawora-style-title { margin: 0; font-size: 18px; font-weight: 650; }
+.drawora-style-subtitle { margin: 4px 0 0; color: #667085; font-size: 12px; line-height: 1.45; }
+.drawora-style-close { border: 0; background: transparent; width: 34px; height: 34px; border-radius: 8px; font-size: 24px; line-height: 1; color: #667085; cursor: pointer; }
+.drawora-style-close:hover { background: #f2f4f7; color: #111827; }
+.drawora-style-toolbar { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 20px; border-bottom: 1px solid #eef1f4; background: #fafbfc; }
+.drawora-style-action { min-height: 34px; border: 1px solid #cfd8df; border-radius: 8px; background: #fff; color: #25313c; padding: 7px 11px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.drawora-style-action:hover { background: #f3f6f8; }
+.drawora-style-action.is-primary { border-color: #0f766e; background: #0f766e; color: #fff; }
+.drawora-style-action.is-primary:hover { background: #0c665f; }
+.drawora-style-count { margin-left: auto; align-self: center; color: #77828d; font-size: 11px; font-variant-numeric: tabular-nums; }
+.drawora-style-list { overflow: auto; padding: 14px 20px 20px; display: grid; gap: 8px; min-height: 160px; }
+.drawora-style-empty { margin: 34px 0; text-align: center; color: #7b8794; font-size: 13px; line-height: 1.6; }
+.drawora-style-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: stretch; border: 1px solid #dfe5ea; border-radius: 10px; background: #fff; overflow: hidden; transition: border-color .15s ease, box-shadow .15s ease, opacity .15s ease; }
+.drawora-style-card:hover, .drawora-style-card:focus-within { border-color: #9fb7b4; box-shadow: 0 3px 12px rgb(15 23 42 / .07); }
+.drawora-style-card.is-dragging { opacity: .45; }
+.drawora-style-card.is-drop-target { border-color: #0f766e; box-shadow: inset 0 0 0 1px #0f766e; }
+.drawora-style-preview { border: 0; background: transparent; display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 11px; align-items: center; text-align: left; padding: 11px 12px; cursor: pointer; min-width: 0; }
+.drawora-style-preview:hover { background: #fbfcfc; }
+.drawora-style-sample { display: grid; place-items: center; height: 38px; border-radius: 7px; background: #f3f5f6; border: 1px solid #e6eaed; font-size: 17px; }
+.drawora-style-card-copy { display: block; min-width: 0; color: #202a33; }
+.drawora-style-card-copy strong, .drawora-style-card-copy small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.drawora-style-card-copy strong { font: 600 13px/1.35 system-ui, sans-serif; }
+.drawora-style-card-copy small { margin-top: 3px; color: #77828d; font: 11px/1.35 system-ui, sans-serif; }
+.drawora-style-card-actions { display: flex; align-items: center; gap: 2px; padding: 0 7px; border-left: 1px solid #edf0f2; }
+.drawora-style-icon-btn { width: 30px; height: 30px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 6px; background: transparent; color: #66727d; cursor: pointer; }
+.drawora-style-icon-btn:hover:not(:disabled) { background: #eef3f3; color: #0f766e; }
+.drawora-style-icon-btn:disabled { opacity: .28; cursor: default; }
+.drawora-style-icon-btn svg { width: 16px; height: 16px; }
+.drawora-style-toast { position: fixed; z-index: 10000; left: 50%; bottom: 28px; transform: translate(-50%, 12px); opacity: 0; pointer-events: none; border-radius: 9px; padding: 9px 13px; background: #17232b; color: #fff; font: 600 12px/1.35 system-ui, sans-serif; box-shadow: 0 10px 30px rgb(0 0 0 / .2); transition: opacity .18s ease, transform .18s ease; }
+.drawora-style-toast[data-kind="error"] { background: #9f2d2d; }
+.drawora-style-toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
+@media (max-width: 620px) {
+  .drawora-style-panel { width: calc(100vw - 16px); max-height: calc(100vh - 16px); border-radius: 11px; }
+  .drawora-style-head, .drawora-style-toolbar, .drawora-style-list { padding-left: 12px; padding-right: 12px; }
+  .drawora-style-card { grid-template-columns: 1fr; }
+  .drawora-style-card-actions { justify-content: flex-end; border-left: 0; border-top: 1px solid #edf0f2; padding: 5px 7px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .drawora-style-card, .drawora-style-toast { transition: none; }
+}

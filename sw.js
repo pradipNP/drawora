@@ -1,9 +1,11 @@
-const CACHE_NAME = "drawora-v1";
+const CACHE_NAME = "drawora-v2-styles";
 const STATIC_ASSETS = [
   "./",
   "./index.html",
   "./css/style.css",
+  "./css/style-manager.css",
   "./js/app.js",
+  "./js/modules/styles.js",
   "./manifest.webmanifest",
   "./icons/icon.svg",
   "./icons/icon-192.png",
