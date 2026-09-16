@@ -54,6 +54,7 @@ export async function onRequest(context) {
   server.addEventListener("message", (event) => {
     try {
       const data = event.data;
+      JSON.parse(data);
       broadcastToRoom(roomId, data, server);
     } catch (err) {
       console.warn("Drawora Room message handling error:", err);
